@@ -370,7 +370,7 @@ export function createSmsBulkSendRunRepository(db) {
           .update(smsBulkSendRuns)
           .set({
             status: 'running',
-            startedAt: sql`coalesce(${smsBulkSendRuns.startedAt}, ${now})`,
+            startedAt: sql`coalesce(${smsBulkSendRuns.startedAt}, ${timestampSql(now)})`,
             updatedAt: now,
           })
           .where(eq(smsBulkSendRuns.id, candidate.run.id))
@@ -741,4 +741,12 @@ async function getQuotaBucketById(db, bucketId) {
     .for('update');
 
   return bucket ?? null;
+}
+
+function timestampSql(value) {
+  return sql`${toPostgresTimestamp(value)}::timestamp with time zone`;
+}
+
+function toPostgresTimestamp(value) {
+  return value instanceof Date ? value.toISOString() : value;
 }

@@ -740,6 +740,9 @@ export function createMessageSendLedgerRepository(db) {
     }) {
       return db.transaction(async (tx) => {
         const effectiveAt = sql`coalesce(${messageSendGroups.scheduledAt}, ${messageSendProviderRequests.createdAt}, ${messageSendGroups.createdAt})`;
+        const firstCorrectionCutoff = timestampSql(firstCorrectionDueBefore);
+        const finalCorrectionCutoff = timestampSql(finalCorrectionDueBefore);
+        const nowCutoff = timestampSql(now);
         const candidates = await tx
           .select({
             group: messageSendGroups,
@@ -761,11 +764,11 @@ export function createMessageSendLedgerRepository(db) {
               or(
                 and(
                   eq(messageSendProviderRequests.syncAttempts, 0),
-                  lte(effectiveAt, firstCorrectionDueBefore)
+                  lte(effectiveAt, firstCorrectionCutoff)
                 ),
-                lte(effectiveAt, finalCorrectionDueBefore)
+                lte(effectiveAt, finalCorrectionCutoff)
               ),
-              lte(effectiveAt, now),
+              lte(effectiveAt, nowCutoff),
               or(
                 isNull(messageSendProviderRequests.syncLeaseExpiresAt),
                 lte(messageSendProviderRequests.syncLeaseExpiresAt, now)
@@ -1307,4 +1310,12 @@ function addDays(date, days) {
   const nextDate = new Date(date);
   nextDate.setUTCDate(nextDate.getUTCDate() + days);
   return nextDate;
+}
+
+function timestampSql(value) {
+  return sql`${toPostgresTimestamp(value)}::timestamp with time zone`;
+}
+
+function toPostgresTimestamp(value) {
+  return value instanceof Date ? value.toISOString() : value;
 }
