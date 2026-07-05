@@ -68,9 +68,9 @@ Use separate values for dev and prod. Start from `.env.example`.
 - `R2_SECRET_ACCESS_KEY`
 - `R2_EVIDENCE_BUCKET`
 
-For Supabase, prefer:
+For Supabase, use separate projects for dev and prod. On this Dokploy/Hetzner setup, prefer the Supabase session pooler URL on port `5432` for both runtime and migrations unless Docker IPv6 has been verified. Supabase direct URLs are often IPv6-only and can fail from Docker containers without IPv6 networking.
 
-- runtime `DATABASE_URL`: pooled connection
-- migration `DATABASE_MIGRATION_URL`: direct connection
+- runtime `DATABASE_URL`: session pooler URL
+- migration `DATABASE_MIGRATION_URL`: session pooler URL, or direct URL only after IPv6 is confirmed
 
 For first SSL issuance, keep Cloudflare DNS records as DNS-only. Cloudflare proxy can be enabled after Dokploy certificates are issued and the app is reachable.
