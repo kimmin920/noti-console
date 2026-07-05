@@ -1,0 +1,1 @@
+ALTER TABLE "automation_rules" ADD COLUMN "template_source_key" varchar(160);

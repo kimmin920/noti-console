@@ -1,0 +1,131 @@
+const JSON_HEADERS = {
+  'Content-Type': 'application/json',
+};
+
+export class RelayClientError extends Error {
+  constructor({
+    code = 'UNKNOWN_CLIENT_ERROR',
+    message = '요청을 처리할 수 없습니다.',
+    providerCode = null,
+    providerMessage = null,
+    retryable = false,
+    source = 'client',
+    state = null,
+    status = 0,
+  } = {}) {
+    super(message);
+    this.name = 'RelayClientError';
+    this.code = code;
+    this.providerCode = providerCode;
+    this.providerMessage = providerMessage;
+    this.retryable = Boolean(retryable);
+    this.source = source;
+    this.state = state;
+    this.status = status;
+  }
+}
+
+export function getRelayErrorMessage(error, fallback = '요청을 처리할 수 없습니다.') {
+  return error instanceof RelayClientError && error.message ? error.message : fallback;
+}
+
+export async function relayGet(path) {
+  return relayFetch(path);
+}
+
+export async function relayPost(path, payload) {
+  return relayFetch(path, {
+    body: JSON.stringify(payload),
+    headers: JSON_HEADERS,
+    method: 'POST',
+  });
+}
+
+export async function relayPatch(path, payload) {
+  return relayFetch(path, {
+    body: JSON.stringify(payload),
+    headers: JSON_HEADERS,
+    method: 'PATCH',
+  });
+}
+
+export async function relayDelete(path, payload) {
+  return relayFetch(path, {
+    body: JSON.stringify(payload),
+    headers: JSON_HEADERS,
+    method: 'DELETE',
+  });
+}
+
+export async function relayPostForm(path, formData) {
+  return relayFetch(path, {
+    body: formData,
+    method: 'POST',
+  });
+}
+
+export function withQuery(path, params) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      searchParams.set(key, String(value));
+    }
+  });
+
+  const query = searchParams.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+async function relayFetch(path, init) {
+  const response = await fetch(path, {
+    cache: 'no-store',
+    ...init,
+  });
+  const envelope = await readRelayEnvelope(response);
+
+  if (response.ok && envelope?.ok === true) {
+    return envelope.data;
+  }
+
+  throw toRelayClientError({ envelope, status: response.status });
+}
+
+async function readRelayEnvelope(response) {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (!contentType.includes('application/json')) {
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function toRelayClientError({ envelope, status }) {
+  const error = envelope?.error;
+
+  if (error && typeof error === 'object') {
+    return new RelayClientError({
+      code: error.code,
+      message: error.message,
+      providerCode: error.providerCode,
+      providerMessage: error.providerMessage,
+      retryable: error.retryable,
+      source: error.source,
+      state: error.state,
+      status,
+    });
+  }
+
+  return new RelayClientError({
+    code: status ? `HTTP_${status}` : 'NETWORK_ERROR',
+    message: status ? '요청을 처리할 수 없습니다.' : '네트워크 연결을 확인해 주세요.',
+    retryable: status >= 500 || status === 0,
+    source: 'client',
+    status,
+  });
+}

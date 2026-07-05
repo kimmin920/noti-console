@@ -1,0 +1,38 @@
+import { resolveRelayActor } from '@/server/auth/actor.js';
+import { parseRelayRequest, relayRoute } from '@/server/http/relayRoute.js';
+import { createDefaultTemplateCatalogService } from '@/server/templates/service.js';
+
+export const runtime = 'nodejs';
+
+export async function GET(request) {
+  return relayRoute(async () => {
+    const actor = await resolveRelayActor(request);
+    const { searchParams } = new URL(request.url);
+
+    return {
+      data: await createDefaultTemplateCatalogService().listSmsTemplates({
+        actorUserId: actor.user.id,
+        senderResourceId: searchParams.get('senderResourceId'),
+        query: {
+          categoryId: searchParams.get('categoryId'),
+          templateName: searchParams.get('templateName'),
+        },
+      }),
+    };
+  });
+}
+
+export async function POST(request) {
+  return relayRoute(async () => {
+    const actor = await resolveRelayActor(request);
+    const { payload } = await parseRelayRequest(request);
+
+    return {
+      status: 201,
+      data: await createDefaultTemplateCatalogService().createSmsTemplate({
+        actorUserId: actor.user.id,
+        payload,
+      }),
+    };
+  });
+}

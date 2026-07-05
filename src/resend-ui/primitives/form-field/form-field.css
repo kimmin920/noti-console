@@ -1,0 +1,37 @@
+.resend-ui-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+}
+
+.resend-ui-form-label {
+  color: var(--gray-11);
+  cursor: pointer;
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: var(--tw-leading, var(--text-sm--line-height));
+}
+
+.resend-ui-form-label__text {
+  color: var(--gray-12);
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--tw-leading, var(--text-sm--line-height));
+}
+
+.resend-ui-form-label__description {
+  color: var(--gray-11);
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: var(--tw-leading, var(--text-sm--line-height));
+}
+
+.resend-ui-form-message {
+  color: var(--red-a7);
+  font-size: var(--text-xs);
+  line-height: var(--tw-leading, var(--text-xs--line-height));
+  margin: 0;
+}

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."sender_resource_evidence_document_type" ADD VALUE 'additional_document';

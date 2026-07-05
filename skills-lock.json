@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "compact-landing": {
+      "source": "Danilaa1/compact-landing-skill",
+      "sourceType": "github",
+      "skillPath": "skills/compact-landing/SKILL.md",
+      "computedHash": "40dd7dec6b5eb557b8cc4c8cf8600ece10a99268bb1bc13edf4256fd984a189f"
+    }
+  }
+}

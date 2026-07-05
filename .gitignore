@@ -1,0 +1,52 @@
+# dependencies
+node_modules/
+
+# Next.js / build output
+.next/
+out/
+dist/
+
+# local env / secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# logs / coverage
+*.log
+coverage/
+__pycache__/
+*.py[cod]
+
+# OS / editor
+.DS_Store
+
+# local database/runtime state
+postgres-data/
+
+# automation and QA artifacts
+.agents/
+output/
+phases/
+.omo/
+.code-review-graph/
+.codegraph
+.visual-qa/
+.playwright-mcp/
+.playwright-cli/
+playwright-report/
+test-results/
+screenshots/
+videos/
+
+# root-level screenshot/reference drops; keep real app assets under public/
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+/*.gif
+/*.mp4
+/*.webm
+/*.mov
+/*.trace.zip
+/*.har

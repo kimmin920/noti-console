@@ -1,0 +1,37 @@
+@import "../features/console/automations/builder/primitives/resend-button.css";
+@import "../features/console/automations/builder/primitives/resend-input.css";
+@import "../features/console/automations/builder/primitives/resend-tabs.css";
+@import "../features/console/automations/builder/automation-action-list.css";
+@import "../features/console/automations/builder/automation-trigger-node.css";
+@import "../features/console/automations/builder/automation-send-email-node.css";
+
+@font-face {
+  font-family: inter;
+  src: url("../features/console/automations/builder/fonts/inter_variable.p.0r27kd5h06n72.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: commitMono;
+  src: url("../features/console/automations/builder/fonts/commit_mono_regular.p.0aa27026uqvh.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: commitMono;
+  src: url("../features/console/automations/builder/fonts/commit_mono_italic.p.0_9c8p15epbr_.woff2") format("woff2");
+  font-display: swap;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.resend-ui-domain-automation-action-list,
+.resend-ui-domain-automation-send-email-node,
+.resend-ui-domain-automation-trigger-node {
+  --font-inter: "inter";
+  --font-commit-mono: "commitMono";
+  font-family: var(--font-sans);
+}

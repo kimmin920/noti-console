@@ -1,0 +1,95 @@
+.resend-ui-button {
+  align-items: center;
+  border-color: currentcolor;
+  border-style: var(--tw-border-style);
+  border-width: 1px;
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--text-base);
+  gap: calc(var(--spacing) * 1);
+  height: calc(var(--spacing) * 8);
+  justify-content: center;
+  line-height: var(--tw-leading, var(--text-base--line-height));
+  padding-inline: calc(var(--spacing) * 3);
+  position: relative;
+  text-decoration: inherit;
+  transition-duration: .2s;
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
+  transition-timing-function: var(--ease-in-out);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.resend-ui-button svg {
+  height: calc(var(--spacing) * 4);
+  width: calc(var(--spacing) * 4);
+}
+
+.resend-ui-button:disabled,
+.resend-ui-button[data-disabled] {
+  cursor: not-allowed;
+  opacity: .7;
+}
+
+.resend-ui-button:focus-visible {
+  --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+  box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  outline-style: none;
+}
+
+.resend-ui-button--accent {
+  background-color: var(--bg-accent);
+  color: var(--text-on-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.resend-ui-button--accent:not(:disabled):not([data-disabled]):hover,
+.resend-ui-button--accent:focus-visible {
+  background-color: var(--bg-accent-hover);
+}
+
+.resend-ui-button--accent:focus-visible {
+  --tw-ring-color: var(--ring-accent);
+}
+
+.resend-ui-button--interactive {
+  background-color: var(--gray-a2);
+  border-color: var(--gray-a3);
+  color: var(--gray-11);
+  font-weight: var(--font-weight-medium);
+}
+
+.resend-ui-button--interactive svg {
+  color: var(--gray-11);
+}
+
+.resend-ui-button--interactive:not(:disabled):not([data-disabled]):hover,
+.resend-ui-button--interactive[aria-expanded="true"] {
+  background-color: var(--gray-a3);
+}
+
+.resend-ui-button--interactive:focus-visible {
+  --tw-ring-color: var(--gray-a3);
+}
+
+.resend-ui-button--has-leading-icon {
+  padding-left: calc(var(--spacing) * 2.5);
+}
+
+.resend-ui-button--help-key {
+  padding-right: calc(var(--spacing) * 3);
+}
+
+@media (min-width: 40rem) {
+  .resend-ui-button {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+}
+
+@media (min-width: 48rem) {
+  .resend-ui-button--help-key {
+    padding-right: calc(var(--spacing) * 1.5);
+  }
+}

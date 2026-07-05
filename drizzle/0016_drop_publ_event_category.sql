@@ -1,0 +1,1 @@
+ALTER TABLE "publ_event_definitions" DROP COLUMN "category";

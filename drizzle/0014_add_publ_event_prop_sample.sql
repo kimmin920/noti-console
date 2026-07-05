@@ -1,0 +1,1 @@
+ALTER TABLE "publ_event_prop_definitions" ADD COLUMN "sample" varchar(500);

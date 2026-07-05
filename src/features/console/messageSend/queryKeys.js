@@ -1,0 +1,17 @@
+export const messageSendQueryKeys = {
+  adminLimitIncreaseRequests: (filters) => ['admin', 'limit-increase-requests', filters],
+  adminLimitIncreaseRequestsRoot: ['admin', 'limit-increase-requests'],
+  adminSenderResourceApplications: (filters) => ['admin', 'sender-resource-applications', filters],
+  adminSenderResourceApplicationsRoot: ['admin', 'sender-resource-applications'],
+  alimtalkTemplates: (senderResourceId) => ['message-send', 'templates', 'alimtalk', senderResourceId],
+  brandTemplates: (senderResourceId) => ['message-send', 'templates', 'brand', senderResourceId],
+  currentActor: ['relay', 'actor'],
+  kakaoConnectBootstrap: ['sender-resources', 'kakao', 'connect', 'bootstrap'],
+  limitIncreaseRequests: ['settings', 'limit-increase-requests'],
+  senderResources: ['message-send', 'sender-resources'],
+  smsBulkRuns: ['message-send', 'sms', 'bulk-send-runs'],
+  smsBulkRunsActive: ['message-send', 'sms', 'bulk-send-runs', 'active'],
+  smsBulkRun: (runId) => ['message-send', 'sms', 'bulk-send-runs', runId],
+  smsTemplates: (senderResourceId) => ['message-send', 'templates', 'sms', senderResourceId],
+  status: (lookup) => ['message-send', 'status', lookup?.channel, lookup?.senderResourceId, lookup?.clientRequestId],
+};

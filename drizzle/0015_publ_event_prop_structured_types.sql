@@ -1,0 +1,2 @@
+ALTER TABLE "publ_event_prop_definitions" DROP CONSTRAINT "publ_event_prop_definitions_prop_type_check";--> statement-breakpoint
+ALTER TABLE "publ_event_prop_definitions" ADD CONSTRAINT "publ_event_prop_definitions_prop_type_check" CHECK ("publ_event_prop_definitions"."prop_type" in ('text', 'number', 'datetime', 'boolean', 'enum', 'object', 'array'));

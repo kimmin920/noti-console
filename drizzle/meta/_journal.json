@@ -1,0 +1,139 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1780396920978,
+      "tag": "0000_init_relay_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780486558959,
+      "tag": "0001_foamy_black_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780490928333,
+      "tag": "0002_polite_clea",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780563776948,
+      "tag": "0003_clear_sms_sender_display_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780663091445,
+      "tag": "0004_sms_bulk_send_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780740589344,
+      "tag": "0005_sms_bulk_send_run_request_date",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780755600000,
+      "tag": "0006_sms_bulk_provider_request_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780991846614,
+      "tag": "0007_message_send_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781090253005,
+      "tag": "0008_result_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781869555581,
+      "tag": "0009_publ_event_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1781870510227,
+      "tag": "0010_publ_event_prop_required_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1782045675847,
+      "tag": "0011_automation_open_api",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782123254080,
+      "tag": "0012_automation_rules_enabled_event_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1782129441837,
+      "tag": "0013_automation_rule_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1782556642376,
+      "tag": "0014_add_publ_event_prop_sample",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1782720515739,
+      "tag": "0015_publ_event_prop_structured_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1782728123027,
+      "tag": "0016_drop_publ_event_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1782749442045,
+      "tag": "0017_automation_template_source_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1782989643389,
+      "tag": "0018_limit_increase_requests",
+      "breakpoints": true
+    }
+  ]
+}

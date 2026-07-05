@@ -1,0 +1,298 @@
+.template-detail-page {
+  --rd-bg: var(--bg);
+  --rd-text: var(--text);
+  --rd-text-soft: var(--text-soft, var(--gray-11));
+  --rd-muted: var(--muted);
+  --rd-faint: var(--gray-9);
+  --rd-border: var(--line);
+  --rd-border-soft: var(--line-soft, var(--line));
+  --rd-control: var(--control);
+  --rd-control-hover: var(--control-hover, var(--gray-a3));
+  --rd-elevated: var(--control);
+  --rd-focus: var(--gray-a6);
+  background: var(--bg);
+}
+
+.template-detail-shell {
+  min-height: 100vh;
+  overflow: auto;
+}
+
+.template-detail-content {
+  max-width: none;
+  padding: 0;
+}
+
+.template-detail-icon {
+  background: var(--rd-control);
+  color: var(--rd-text-soft);
+}
+
+.template-detail-icon svg {
+  width: 34px;
+  height: 34px;
+  filter: none;
+}
+
+.template-detail-title h1 {
+  font-weight: 600;
+}
+
+.template-detail-actions {
+  align-self: flex-start;
+}
+
+.template-detail-primary-link {
+  text-decoration: none;
+}
+
+.resend-auto-configure.template-detail-primary-link,
+.resend-auto-configure.template-detail-primary-link:hover {
+  color: inherit;
+}
+
+.template-detail-page .resend-primary-button,
+.template-detail-page .resend-primary-button:hover,
+.template-detail-page .resend-primary-button:visited {
+  color: var(--text-on-accent);
+}
+
+.template-detail-page .resend-primary-button {
+  background: var(--bg-accent);
+}
+
+.template-detail-page .resend-primary-button:hover {
+  background: var(--bg-accent-hover);
+}
+
+.template-detail-use-trigger {
+  gap: 6px;
+}
+
+.template-detail-actions .resend-primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.template-detail-summary .badge {
+  text-transform: none;
+}
+
+.template-detail-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(88px, 0.65fr) minmax(0, 1fr) minmax(96px, 0.65fr);
+  column-gap: 32px;
+  row-gap: 24px;
+}
+
+.template-detail-summary .resend-domain-summary-item {
+  width: auto;
+  min-width: 0;
+}
+
+.template-detail-summary .resend-domain-summary-item dd {
+  min-width: 0;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.template-detail-summary .resend-domain-summary-item dd > span:not(.badge) {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.template-detail-summary .resend-domain-summary-item:first-child dd > span {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  word-break: break-all;
+}
+
+.template-detail-records-section {
+  margin-top: 0;
+}
+
+.template-detail-subsection + .template-detail-subsection {
+  margin-top: 32px;
+}
+
+.template-detail-preview-stage {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  overflow: auto;
+  border: 1px solid var(--rd-control-hover);
+  border-radius: 16px;
+  background: var(--rd-control);
+  padding: 24px;
+}
+
+.template-detail-brand-preview,
+.template-detail-kakao-preview {
+  position: relative;
+  width: min(100%, 360px);
+}
+
+.template-detail-brand-preview {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.template-detail-kakao-preview .template-card-preview-fallback--alimtalk {
+  border-radius: 16px;
+  box-sizing: border-box;
+  overflow: visible;
+  position: static;
+  width: 100%;
+}
+
+.template-detail-kakao-preview .template-card-kakao-preview {
+  width: min(100%, 320px);
+}
+
+.template-detail-sms-preview {
+  width: min(100%, 420px);
+  border: 1px solid var(--rd-border-soft);
+  border-radius: 16px;
+  background: var(--rd-bg);
+  color: var(--rd-text);
+  padding: 18px;
+}
+
+.template-detail-sms-preview span {
+  display: block;
+  color: var(--rd-text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.template-detail-sms-preview p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  color: var(--rd-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.template-detail-table-shell {
+  margin-top: 12px;
+}
+
+.template-detail-table {
+  width: 100%;
+  table-layout: auto;
+}
+
+.template-detail-table .resend-data-table-header:first-child,
+.template-detail-table .resend-data-table-header:nth-child(2),
+.template-detail-table .resend-data-table-header:nth-child(3),
+.template-detail-table .resend-data-table-header:nth-child(4),
+.template-detail-table .resend-data-table-header:nth-child(5),
+.template-detail-table .resend-data-table-header:last-child {
+  width: auto;
+}
+
+.template-detail-table .resend-data-table-cell {
+  height: auto;
+  min-height: 40px;
+  vertical-align: top;
+  white-space: normal;
+}
+
+.template-detail-table-value,
+.template-detail-table-mono {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.template-detail-table-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.template-detail-skeleton,
+.template-detail-status {
+  margin-top: 32px;
+  border: 1px solid var(--rd-border);
+  border-radius: 24px;
+  background: var(--rd-bg);
+  padding: 24px;
+}
+
+.template-detail-skeleton {
+  display: grid;
+  gap: 12px;
+}
+
+.template-detail-skeleton span {
+  height: 20px;
+  border-radius: 8px;
+  background: var(--rd-control);
+}
+
+.template-detail-skeleton span:first-child {
+  width: 56%;
+}
+
+.template-detail-skeleton span:nth-child(2) {
+  width: 72%;
+}
+
+.template-detail-skeleton span:last-child {
+  width: 44%;
+}
+
+.template-detail-status h2 {
+  margin: 0;
+  color: var(--rd-text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.template-detail-status p {
+  margin: 8px 0 0;
+  color: var(--rd-text-soft);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.template-detail-status[data-tone="critical"] {
+  border-color: var(--red-a6);
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .template-detail-summary {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .template-detail-summary {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 20px;
+  }
+
+  .template-detail-actions {
+    width: 100%;
+  }
+
+  .template-detail-actions .resend-primary-button,
+  .template-detail-actions .dropdown-menu-root {
+    flex: 1;
+  }
+
+  .template-detail-use-trigger {
+    width: 100%;
+  }
+
+  .template-detail-preview-stage {
+    padding: 16px;
+  }
+}
