@@ -96,7 +96,7 @@ const DEFAULT_EVIDENCE_CLEANUP_LIMIT = 100;
 export function createDefaultSenderResourceApprovalService() {
   return createSenderResourceApprovalService({
     repository: createSenderResourceRepository(getDb()),
-    evidenceStore: createEvidenceStore(),
+    evidenceStore: createLazyEvidenceStore(),
     kakaoClient: createLazyNhnKakaoBizmessageClient(),
     kakaoDefaultSenderGroupKey: NHN_ALIMTALK_DEFAULT_SENDER_GROUP_KEY,
     smsClient: createLazyNhnSmsClient(),
@@ -1740,6 +1740,30 @@ function forbidden(message) {
     retryable: false,
     status: 403,
   });
+}
+
+function createLazyEvidenceStore() {
+  let store;
+
+  function getStore() {
+    if (!store) {
+      store = createEvidenceStore();
+    }
+
+    return store;
+  }
+
+  return {
+    storeApplicationFiles(...args) {
+      return getStore().storeApplicationFiles(...args);
+    },
+    deleteApplicationFiles(...args) {
+      return getStore().deleteApplicationFiles(...args);
+    },
+    readApplicationFile(...args) {
+      return getStore().readApplicationFile(...args);
+    },
+  };
 }
 
 function createLazyNhnKakaoBizmessageClient() {

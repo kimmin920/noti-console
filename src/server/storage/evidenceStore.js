@@ -6,7 +6,7 @@ import { RelayValidationError } from '../relay/errors.js';
 
 const DEFAULT_BUCKET = 'local-private-evidence';
 const DEFAULT_LOCAL_ROOT = '/private/tmp/messaging-app-evidence';
-const OBJECT_KEY_PREFIX = 'sender-resource-evidence';
+const DEFAULT_OBJECT_KEY_PREFIX = 'sender-resource-evidence';
 const STORAGE_DRIVER_R2 = 'r2';
 const STORAGE_DRIVER_LOCAL = 'local';
 const FORBIDDEN_DESCRIPTOR_FIELDS = new Set([
@@ -26,6 +26,7 @@ export const EVIDENCE_STORAGE_ENV = Object.freeze({
   R2_EVIDENCE_BUCKET: 'R2_EVIDENCE_BUCKET',
   STORAGE_DRIVER: 'EVIDENCE_STORAGE_DRIVER',
   LOCAL_ROOT: 'EVIDENCE_STORAGE_LOCAL_DIR',
+  OBJECT_PREFIX: 'EVIDENCE_STORAGE_OBJECT_PREFIX',
 });
 
 export function createEvidenceStore({
@@ -37,10 +38,12 @@ export function createEvidenceStore({
   const r2Config = resolveR2Config(env);
   const storageDriver = resolveStorageDriver({ env, r2Config, localRoot });
   const bucket = storageDriver === STORAGE_DRIVER_R2 ? r2Config.bucket : DEFAULT_BUCKET;
+  const objectKeyPrefix = resolveObjectKeyPrefix(env);
   const rootDir = localRoot || DEFAULT_LOCAL_ROOT;
 
   return {
     bucket,
+    objectKeyPrefix,
     storageDriver,
     async storeApplicationFiles({ applicationId, userId, files }) {
       const normalizedFiles = Array.isArray(files) ? files : [];
@@ -57,13 +60,14 @@ export function createEvidenceStore({
                 file,
                 fetchImpl,
                 now,
+                objectKeyPrefix,
               })
             );
           } else {
-            records.push(await storeLocalFile({ bucket, rootDir, applicationId, userId, file, now }));
+            records.push(await storeLocalFile({ bucket, rootDir, applicationId, userId, file, now, objectKeyPrefix }));
           }
         } else {
-          records.push(normalizeStoredDescriptor(file, bucket, applicationId));
+          records.push(normalizeStoredDescriptor(file, bucket, applicationId, objectKeyPrefix));
         }
       }
 
@@ -75,9 +79,9 @@ export function createEvidenceStore({
       for (const file of evidenceFiles) {
         try {
           if (storageDriver === STORAGE_DRIVER_R2) {
-            results.push(await deleteR2Object({ config: r2Config, file, fetchImpl, now }));
+            results.push(await deleteR2Object({ config: r2Config, file, fetchImpl, now, objectKeyPrefix }));
           } else {
-            results.push(await deleteLocalFileIfPresent({ bucket, rootDir, file }));
+            results.push(await deleteLocalFileIfPresent({ bucket, rootDir, file, objectKeyPrefix }));
           }
         } catch (error) {
           results.push({
@@ -93,15 +97,15 @@ export function createEvidenceStore({
     },
     async readApplicationFile(file) {
       if (storageDriver === STORAGE_DRIVER_R2) {
-        return readR2Object({ config: r2Config, file, fetchImpl, now });
+        return readR2Object({ config: r2Config, file, fetchImpl, now, objectKeyPrefix });
       }
 
-      return readLocalFile({ bucket, rootDir, file });
+      return readLocalFile({ bucket, rootDir, file, objectKeyPrefix });
     },
   };
 }
 
-async function storeR2File({ config, applicationId, userId, file, fetchImpl, now }) {
+async function storeR2File({ config, applicationId, userId, file, fetchImpl, now, objectKeyPrefix }) {
   if (typeof fetchImpl !== 'function') {
     throw new Error('fetch implementation is required for R2 evidence storage.');
   }
@@ -110,7 +114,7 @@ async function storeR2File({ config, applicationId, userId, file, fetchImpl, now
   const checksumSha256 = createHash('sha256').update(buffer).digest('hex');
   const originalFileName = normalizeFileName(file.name || 'evidence-file');
   const contentType = normalizeOptionalString(file.type) || 'application/octet-stream';
-  const objectKey = buildApplicationObjectKey({ applicationId, originalFileName, now: now() });
+  const objectKey = buildApplicationObjectKey({ applicationId, originalFileName, now: now(), objectKeyPrefix });
   const url = buildR2ObjectUrl({
     endpointUrl: config.endpointUrl,
     bucket: config.bucket,
@@ -151,12 +155,12 @@ async function storeR2File({ config, applicationId, userId, file, fetchImpl, now
   };
 }
 
-async function storeLocalFile({ bucket, rootDir, applicationId, userId, file, now }) {
+async function storeLocalFile({ bucket, rootDir, applicationId, userId, file, now, objectKeyPrefix }) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const checksumSha256 = createHash('sha256').update(buffer).digest('hex');
   const originalFileName = normalizeFileName(file.name || 'evidence-file');
   const contentType = normalizeOptionalString(file.type) || 'application/octet-stream';
-  const objectKey = buildApplicationObjectKey({ applicationId, originalFileName, now: now() });
+  const objectKey = buildApplicationObjectKey({ applicationId, originalFileName, now: now(), objectKeyPrefix });
   const absolutePath = path.join(rootDir, ...objectKey.split('/'));
 
   await mkdir(path.dirname(absolutePath), { recursive: true });
@@ -176,7 +180,7 @@ async function storeLocalFile({ bucket, rootDir, applicationId, userId, file, no
   };
 }
 
-function normalizeStoredDescriptor(file, bucket, applicationId) {
+function normalizeStoredDescriptor(file, bucket, applicationId, objectKeyPrefix) {
   if (!file || typeof file !== 'object') {
     throw new RelayValidationError('Evidence file metadata must be an object.');
   }
@@ -191,7 +195,7 @@ function normalizeStoredDescriptor(file, bucket, applicationId) {
     throw new RelayValidationError('Evidence file r2Bucket must match the configured private bucket.');
   }
 
-  const objectKey = normalizeObjectKey(file.r2ObjectKey || file.objectKey, { applicationId });
+  const objectKey = normalizeObjectKey(file.r2ObjectKey || file.objectKey, { applicationId, objectKeyPrefix });
 
   return {
     r2Bucket: bucket,
@@ -203,8 +207,8 @@ function normalizeStoredDescriptor(file, bucket, applicationId) {
   };
 }
 
-async function deleteLocalFileIfPresent({ bucket, rootDir, file }) {
-  if (file.r2Bucket !== bucket || !isPrivateObjectKey(file.r2ObjectKey)) {
+async function deleteLocalFileIfPresent({ bucket, rootDir, file, objectKeyPrefix }) {
+  if (file.r2Bucket !== bucket || !isPrivateObjectKey(file.r2ObjectKey, objectKeyPrefix)) {
     return { objectKey: file.r2ObjectKey, deleted: false, reason: 'external-object' };
   }
 
@@ -222,12 +226,12 @@ async function deleteLocalFileIfPresent({ bucket, rootDir, file }) {
   }
 }
 
-async function deleteR2Object({ config, file, fetchImpl, now }) {
+async function deleteR2Object({ config, file, fetchImpl, now, objectKeyPrefix }) {
   if (typeof fetchImpl !== 'function') {
     throw new Error('fetch implementation is required for R2 evidence cleanup.');
   }
 
-  if (file.r2Bucket !== config.bucket || !isPrivateObjectKey(file.r2ObjectKey)) {
+  if (file.r2Bucket !== config.bucket || !isPrivateObjectKey(file.r2ObjectKey, objectKeyPrefix)) {
     return { objectKey: file.r2ObjectKey, deleted: false, reason: 'external-object' };
   }
 
@@ -255,8 +259,8 @@ async function deleteR2Object({ config, file, fetchImpl, now }) {
   return { objectKey: file.r2ObjectKey, deleted: true, storageDriver: 'r2' };
 }
 
-async function readLocalFile({ bucket, rootDir, file }) {
-  if (file.r2Bucket !== bucket || !isPrivateObjectKey(file.r2ObjectKey)) {
+async function readLocalFile({ bucket, rootDir, file, objectKeyPrefix }) {
+  if (file.r2Bucket !== bucket || !isPrivateObjectKey(file.r2ObjectKey, objectKeyPrefix)) {
     throw new Error('Evidence file is not available in configured storage.');
   }
 
@@ -269,12 +273,12 @@ async function readLocalFile({ bucket, rootDir, file }) {
   };
 }
 
-async function readR2Object({ config, file, fetchImpl, now }) {
+async function readR2Object({ config, file, fetchImpl, now, objectKeyPrefix }) {
   if (typeof fetchImpl !== 'function') {
     throw new Error('fetch implementation is required for R2 evidence download.');
   }
 
-  if (file.r2Bucket !== config.bucket || !isPrivateObjectKey(file.r2ObjectKey)) {
+  if (file.r2Bucket !== config.bucket || !isPrivateObjectKey(file.r2ObjectKey, objectKeyPrefix)) {
     throw new Error('Evidence file is not available in configured storage.');
   }
 
@@ -359,6 +363,22 @@ function resolveStorageDriver({ env, r2Config, localRoot }) {
   }
 
   throw new Error('Set R2 evidence storage env vars or EVIDENCE_STORAGE_DRIVER=local for development.');
+}
+
+function resolveObjectKeyPrefix(env) {
+  const objectKeyPrefix = readOptionalEnv(env, EVIDENCE_STORAGE_ENV.OBJECT_PREFIX) || DEFAULT_OBJECT_KEY_PREFIX;
+
+  if (
+    objectKeyPrefix.includes('..') ||
+    objectKeyPrefix.includes('//') ||
+    objectKeyPrefix.startsWith('/') ||
+    objectKeyPrefix.endsWith('/') ||
+    /^https?:\/\//i.test(objectKeyPrefix)
+  ) {
+    throw new Error('EVIDENCE_STORAGE_OBJECT_PREFIX must be a relative private object key prefix.');
+  }
+
+  return objectKeyPrefix;
 }
 
 function buildR2ObjectUrl({ endpointUrl, bucket, objectKey }) {
@@ -452,18 +472,18 @@ function isFileLike(file) {
   return file && typeof file === 'object' && typeof file.arrayBuffer === 'function';
 }
 
-function normalizeObjectKey(value, { applicationId }) {
+function normalizeObjectKey(value, { applicationId, objectKeyPrefix }) {
   const objectKey = normalizeOptionalString(value);
 
   if (!objectKey) {
     throw new RelayValidationError('Evidence file objectKey is required.');
   }
 
-  if (!isPrivateObjectKey(objectKey)) {
+  if (!isPrivateObjectKey(objectKey, objectKeyPrefix)) {
     throw new RelayValidationError('Evidence file objectKey must be a private object key.');
   }
 
-  const requiredPrefix = `${OBJECT_KEY_PREFIX}/${normalizePathSegment(applicationId)}/`;
+  const requiredPrefix = `${objectKeyPrefix}/${normalizePathSegment(applicationId)}/`;
   if (!objectKey.startsWith(requiredPrefix)) {
     throw new RelayValidationError('Evidence file objectKey must be scoped to the sender resource application.');
   }
@@ -471,20 +491,20 @@ function normalizeObjectKey(value, { applicationId }) {
   return objectKey;
 }
 
-function isPrivateObjectKey(value) {
+function isPrivateObjectKey(value, objectKeyPrefix) {
   const objectKey = normalizeOptionalString(value);
   return Boolean(
     objectKey &&
-      objectKey.startsWith(`${OBJECT_KEY_PREFIX}/`) &&
+      objectKey.startsWith(`${objectKeyPrefix}/`) &&
       !objectKey.includes('..') &&
       !objectKey.startsWith('/') &&
       !/^https?:\/\//i.test(objectKey)
   );
 }
 
-function buildApplicationObjectKey({ applicationId, originalFileName, now }) {
+function buildApplicationObjectKey({ applicationId, originalFileName, now, objectKeyPrefix }) {
   return [
-    OBJECT_KEY_PREFIX,
+    objectKeyPrefix,
     normalizePathSegment(applicationId),
     `${now.getTime()}-${randomUUID()}-${originalFileName}`,
   ].join('/');

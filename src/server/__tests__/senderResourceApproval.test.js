@@ -3,9 +3,13 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 
 import { sanitizeAuditMetadata } from '../audit/service.js';
+import { closeDb } from '../../db/client.js';
 import { NhnProviderError } from '../relay/errors.js';
 import { RELAY_ERROR_CODES, SENDER_RESOURCE_TYPES } from '../relay/constants.js';
-import { createSenderResourceApprovalService } from '../senderResources/service.js';
+import {
+  createDefaultSenderResourceApprovalService,
+  createSenderResourceApprovalService,
+} from '../senderResources/service.js';
 import { createEvidenceStore } from '../storage/evidenceStore.js';
 
 const FIXED_NOW = new Date('2026-06-02T00:00:00.000Z');
@@ -24,6 +28,23 @@ const COMPANY_EVIDENCE_DOCUMENT_TYPES = [
 ];
 
 describe('sender resource approval service', () => {
+  it('does not require evidence storage config when creating the default read service', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://user:pass@example.com:5432/app');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EVIDENCE_STORAGE_DRIVER', '');
+    vi.stubEnv('R2_ENDPOINT_URL', '');
+    vi.stubEnv('R2_ACCESS_KEY_ID', '');
+    vi.stubEnv('R2_SECRET_ACCESS_KEY', '');
+    vi.stubEnv('R2_EVIDENCE_BUCKET', '');
+
+    try {
+      expect(() => createDefaultSenderResourceApprovalService()).not.toThrow();
+    } finally {
+      vi.unstubAllEnvs();
+      await closeDb();
+    }
+  });
+
   it('uploads File evidence to R2 with a signed application-scoped PUT', async () => {
     const fetchImpl = vi.fn(async () => new Response(null, { status: 200 }));
     const store = createR2TestStore(fetchImpl);
@@ -60,6 +81,25 @@ describe('sender resource approval service', () => {
     );
     expect(String(url)).not.toContain('secret-key');
     expect(JSON.stringify(init.headers)).not.toContain('secret-key');
+  });
+
+  it('scopes R2 evidence object keys under the configured private prefix', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 200 }));
+    const store = createR2TestStore(fetchImpl, {
+      objectKeyPrefix: 'dev/sender-resource-evidence',
+    });
+
+    const [record] = await store.storeApplicationFiles({
+      applicationId: 'app_1',
+      userId: 'user_1',
+      files: [createFileLike({ name: 'registration.pdf' })],
+    });
+
+    expect(store.objectKeyPrefix).toBe('dev/sender-resource-evidence');
+    expect(record.r2ObjectKey).toMatch(/^dev\/sender-resource-evidence\/app_1\/.+-registration\.pdf$/);
+
+    const [url] = fetchImpl.mock.calls[0];
+    expect(String(url)).toContain('/private-evidence/dev/sender-resource-evidence/app_1/');
   });
 
   it('submits SMS sender number applications with private evidence metadata', async () => {
@@ -1452,7 +1492,7 @@ function createStubEvidenceStore({ repository, readApplicationFile } = {}) {
   };
 }
 
-function createR2TestStore(fetchImpl, { now = FIXED_NOW } = {}) {
+function createR2TestStore(fetchImpl, { now = FIXED_NOW, objectKeyPrefix } = {}) {
   return createEvidenceStore({
     env: {
       NODE_ENV: 'test',
@@ -1460,6 +1500,7 @@ function createR2TestStore(fetchImpl, { now = FIXED_NOW } = {}) {
       R2_ACCESS_KEY_ID: 'access-key',
       R2_SECRET_ACCESS_KEY: 'secret-key',
       R2_EVIDENCE_BUCKET: 'private-evidence',
+      ...(objectKeyPrefix ? { EVIDENCE_STORAGE_OBJECT_PREFIX: objectKeyPrefix } : {}),
     },
     fetchImpl,
     now: () => now,

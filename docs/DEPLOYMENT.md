@@ -67,6 +67,7 @@ Use separate values for dev and prod. Start from `.env.example`.
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
 - `R2_EVIDENCE_BUCKET`
+- `EVIDENCE_STORAGE_OBJECT_PREFIX`
 
 For Supabase, use separate projects for dev and prod. On this Dokploy/Hetzner setup, prefer the Supabase session pooler URL on port `5432` for both runtime and migrations unless Docker IPv6 has been verified. Supabase direct URLs are often IPv6-only and can fail from Docker containers without IPv6 networking.
 
