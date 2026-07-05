@@ -1,11 +1,20 @@
+x-app-build-args: &app-build-args
+  NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL is required}
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required}
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${NEXT_PUBLIC_CLERK_SIGN_IN_URL:-/sign-in}
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${NEXT_PUBLIC_CLERK_SIGN_UP_URL:-/sign-up}
+
 x-app-build: &app-build
   context: .
   dockerfile: Dockerfile
-  args:
-    NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL is required}
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required}
-    NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${NEXT_PUBLIC_CLERK_SIGN_IN_URL:-/sign-in}
-    NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${NEXT_PUBLIC_CLERK_SIGN_UP_URL:-/sign-up}
+  target: runner
+  args: *app-build-args
+
+x-migrate-build: &migrate-build
+  context: .
+  dockerfile: Dockerfile
+  target: migrate-runner
+  args: *app-build-args
 
 x-app-environment: &app-environment
   NODE_ENV: production
@@ -13,7 +22,7 @@ x-app-environment: &app-environment
 
 services:
   migrate:
-    build: *app-build
+    build: *migrate-build
     env_file:
       - .env
     environment:

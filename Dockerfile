@@ -18,6 +18,17 @@ COPY . .
 RUN npm run build
 RUN npm prune --omit=dev
 
+FROM node:22-alpine AS migrate-runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+COPY drizzle.config.js ./drizzle.config.js
+COPY drizzle ./drizzle
+COPY src/db ./src/db
+CMD ["npm", "run", "db:migration:apply"]
+
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
