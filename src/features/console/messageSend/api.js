@@ -1,3 +1,5 @@
+import { getPublClientAccessToken } from '../../publClient/authToken.js';
+
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
 };
@@ -80,7 +82,7 @@ export function withQuery(path, params) {
 async function relayFetch(path, init) {
   const response = await fetch(path, {
     cache: 'no-store',
-    ...init,
+    ...withPublBearerAuthorization(path, init),
   });
   const envelope = await readRelayEnvelope(response);
 
@@ -89,6 +91,31 @@ async function relayFetch(path, init) {
   }
 
   throw toRelayClientError({ envelope, status: response.status });
+}
+
+function withPublBearerAuthorization(path, init) {
+  if (!isLocalApiPath(path)) {
+    return init;
+  }
+
+  const accessToken = getPublClientAccessToken();
+  if (!accessToken) {
+    return init;
+  }
+
+  const headers = new Headers(init?.headers);
+  if (!headers.has('authorization')) {
+    headers.set('authorization', `Bearer ${accessToken}`);
+  }
+
+  return {
+    ...init,
+    headers,
+  };
+}
+
+function isLocalApiPath(path) {
+  return typeof path === 'string' && (path === '/api' || path.startsWith('/api/'));
 }
 
 async function readRelayEnvelope(response) {

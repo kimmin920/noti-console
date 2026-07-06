@@ -7,7 +7,11 @@ import {
   RELAY_DEV_AUTH_HEADER_ENABLED_ENV,
   createActorResolver,
 } from '../auth/actor.js';
+import { createLocalAccessToken } from '../publPapp/tokens.js';
 import { RELAY_ERROR_CODES } from '../relay/constants.js';
+
+const TEST_PUBL_ACCESS_TOKEN_SECRET = 'test-publ-access-token-secret';
+const TEST_NOW = new Date('2026-06-01T00:00:00.000Z');
 
 describe('relay actor resolver', () => {
   it('resolves a Clerk-authenticated request to the mapped local user', async () => {
@@ -64,6 +68,205 @@ describe('relay actor resolver', () => {
     const actor = await resolver.resolve(createRequest({ devActorUserId: 'user_2' }));
 
     expect(actor.user.id).toBe('user_1');
+  });
+
+  it('resolves a valid Publ bearer token to the mapped local user', async () => {
+    const publUser = createUser({
+      id: 'publ_user_1',
+      email: 'publ-user@example.invalid',
+      name: 'Publ User',
+    });
+    const publSession = createPublPappSession({
+      userId: publUser.id,
+      accessTokenExpiresAt: new Date(TEST_NOW.getTime() + 60_000),
+    });
+    const repository = createMemoryAuthRepository({
+      users: [publUser],
+      externalAuthAccounts: [
+        createExternalAuthAccount({
+          id: 'publ_external_1',
+          userId: publUser.id,
+          provider: AUTH_PROVIDERS.PUBL,
+          providerAccountId: publSession.consumerId,
+          email: publUser.email,
+          displayName: publUser.name,
+        }),
+      ],
+      publPappSessions: [publSession],
+    });
+    const resolver = createTestResolver({
+      repository,
+      env: createPublAuthEnv(),
+      now: () => TEST_NOW,
+    });
+    const accessToken = createPublAccessToken({
+      session: publSession,
+      user: publUser,
+    });
+
+    const actor = await resolver.resolve(createRequest({ authorization: `Bearer ${accessToken}` }));
+
+    expect(actor).toMatchObject({
+      authProvider: AUTH_PROVIDERS.PUBL,
+      userId: publUser.id,
+      externalAuthAccount: {
+        provider: AUTH_PROVIDERS.PUBL,
+        providerAccountId: publSession.consumerId,
+      },
+    });
+  });
+
+  it('rejects an invalid Publ bearer token', async () => {
+    const resolver = createTestResolver({
+      env: createPublAuthEnv(),
+      now: () => TEST_NOW,
+    });
+
+    await expect(
+      resolver.resolve(createRequest({ authorization: 'Bearer not-a-jwt' }))
+    ).rejects.toMatchObject({
+      code: RELAY_ERROR_CODES.UNAUTHORIZED,
+      status: 401,
+    });
+  });
+
+  it('rejects an expired Publ bearer token', async () => {
+    const publUser = createUser({ id: 'publ_user_1' });
+    const publSession = createPublPappSession({
+      userId: publUser.id,
+      accessTokenExpiresAt: new Date(TEST_NOW.getTime() - 1_000),
+    });
+    const repository = createMemoryAuthRepository({
+      users: [publUser],
+      externalAuthAccounts: [
+        createExternalAuthAccount({
+          userId: publUser.id,
+          provider: AUTH_PROVIDERS.PUBL,
+          providerAccountId: publSession.consumerId,
+        }),
+      ],
+      publPappSessions: [publSession],
+    });
+    const resolver = createTestResolver({
+      repository,
+      env: createPublAuthEnv(),
+      now: () => TEST_NOW,
+    });
+    const accessToken = createPublAccessToken({
+      session: publSession,
+      user: publUser,
+    });
+
+    await expect(
+      resolver.resolve(createRequest({ authorization: `Bearer ${accessToken}` }))
+    ).rejects.toMatchObject({
+      code: RELAY_ERROR_CODES.UNAUTHORIZED,
+      status: 401,
+    });
+  });
+
+  it('rejects a revoked Publ bearer token session', async () => {
+    const publUser = createUser({ id: 'publ_user_1' });
+    const publSession = createPublPappSession({
+      userId: publUser.id,
+      accessTokenExpiresAt: new Date(TEST_NOW.getTime() + 60_000),
+      revokedAt: TEST_NOW,
+    });
+    const repository = createMemoryAuthRepository({
+      users: [publUser],
+      externalAuthAccounts: [
+        createExternalAuthAccount({
+          userId: publUser.id,
+          provider: AUTH_PROVIDERS.PUBL,
+          providerAccountId: publSession.consumerId,
+        }),
+      ],
+      publPappSessions: [publSession],
+    });
+    const resolver = createTestResolver({
+      repository,
+      env: createPublAuthEnv(),
+      now: () => TEST_NOW,
+    });
+    const accessToken = createPublAccessToken({
+      session: publSession,
+      user: publUser,
+    });
+
+    await expect(
+      resolver.resolve(createRequest({ authorization: `Bearer ${accessToken}` }))
+    ).rejects.toMatchObject({
+      code: RELAY_ERROR_CODES.UNAUTHORIZED,
+      status: 401,
+    });
+  });
+
+  it('rejects a Publ bearer token after the stored access token jti changes', async () => {
+    const publUser = createUser({ id: 'publ_user_1' });
+    const tokenSession = createPublPappSession({
+      userId: publUser.id,
+      accessTokenExpiresAt: new Date(TEST_NOW.getTime() + 60_000),
+      accessTokenJti: 'old_jti',
+    });
+    const storedSession = {
+      ...tokenSession,
+      accessTokenJti: 'new_jti',
+    };
+    const repository = createMemoryAuthRepository({
+      users: [publUser],
+      externalAuthAccounts: [
+        createExternalAuthAccount({
+          userId: publUser.id,
+          provider: AUTH_PROVIDERS.PUBL,
+          providerAccountId: tokenSession.consumerId,
+        }),
+      ],
+      publPappSessions: [storedSession],
+    });
+    const resolver = createTestResolver({
+      repository,
+      env: createPublAuthEnv(),
+      now: () => TEST_NOW,
+    });
+    const accessToken = createPublAccessToken({
+      session: tokenSession,
+      user: publUser,
+    });
+
+    await expect(
+      resolver.resolve(createRequest({ authorization: `Bearer ${accessToken}` }))
+    ).rejects.toMatchObject({
+      code: RELAY_ERROR_CODES.UNAUTHORIZED,
+      status: 401,
+    });
+  });
+
+  it('lets a real Clerk session win over a spoofed Publ bearer token', async () => {
+    const repository = createMemoryAuthRepository({
+      users: [
+        createUser({ id: 'user_1', email: 'user1@example.com' }),
+        createUser({ id: 'publ_user_1', email: 'publ@example.invalid' }),
+      ],
+      externalAuthAccounts: [
+        createExternalAuthAccount({
+          userId: 'user_1',
+          providerAccountId: 'clerk_user_1',
+          email: 'user1@example.com',
+        }),
+      ],
+    });
+    const resolver = createTestResolver({
+      repository,
+      env: createPublAuthEnv(),
+      clerkAuth: async () => ({ isAuthenticated: true, userId: 'clerk_user_1' }),
+    });
+
+    const actor = await resolver.resolve(createRequest({ authorization: 'Bearer not-a-jwt' }));
+
+    expect(actor).toMatchObject({
+      authProvider: AUTH_PROVIDERS.CLERK,
+      userId: 'user_1',
+    });
   });
 
   it('does not accept the dev auth header fallback in production', async () => {
@@ -308,7 +511,13 @@ describe('relay actor resolver', () => {
   });
 });
 
-function createTestResolver({ repository = createMemoryAuthRepository(), env, clerkAuth, clerkCurrentUser } = {}) {
+function createTestResolver({
+  repository = createMemoryAuthRepository(),
+  env,
+  clerkAuth,
+  clerkCurrentUser,
+  now,
+} = {}) {
   return createActorResolver({
     repository,
     env: env ?? {
@@ -319,11 +528,16 @@ function createTestResolver({ repository = createMemoryAuthRepository(), env, cl
     clerkCurrentUser: clerkCurrentUser ?? vi.fn(),
     makeUserRef: () => 'u_test_ref',
     makeBillingRef: () => 'b_test_ref',
+    now: now ?? (() => new Date()),
   });
 }
 
-function createRequest({ devActorUserId, devBrowserAuthUserId } = {}) {
+function createRequest({ authorization, devActorUserId, devBrowserAuthUserId } = {}) {
   const headers = new Headers();
+
+  if (authorization) {
+    headers.set('authorization', authorization);
+  }
 
   if (devActorUserId) {
     headers.set(DEV_RELAY_ACTOR_USER_ID_HEADER, devActorUserId);
@@ -355,6 +569,7 @@ function createMemoryAuthRepository(overrides = {}) {
         email: 'user@example.com',
       }),
     ],
+    publPappSessions: overrides.publPappSessions ?? [],
 
     async getUserById(userId) {
       return this.users.find((user) => user.id === userId) ?? null;
@@ -392,6 +607,40 @@ function createMemoryAuthRepository(overrides = {}) {
       };
     },
 
+    async findActivePublPappSessionByAccessToken({
+      sessionId,
+      consumerId,
+      userId,
+      accessTokenJti,
+      now,
+    }) {
+      const session = this.publPappSessions.find((item) => (
+        item.id === sessionId &&
+        item.consumerId === consumerId &&
+        item.userId === userId &&
+        item.accessTokenJti === accessTokenJti &&
+        !item.revokedAt &&
+        item.accessTokenExpiresAt > now
+      ));
+
+      if (!session) {
+        return null;
+      }
+
+      const user = await this.getUserById(session.userId);
+      const account = this.externalAuthAccounts.find((item) => (
+        item.userId === session.userId &&
+        item.provider === AUTH_PROVIDERS.PUBL &&
+        item.providerAccountId === session.consumerId
+      ));
+
+      if (!user || !account) {
+        return null;
+      }
+
+      return { account, session, user };
+    },
+
     async createUserWithExternalAuthAccount({ user, billingAccount, externalAuthAccount }) {
       const createdUser = {
         id: `user_${this.users.length + 1}`,
@@ -419,6 +668,52 @@ function createMemoryAuthRepository(overrides = {}) {
       };
     },
   };
+}
+
+function createPublAuthEnv(overrides = {}) {
+  return {
+    NODE_ENV: 'test',
+    [RELAY_DEV_AUTH_HEADER_ENABLED_ENV]: 'false',
+    PUBL_PAPP_ACCESS_TOKEN_SECRET: TEST_PUBL_ACCESS_TOKEN_SECRET,
+    PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET: 'test-publ-refresh-token-secret',
+    ...overrides,
+  };
+}
+
+function createPublPappSession(overrides = {}) {
+  return {
+    id: 'publ_session_1',
+    userId: 'publ_user_1',
+    consumerId: 'publ_consumer_1',
+    pAppCode: '3RD_A00003_TEST',
+    channelId: 123,
+    channelCode: 'PUBL_CHANNEL_1',
+    installedPAppId: 456,
+    sellerProfileDistinctId: 'seller_distinct_1',
+    sellerRole: 'OWNER',
+    refreshTokenHash: 'refresh_hash_1',
+    refreshTokenExpiresAt: new Date(TEST_NOW.getTime() + 86_400_000),
+    accessTokenJti: 'access_jti_1',
+    accessTokenExpiresAt: new Date(TEST_NOW.getTime() + 60_000),
+    revokedAt: null,
+    createdAt: TEST_NOW,
+    updatedAt: TEST_NOW,
+    ...overrides,
+  };
+}
+
+function createPublAccessToken({ session, user, now = TEST_NOW }) {
+  return createLocalAccessToken({
+    claim: {
+      channelCode: session.channelCode,
+      consumerId: session.consumerId,
+      pAppCode: session.pAppCode,
+    },
+    now: () => now,
+    secret: TEST_PUBL_ACCESS_TOKEN_SECRET,
+    session,
+    user,
+  });
 }
 
 function createConcurrentFirstLoginAuthRepository({ participants }) {
