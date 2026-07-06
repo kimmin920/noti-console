@@ -62,12 +62,34 @@ Use separate values for dev and prod. Start from `.env.example`.
 - `NHN_KAKAO_BIZMESSAGE_SECRET_KEY`
 - `NHN_KAKAO_BIZMESSAGE_WEBHOOK_SIGNATURE`
 - `PUBL_OPEN_API_WEBHOOK_SECRET`
+- `PUBL_PAPP_TEST_CODE`
+- `PUBL_PAPP_TEST_OUTGOING_API_KEY`
+- `PUBL_PAPP_TEST_OUTGOING_SECRET_KEY`
+- `PUBL_PAPP_RELEASE_CODE`
+- `PUBL_PAPP_RELEASE_OUTGOING_API_KEY`
+- `PUBL_PAPP_RELEASE_OUTGOING_SECRET_KEY`
+- `PUBL_PAPP_ACCESS_TOKEN_SECRET`
+- `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`
 - `EVIDENCE_STORAGE_DRIVER`
 - `R2_ENDPOINT_URL`
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
 - `R2_EVIDENCE_BUCKET`
 - `EVIDENCE_STORAGE_OBJECT_PREFIX`
+
+## Publ PApp
+
+Publ receives these environment-specific URLs for the PApp SSO integration:
+
+| Environment | OUTGOING_HOST | CLIENT_SRC | GRANTED_CLIENT_HOSTS | WEBHOOK_ENDPOINT_SRC |
+| --- | --- | --- | --- | --- |
+| dev | `https://noti-dev.vizuo.work` | `https://noti-dev.vizuo.work/publ-client` | `noti-dev.vizuo.work`, `localhost:3000`, `127.0.0.1:3000` | `https://noti-dev.vizuo.work/api/open/v1/publ/events` |
+| prod | `https://noti.vizuo.work` | `https://noti.vizuo.work/publ-client` | `noti.vizuo.work` | `https://noti.vizuo.work/api/open/v1/publ/events` |
+
+Use the test pApp code `3RD_A00003_TEST` for dev and the release pApp code
+`3RD_A00003` for prod. Store Publ-issued outgoing API keys, outgoing secret
+keys, and local token secrets only in server-side environment variables. Do not
+publish them through `NEXT_PUBLIC_*`.
 
 For Supabase, use separate projects for dev and prod. On this Dokploy/Hetzner setup, prefer the Supabase session pooler URL on port `5432` for both runtime and migrations unless Docker IPv6 has been verified. Supabase direct URLs are often IPv6-only and can fail from Docker containers without IPv6 networking.
 

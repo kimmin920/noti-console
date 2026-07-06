@@ -3,7 +3,15 @@ import { NextResponse } from 'next/server';
 
 import { hasDevBrowserAuthBypass } from './server/auth/devAuth.js';
 
-const isPublicRoute = createRouteMatcher(['/', '/sign-in(.*)', '/sign-up(.*)', '/__clerk(.*)']);
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/__clerk(.*)',
+  '/publ-client(.*)',
+  '/integrations/exchange-token',
+  '/integrations/refresh-token',
+]);
 const isDomainDetailRoute = createRouteMatcher(['/domain-detail']);
 const isRelayApiRoute = createRouteMatcher(['/api(.*)']);
 const isPlaygroundRoute = createRouteMatcher(['/playground(.*)']);

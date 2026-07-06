@@ -55,6 +55,20 @@ describe('proxy auth context contract', () => {
     expect(proxyMocks.protectCalls).toEqual([]);
   });
 
+  it.each([
+    '/publ-client',
+    '/publ-client/embed',
+    '/integrations/exchange-token',
+    '/integrations/refresh-token',
+  ])('keeps Publ public route %s outside Clerk middleware', async (path) => {
+    const proxy = await loadProxy();
+    const response = await proxy(new Request(`http://localhost:3000${path}?apiKey=publ-key`), {});
+
+    expect(response).toEqual({ type: 'next' });
+    expect(proxyMocks.clerkInvocations).toEqual([]);
+    expect(proxyMocks.protectCalls).toEqual([]);
+  });
+
   it('passes relay APIs through Clerk middleware without enforcing route protection', async () => {
     const proxy = await loadProxy();
     const response = await proxy(new Request('http://localhost:3000/api/sender-resources'), {});
