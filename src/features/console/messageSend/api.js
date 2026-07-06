@@ -1,4 +1,9 @@
-import { getPublClientAccessToken } from '../../publClient/authToken.js';
+import {
+  getPublClientAccessToken,
+  getPublClientRefreshToken,
+  hasPublClientRefreshTokenHandler,
+  refreshPublClientAccessToken,
+} from '../../publClient/authToken.js';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -80,6 +85,10 @@ export function withQuery(path, params) {
 }
 
 async function relayFetch(path, init) {
+  return relayFetchWithPublRefresh(path, init, { retried: false });
+}
+
+async function relayFetchWithPublRefresh(path, init, { retried }) {
   const response = await fetch(path, {
     cache: 'no-store',
     ...withPublBearerAuthorization(path, init),
@@ -90,7 +99,17 @@ async function relayFetch(path, init) {
     return envelope.data;
   }
 
-  throw toRelayClientError({ envelope, status: response.status });
+  const error = toRelayClientError({ envelope, status: response.status });
+
+  if (!retried && shouldAttemptPublTokenRefresh(path, error)) {
+    const refreshed = await refreshPublAccessTokenSafely();
+
+    if (refreshed) {
+      return relayFetchWithPublRefresh(path, init, { retried: true });
+    }
+  }
+
+  throw error;
 }
 
 function withPublBearerAuthorization(path, init) {
@@ -116,6 +135,22 @@ function withPublBearerAuthorization(path, init) {
 
 function isLocalApiPath(path) {
   return typeof path === 'string' && (path === '/api' || path.startsWith('/api/'));
+}
+
+function shouldAttemptPublTokenRefresh(path, error) {
+  return isLocalApiPath(path)
+    && error?.status === 401
+    && Boolean(getPublClientAccessToken())
+    && Boolean(getPublClientRefreshToken())
+    && hasPublClientRefreshTokenHandler();
+}
+
+async function refreshPublAccessTokenSafely() {
+  try {
+    return await refreshPublClientAccessToken();
+  } catch {
+    return null;
+  }
 }
 
 async function readRelayEnvelope(response) {

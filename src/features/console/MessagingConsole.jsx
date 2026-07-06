@@ -11,17 +11,26 @@ import {
   normalizeShellMode,
 } from './routing.js';
 
-export function MessagingConsole({ mode = 'app', pageId = DEFAULT_CONSOLE_PAGE_ID, pageProps }) {
+export function MessagingConsole({
+  getPageHref: getPageHrefOverride,
+  hideAccountControl = false,
+  mode = 'app',
+  pageId = DEFAULT_CONSOLE_PAGE_ID,
+  pageProps,
+}) {
   const router = useRouter();
   const shellMode = normalizeShellMode(mode);
   const activePage = normalizeConsolePageId(pageId);
 
   const getPageHref = useCallback((nextPageId) => (
-    getConsolePageHref({
+    getPageHrefOverride?.({
+      mode: shellMode,
+      pageId: nextPageId,
+    }) ?? getConsolePageHref({
       mode: shellMode,
       pageId: nextPageId,
     })
-  ), [shellMode]);
+  ), [getPageHrefOverride, shellMode]);
 
   const openDocs = useCallback(() => {
     router.push(getPageHref('docs'));
@@ -33,6 +42,7 @@ export function MessagingConsole({ mode = 'app', pageId = DEFAULT_CONSOLE_PAGE_I
     activePage,
     docsHref: getPageHref('docs'),
     getPageHref,
+    hideAccountControl,
     onDocs: openDocs,
     pageProps,
   };

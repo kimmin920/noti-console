@@ -1,10 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { relayGet } from '../../features/console/messageSend/api.js';
-import { PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY } from '../../features/publClient/authToken.js';
+import {
+  clearPublClientRefreshTokenHandler,
+  PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY,
+  PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY,
+  registerPublClientRefreshTokenHandler,
+  setPublClientTokens,
+} from '../../features/publClient/authToken.js';
 
 describe('Publ client relay fetch auth header', () => {
   afterEach(() => {
+    clearPublClientRefreshTokenHandler();
     vi.unstubAllGlobals();
   });
 
@@ -42,6 +49,45 @@ describe('Publ client relay fetch auth header', () => {
 
     const [, init] = fetchMock.mock.calls[0];
     expect(init).toEqual({ cache: 'no-store' });
+  });
+
+  it('uses the Publ SDK refresh handler and retries one expired local API request', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ok: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Access token expired.',
+          source: 'relay',
+        },
+      }), {
+        headers: { 'content-type': 'application/json' },
+        status: 401,
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ok: true,
+        data: { user: { id: 'user_1' } },
+      }), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'old-access-token',
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+    }));
+    registerPublClientRefreshTokenHandler(async ({ previousAccessToken, refreshToken }) => {
+      expect(previousAccessToken).toBe('old-access-token');
+      expect(refreshToken).toBe('refresh-token');
+      setPublClientTokens({ accessToken: 'new-access-token' });
+      return 'new-access-token';
+    });
+
+    await expect(relayGet('/api/me')).resolves.toEqual({ user: { id: 'user_1' } });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][1].headers.get('authorization')).toBe('Bearer old-access-token');
+    expect(fetchMock.mock.calls[1][1].headers.get('authorization')).toBe('Bearer new-access-token');
   });
 });
 
