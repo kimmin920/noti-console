@@ -126,6 +126,23 @@ describe('Publ PApp token exchange endpoints', () => {
     await expectSafeError(response, 401, 'UNAUTHORIZED', 'Invalid api key or token');
   });
 
+  it('keeps submitted api keys and Publ JWTs out of exchange error responses', async () => {
+    const harness = createExchangeHarness();
+    const submittedApiKey = 'wrong-api-key-that-must-not-echo';
+    const submittedJwt = createPublJwt();
+    const response = await callExchange({
+      apiKey: submittedApiKey,
+      harness,
+      jwt: submittedJwt,
+    });
+    const bodyText = JSON.stringify(await response.json());
+
+    expect(response.status).toBe(401);
+    expect(bodyText).toContain('Invalid api key or token');
+    expect(bodyText).not.toContain(submittedApiKey);
+    expect(bodyText).not.toContain(submittedJwt);
+  });
+
   it('rejects invalid Publ JWT signatures', async () => {
     const harness = createExchangeHarness();
     const response = await callExchange({
@@ -331,6 +348,34 @@ describe('Publ PApp token exchange endpoints', () => {
     });
 
     await expectSafeError(response, 403, 'FORBIDDEN', 'Token ownership mismatch');
+  });
+
+  it('keeps local access and refresh tokens out of refresh error responses', async () => {
+    const harness = createExchangeHarness({
+      accessTokenJtis: ['access_jti_1'],
+      refreshTokens: ['refresh_token_1'],
+    });
+    const exchangeResponse = await callExchange({
+      harness,
+      jwt: createPublJwt(),
+    });
+    const exchangeBody = await exchangeResponse.json();
+    const submittedPreviousAccessToken = `${exchangeBody.data.accessToken}.tampered`;
+    const submittedRefreshToken = exchangeBody.data.refreshToken;
+    const response = await callRefresh({
+      body: {
+        previousAccessToken: submittedPreviousAccessToken,
+        refreshToken: submittedRefreshToken,
+      },
+      harness,
+      jwt: createPublJwt(),
+    });
+    const bodyText = JSON.stringify(await response.json());
+
+    expect(response.status).toBe(403);
+    expect(bodyText).toContain('Token ownership mismatch');
+    expect(bodyText).not.toContain(submittedPreviousAccessToken);
+    expect(bodyText).not.toContain(submittedRefreshToken);
   });
 
   it('keeps fixed integration route files on node runtime and outside relayRoute envelopes', async () => {

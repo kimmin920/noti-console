@@ -91,6 +91,28 @@ Use the test pApp code `3RD_A00003_TEST` for dev and the release pApp code
 keys, and local token secrets only in server-side environment variables. Do not
 publish them through `NEXT_PUBLIC_*`.
 
+Deployment checklist:
+
+- Dev Dokploy app: set `PUBL_OPEN_API_WEBHOOK_SECRET`,
+  `PUBL_PAPP_TEST_OUTGOING_API_KEY`,
+  `PUBL_PAPP_TEST_OUTGOING_SECRET_KEY`, `PUBL_PAPP_ACCESS_TOKEN_SECRET`, and
+  `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`. `PUBL_PAPP_TEST_CODE` may stay at the
+  default `3RD_A00003_TEST`.
+- Prod Dokploy app: set `PUBL_OPEN_API_WEBHOOK_SECRET`,
+  `PUBL_PAPP_RELEASE_OUTGOING_API_KEY`,
+  `PUBL_PAPP_RELEASE_OUTGOING_SECRET_KEY`, `PUBL_PAPP_ACCESS_TOKEN_SECRET`, and
+  `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`. `PUBL_PAPP_RELEASE_CODE` may stay at
+  the default `3RD_A00003`.
+- Keep Publ `incoming_api_key` and `incoming_secret_key` out of this deployment
+  until a future Server-to-Publ-Server integration explicitly uses them.
+- Verify `/publ-client` is reachable from Publ's granted hosts and
+  `/api/open/v1/publ/events` returns `invalid_signature` for unsigned requests
+  before asking Publ to run end-to-end staging validation.
+- Do not configure any Publ value through `NEXT_PUBLIC_*`.
+
+See `docs/PUBL_PAPP_INTEGRATION.md` for token exchange and webhook smoke-test
+commands.
+
 For Supabase, use separate projects for dev and prod. On this Dokploy/Hetzner setup, prefer the Supabase session pooler URL on port `5432` for both runtime and migrations unless Docker IPv6 has been verified. Supabase direct URLs are often IPv6-only and can fail from Docker containers without IPv6 networking.
 
 - runtime `DATABASE_URL`: session pooler URL

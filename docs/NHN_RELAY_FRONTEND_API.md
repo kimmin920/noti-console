@@ -30,11 +30,11 @@ Clerk-authenticated email already belongs to an unmapped local account, the
 relay returns an authorization error and requires an operator-controlled account
 link rather than linking by email automatically.
 
-Future Publ token exchange should plug into the same server-side actor resolver
-and create an `external_auth_accounts.provider = "publ"` mapping to a local
-user. Publ access tokens, refresh tokens, signed exchange assertions, and raw
+Publ PApp token exchange plugs into the same server-side actor resolver and
+creates an `external_auth_accounts.provider = "publ"` mapping to a local user.
+Raw Publ access tokens, refresh tokens, signed exchange assertions, and raw
 identity-provider payloads must not be stored in the relay database, audit logs,
-or browser-visible state.
+or durable browser-visible state.
 
 Admin endpoints additionally require the mapped local user to be an operator.
 For local CLI smoke tests only, non-production servers may opt in to the

@@ -15,10 +15,10 @@ NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 
 Enable Google login in the Clerk Dashboard social connection settings. The relay
 stores the Clerk subject in `external_auth_accounts` and does not store Google
-OAuth access tokens, refresh tokens, or raw identity-provider payloads. Future
-Publ token exchange should use the same server-side actor resolver with
-`external_auth_accounts.provider = "publ"` and must not persist Publ tokens or
-signed exchange payloads.
+OAuth access tokens, refresh tokens, or raw identity-provider payloads. Publ
+PApp token exchange uses the same server-side actor resolver with
+`external_auth_accounts.provider = "publ"` and must not persist raw Publ access
+tokens, refresh tokens, signed exchange JWTs, or raw identity-provider payloads.
 
 Required database and migration configuration:
 
