@@ -1,8 +1,9 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 
 import {
   billingAccounts,
   externalAuthAccounts,
+  publPappSessions,
   users,
 } from '../../db/schema.js';
 
@@ -55,6 +56,38 @@ export function createAuthRepository(db) {
         .from(externalAuthAccounts)
         .innerJoin(users, eq(externalAuthAccounts.userId, users.id))
         .where(and(eq(externalAuthAccounts.provider, provider), eq(externalAuthAccounts.email, email)))
+        .limit(1);
+
+      return row ?? null;
+    },
+
+    async findActivePublPappSessionByAccessToken({ sessionId, consumerId, userId, accessTokenJti, now }) {
+      const [row] = await db
+        .select({
+          session: publPappSessions,
+          account: externalAuthAccounts,
+          user: users,
+        })
+        .from(publPappSessions)
+        .innerJoin(users, eq(publPappSessions.userId, users.id))
+        .innerJoin(
+          externalAuthAccounts,
+          and(
+            eq(externalAuthAccounts.userId, users.id),
+            eq(externalAuthAccounts.provider, 'publ'),
+            eq(externalAuthAccounts.providerAccountId, publPappSessions.consumerId)
+          )
+        )
+        .where(
+          and(
+            eq(publPappSessions.id, sessionId),
+            eq(publPappSessions.consumerId, consumerId),
+            eq(publPappSessions.userId, userId),
+            eq(publPappSessions.accessTokenJti, accessTokenJti),
+            isNull(publPappSessions.revokedAt),
+            gt(publPappSessions.accessTokenExpiresAt, now)
+          )
+        )
         .limit(1);
 
       return row ?? null;

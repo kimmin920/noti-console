@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
 
 import { getDb } from '../../db/client.js';
+import { resolvePublPappTokenSecrets } from '../publPapp/config.js';
+import { PublPappTokenError, verifyLocalAccessToken } from '../publPapp/tokens.js';
 import { RELAY_ERROR_CODES } from '../relay/constants.js';
 import { RelayError } from '../relay/errors.js';
 import { readDevActorCredential } from './devAuth.js';
@@ -36,6 +38,7 @@ export function createActorResolver({
   clerkCurrentUser = defaultClerkCurrentUser,
   makeUserRef = () => createShortRef('u'),
   makeBillingRef = () => createShortRef('b'),
+  now = () => new Date(),
 } = {}) {
   return {
     async resolve(request) {
@@ -61,6 +64,17 @@ export function createActorResolver({
         });
       }
 
+      const publBearerToken = readBearerToken(request);
+
+      if (publBearerToken) {
+        return resolvePublBearerActor({
+          repository,
+          env,
+          now,
+          token: publBearerToken,
+        });
+      }
+
       if (devActorCredential) {
         return resolveDevActor({
           repository,
@@ -72,6 +86,29 @@ export function createActorResolver({
       throw unauthorizedError();
     },
   };
+}
+
+async function resolvePublBearerActor({ repository, env, now, token }) {
+  const tokenPayload = verifyPublBearerToken(token, { env, now });
+  const sessionLookup = await repository.findActivePublPappSessionByAccessToken?.({
+    sessionId: tokenPayload.sessionId,
+    consumerId: tokenPayload.consumerId,
+    userId: tokenPayload.userId,
+    accessTokenJti: tokenPayload.jti,
+    now: now(),
+  });
+
+  if (!sessionLookup?.session || !sessionLookup?.user || !sessionLookup?.account) {
+    throw unauthorizedError();
+  }
+
+  assertPublTokenMatchesSession(tokenPayload, sessionLookup.session);
+
+  return toActor({
+    user: sessionLookup.user,
+    authProvider: AUTH_PROVIDERS.PUBL,
+    externalAuthAccount: sessionLookup.account,
+  });
 }
 
 async function resolveClerkActor({ repository, clerkUserId, clerkCurrentUser, makeUserRef, makeBillingRef }) {
@@ -244,6 +281,75 @@ function extractClerkProfile({ clerkUserId, clerkUser }) {
     email,
     name,
   };
+}
+
+function readBearerToken(request) {
+  const authorization = normalizeOptionalString(request?.headers?.get?.('authorization'));
+  if (!authorization?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = normalizeOptionalString(authorization.slice('Bearer '.length));
+  if (!token) {
+    throw unauthorizedError();
+  }
+
+  return token;
+}
+
+function verifyPublBearerToken(token, { env, now }) {
+  try {
+    const { accessTokenSecret } = resolvePublPappTokenSecrets(env);
+    const payload = verifyLocalAccessToken(token, {
+      now,
+      secret: accessTokenSecret,
+    });
+
+    return normalizePublAccessPayload(payload);
+  } catch (error) {
+    if (error instanceof RelayError || error instanceof PublPappTokenError) {
+      throw unauthorizedError();
+    }
+
+    throw error;
+  }
+}
+
+function normalizePublAccessPayload(payload) {
+  const normalized = {
+    channelCode: normalizeOptionalString(payload?.channelCode),
+    consumerId: normalizeOptionalString(payload?.consumerId),
+    jti: normalizeOptionalString(payload?.jti),
+    pAppCode: normalizeOptionalString(payload?.pAppCode),
+    sessionId: normalizeOptionalString(payload?.sessionId),
+    userId: normalizeOptionalString(payload?.userId),
+  };
+
+  if (
+    !normalized.channelCode ||
+    !normalized.consumerId ||
+    !normalized.jti ||
+    !normalized.pAppCode ||
+    !normalized.sessionId ||
+    !normalized.userId
+  ) {
+    throw unauthorizedError();
+  }
+
+  return normalized;
+}
+
+function assertPublTokenMatchesSession(payload, session) {
+  if (
+    session.id !== payload.sessionId ||
+    session.consumerId !== payload.consumerId ||
+    session.userId !== payload.userId ||
+    session.pAppCode !== payload.pAppCode ||
+    session.channelCode !== payload.channelCode ||
+    session.accessTokenJti !== payload.jti
+  ) {
+    throw unauthorizedError();
+  }
 }
 
 function unauthorizedError() {

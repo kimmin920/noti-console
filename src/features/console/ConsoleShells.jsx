@@ -32,12 +32,16 @@ const navAnimations = {
   admin: settingsAnimation,
 };
 
-export function AppShell({ activeMeta, activePage, docsHref, getPageHref, onDocs, pageProps }) {
+export function AppShell({ activeMeta, activePage, docsHref, getPageHref, hideAccountControl, onDocs, pageProps }) {
   const activeNavPage = getConsoleNavigationPageId(activePage);
 
   return (
     <div className="app-shell app-mode">
-      <FixedSidebar activePage={activeNavPage} getPageHref={getPageHref} />
+      <FixedSidebar
+        activePage={activeNavPage}
+        getPageHref={getPageHref}
+        hideAccountControl={hideAccountControl}
+      />
       <div className="workspace">
         <Topbar docsHref={docsHref} getPageHref={getPageHref} />
         <main className="content">
@@ -48,7 +52,7 @@ export function AppShell({ activeMeta, activePage, docsHref, getPageHref, onDocs
   );
 }
 
-export function EmbedShell({ activeMeta, activePage, docsHref, getPageHref, onDocs, pageProps }) {
+export function EmbedShell({ activeMeta, activePage, docsHref, getPageHref, hideAccountControl, onDocs, pageProps }) {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const activeNavPage = getConsoleNavigationPageId(activePage);
 
@@ -61,6 +65,7 @@ export function EmbedShell({ activeMeta, activePage, docsHref, getPageHref, onDo
         activePage={activeNavPage}
         docsHref={docsHref}
         getPageHref={getPageHref}
+        hideAccountControl={hideAccountControl}
         onOpenChange={setSideMenuOpen}
       />
       <div className="workspace">
@@ -72,7 +77,7 @@ export function EmbedShell({ activeMeta, activePage, docsHref, getPageHref, onDo
   );
 }
 
-function EmbedSidebar({ activePage, docsHref, getPageHref, onOpenChange }) {
+function EmbedSidebar({ activePage, docsHref, getPageHref, hideAccountControl, onOpenChange }) {
   return (
     <InspectorSidebar
       handleColor="var(--text)"
@@ -84,21 +89,32 @@ function EmbedSidebar({ activePage, docsHref, getPageHref, onOpenChange }) {
         activePage={activePage}
         docsHref={docsHref}
         getPageHref={getPageHref}
+        hideAccountControl={hideAccountControl}
         showUtilityActions
       />
     </InspectorSidebar>
   );
 }
 
-function FixedSidebar({ activePage, getPageHref }) {
+function FixedSidebar({ activePage, getPageHref, hideAccountControl }) {
   return (
     <aside className="fixed-sidebar">
-      <SidebarContent activePage={activePage} getPageHref={getPageHref} />
+      <SidebarContent
+        activePage={activePage}
+        getPageHref={getPageHref}
+        hideAccountControl={hideAccountControl}
+      />
     </aside>
   );
 }
 
-function SidebarContent({ activePage, docsHref, getPageHref, showUtilityActions = false }) {
+function SidebarContent({
+  activePage,
+  docsHref,
+  getPageHref,
+  hideAccountControl = false,
+  showUtilityActions = false,
+}) {
   const visibleNavItems = useVisibleNavItems();
 
   return (
@@ -127,7 +143,7 @@ function SidebarContent({ activePage, docsHref, getPageHref, showUtilityActions 
         </div>
       ) : null}
 
-      <SidebarAccountControl />
+      {hideAccountControl ? null : <SidebarAccountControl />}
     </aside>
   );
 }

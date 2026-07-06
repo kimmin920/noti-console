@@ -24,6 +24,7 @@ import {
   messageSendTimingEnum,
   publChannelMappings,
   publChannelMappingStatusEnum,
+  publPappSessions,
   publEventDefinitions,
   publEventPropDefinitions,
   senderResourceApplicationEvidenceFiles,
@@ -53,6 +54,7 @@ const domainTables = [
   users,
   billingAccounts,
   externalAuthAccounts,
+  publPappSessions,
   senderResources,
   publChannelMappings,
   automationRules,
@@ -131,6 +133,7 @@ describe('relay domain schema', () => {
       'users',
       'billing_accounts',
       'external_auth_accounts',
+      'publ_papp_sessions',
       'sender_resources',
       'publ_channel_mappings',
       'automation_rules',
@@ -554,6 +557,47 @@ describe('relay domain schema', () => {
     expect(foreignKeyNames(messageSendGroups)).not.toEqual(
       expect.arrayContaining(['message_send_groups_source_automation_delivery_id_automation_event_deliveries_id_fk'])
     );
+  });
+
+  it('defines Publ PApp sessions with hashed refresh-token storage only', () => {
+    expect(externalAuthProviderEnum.enumValues).toContain('publ');
+    expect(tableColumnNames(publPappSessions)).toEqual(
+      expect.arrayContaining([
+        'id',
+        'userId',
+        'consumerId',
+        'pAppCode',
+        'channelId',
+        'channelCode',
+        'installedPAppId',
+        'sellerProfileDistinctId',
+        'sellerRole',
+        'refreshTokenHash',
+        'refreshTokenExpiresAt',
+        'accessTokenJti',
+        'accessTokenExpiresAt',
+        'createdAt',
+        'updatedAt',
+        'revokedAt',
+      ])
+    );
+    expect(tableColumnNames(publPappSessions)).not.toEqual(
+      expect.arrayContaining(['refreshToken', 'accessToken', 'rawPayload', 'providerPayload'])
+    );
+    expect(publPappSessions.consumerId.notNull).toBe(true);
+    expect(publPappSessions.refreshTokenHash.notNull).toBe(true);
+    expect(publPappSessions.refreshTokenExpiresAt.notNull).toBe(true);
+    expect(publPappSessions.accessTokenJti.notNull).toBe(true);
+    expect(publPappSessions.accessTokenExpiresAt.notNull).toBe(true);
+    expect(indexNames(publPappSessions)).toEqual(
+      expect.arrayContaining([
+        'publ_papp_sessions_consumer_id_unique',
+        'publ_papp_sessions_user_idx',
+        'publ_papp_sessions_refresh_lookup_idx',
+        'publ_papp_sessions_expiry_revocation_idx',
+      ])
+    );
+    expect(foreignKeyDeleteActions(publPappSessions)).toEqual(['cascade']);
   });
 });
 

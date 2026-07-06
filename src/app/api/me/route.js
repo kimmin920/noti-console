@@ -10,6 +10,14 @@ export async function GET(request) {
 
     return {
       data: {
+        authProvider: actor.authProvider,
+        externalAuthAccount: actor.externalAuthAccount
+          ? {
+              provider: actor.externalAuthAccount.provider,
+              email: actor.externalAuthAccount.email,
+              displayName: actor.externalAuthAccount.displayName,
+            }
+          : null,
         user: {
           id: user.id,
           userRef: user.userRef,

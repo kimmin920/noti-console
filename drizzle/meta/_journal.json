@@ -134,6 +134,13 @@
       "when": 1782989643389,
       "tag": "0018_limit_increase_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783305506637,
+      "tag": "0019_publ_papp_sessions",
+      "breakpoints": true
     }
   ]
 }

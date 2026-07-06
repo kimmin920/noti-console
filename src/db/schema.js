@@ -262,6 +262,41 @@ export const externalAuthAccounts = pgTable(
   ]
 );
 
+export const publPappSessions = pgTable(
+  'publ_papp_sessions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    consumerId: varchar('consumer_id', { length: 255 }).notNull(),
+    pAppCode: varchar('p_app_code', { length: 80 }).notNull(),
+    channelId: bigint('channel_id', { mode: 'number' }),
+    channelCode: varchar('channel_code', { length: 160 }).notNull(),
+    installedPAppId: bigint('installed_p_app_id', { mode: 'number' }),
+    sellerProfileDistinctId: varchar('seller_profile_distinct_id', { length: 255 }),
+    sellerRole: varchar('seller_role', { length: 80 }),
+    refreshTokenHash: varchar('refresh_token_hash', { length: 128 }).notNull(),
+    refreshTokenExpiresAt: timestampWithTimezone('refresh_token_expires_at').notNull(),
+    accessTokenJti: varchar('access_token_jti', { length: 128 }).notNull(),
+    accessTokenExpiresAt: timestampWithTimezone('access_token_expires_at').notNull(),
+    revokedAt: timestampWithTimezone('revoked_at'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex('publ_papp_sessions_consumer_id_unique').on(table.consumerId),
+    index('publ_papp_sessions_user_idx').on(table.userId),
+    index('publ_papp_sessions_refresh_lookup_idx').on(
+      table.consumerId,
+      table.refreshTokenHash,
+      table.revokedAt,
+      table.refreshTokenExpiresAt
+    ),
+    index('publ_papp_sessions_expiry_revocation_idx').on(table.revokedAt, table.refreshTokenExpiresAt),
+  ]
+);
+
 export const senderResources = pgTable(
   'sender_resources',
   {
@@ -908,6 +943,7 @@ export const publEventPropDefinitionsRelations = relations(publEventPropDefiniti
 
 export const usersRelations = relations(users, ({ many }) => ({
   externalAuthAccounts: many(externalAuthAccounts),
+  publPappSessions: many(publPappSessions),
   publChannelMappings: many(publChannelMappings),
   automationRules: many(automationRules),
   automationRuleRevisions: many(automationRuleRevisions),
@@ -939,6 +975,13 @@ export const billingAccountsRelations = relations(billingAccounts, ({ many }) =>
 export const externalAuthAccountsRelations = relations(externalAuthAccounts, ({ one }) => ({
   user: one(users, {
     fields: [externalAuthAccounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const publPappSessionsRelations = relations(publPappSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [publPappSessions.userId],
     references: [users.id],
   }),
 }));

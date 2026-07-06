@@ -366,6 +366,68 @@ button {
   width: min(1104px, 100%);
 }
 
+.publ-client-boot {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 72px 24px 32px;
+  background: var(--bg);
+}
+
+.publ-client-boot-panel {
+  width: min(560px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+}
+
+.publ-client-boot-icon {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--control);
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+}
+
+.publ-client-boot-copy {
+  min-width: 0;
+}
+
+.publ-client-boot-kicker,
+.publ-client-boot-copy h1,
+.publ-client-boot-copy p {
+  margin: 0;
+}
+
+.publ-client-boot-kicker {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.publ-client-boot-copy h1 {
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 22px;
+}
+
+.publ-client-boot-copy p:not(.publ-client-boot-kicker) {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
 .page-header {
   min-height: 40px;
   display: flex;
@@ -15675,6 +15737,19 @@ body.is-brand-message-button-dragging {
 }
 
 @media (max-width: 900px) {
+  .publ-client-boot {
+    padding-top: 32px;
+  }
+
+  .publ-client-boot-panel {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .publ-client-boot-panel .button {
+    grid-column: 1 / -1;
+    justify-self: flex-start;
+  }
+
   .app-shell.app-mode {
     --sidebar: 72px;
   }
