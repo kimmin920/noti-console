@@ -10,6 +10,7 @@ import '../styles/template-detail.css';
 import '../styles/publ-event-detail.css';
 import { AppProviders } from './AppProviders.jsx';
 import { ToastProvider } from '../components/ui/Toast.jsx';
+import { ConsoleRootFrame } from '../features/console/ConsoleRootFrame.jsx';
 
 export const metadata = {
   title: 'Messaging App',
@@ -25,7 +26,9 @@ export default function RootLayout({ children }) {
       <body>
         <ClerkProvider dynamic>
           <AppProviders>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              <ConsoleRootFrame>{children}</ConsoleRootFrame>
+            </ToastProvider>
           </AppProviders>
         </ClerkProvider>
       </body>
