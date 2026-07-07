@@ -117,3 +117,10 @@ jobs:
             NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ steps.build-values.outputs.clerk_publishable_key }}
             NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ steps.build-values.outputs.clerk_sign_in_url }}
             NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ steps.build-values.outputs.clerk_sign_up_url }}
+
+      - name: Keep the latest three dev image versions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_DEV_PACKAGES: noti-console,noti-console-migrate
+          GHCR_DEV_SHA_KEEP: "3"
+        run: node .github/scripts/prune-ghcr-dev-images.mjs

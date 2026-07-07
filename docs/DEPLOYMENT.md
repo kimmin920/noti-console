@@ -53,6 +53,13 @@ The workflow also publishes immutable SHA tags that can be used for rollback:
 - `ghcr.io/kimmin920/noti-console:sha-<full-or-short-sha>`
 - `ghcr.io/kimmin920/noti-console-migrate:sha-<full-or-short-sha>`
 
+After each successful dev image build, the workflow prunes old dev image
+versions in GHCR. It keeps the latest three `sha-*` versions for each dev
+package and always keeps the moving `:dev` tag. The cleanup intentionally only
+deletes versions with `sha-*` tags; untagged package records are not deleted by
+this workflow because container manifests and attestations can share package
+version internals.
+
 Configure these GitHub repository variables before relying on the dev image
 workflow:
 
