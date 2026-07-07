@@ -20,11 +20,13 @@ describe('build info', () => {
     const info = resolveBuildInfo({
       NEXT_PUBLIC_APP_VERSION: ' 1.2.3 ',
       NEXT_PUBLIC_BUILD_SHA: '2d72c0e9dd7b89346548d6dffacc458cca568b2f',
+      NEXT_PUBLIC_BUILD_SUBJECT: ' feat: format build time in KST ',
       NEXT_PUBLIC_BUILD_TIME: '2026-07-07T05:49:56Z',
     });
 
     expect(info).toMatchObject({
       buildSha: '2d72c0e9dd7b89346548d6dffacc458cca568b2f',
+      buildSubject: 'feat: format build time in KST',
       buildTime: '2026-07-07T05:49:56Z',
       shortSha: '2d72c0e9',
       version: '1.2.3',
@@ -33,12 +35,13 @@ describe('build info', () => {
 
   it('formats a compact human-readable title', () => {
     const title = formatBuildInfoTitle({
+      buildSubject: 'feat: format build time in KST',
       buildTime: '2026-07-07T05:49:56Z',
       shortSha: '2d72c0e9',
       version: '1.2.3',
     });
 
-    expect(title).toBe('Version 1.2.3, build 2d72c0e9, built 14:49:56 KST');
+    expect(title).toBe('Version 1.2.3, build 2d72c0e9, commit feat: format build time in KST, built 14:49:56 KST');
   });
 
   it('formats build time as KST time only', () => {

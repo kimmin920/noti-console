@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 const packageJson = JSON.parse(readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
 const appVersion = readOptionalEnv('NEXT_PUBLIC_APP_VERSION') ?? packageJson.version ?? '0.0.0';
 const buildSha = readOptionalEnv('NEXT_PUBLIC_BUILD_SHA') ?? readGitSha() ?? 'local';
+const buildSubject = readOptionalEnv('NEXT_PUBLIC_BUILD_SUBJECT') ?? readGitSubject() ?? '';
 const buildTime = readOptionalEnv('NEXT_PUBLIC_BUILD_TIME') ?? new Date().toISOString();
 
 /** @type {import('next').NextConfig} */
@@ -16,6 +17,7 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
     NEXT_PUBLIC_BUILD_SHA: buildSha,
+    NEXT_PUBLIC_BUILD_SUBJECT: buildSubject,
     NEXT_PUBLIC_BUILD_TIME: buildTime,
   },
   pageExtensions: isProduction
@@ -44,9 +46,40 @@ function readGitSha() {
   return readGitShaFromCommand() ?? readGitShaFromHead();
 }
 
+function readGitSubject() {
+  const ref = readGitChangeRef();
+
+  try {
+    const subject = execFileSync('git', ['log', '-1', '--pretty=%s', ref], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+
+    return subject || null;
+  } catch {
+    return null;
+  }
+}
+
+function readGitChangeRef() {
+  try {
+    const line = execFileSync('git', ['rev-list', '--parents', '-n', '1', 'HEAD'], {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    const [, , secondParent] = line.split(/\s+/);
+
+    return secondParent ?? 'HEAD';
+  } catch {
+    return 'HEAD';
+  }
+}
+
 function readGitShaFromCommand() {
   try {
-    const sha = execSync('git rev-parse --short=8 HEAD', {
+    const sha = execFileSync('git', ['rev-parse', '--short=8', 'HEAD'], {
       cwd: rootDir,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
