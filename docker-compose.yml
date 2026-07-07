@@ -1,32 +1,11 @@
-x-app-build-args: &app-build-args
-  NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL is required}
-  NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-}
-  NEXT_PUBLIC_BUILD_SHA: ${NEXT_PUBLIC_BUILD_SHA:-}
-  NEXT_PUBLIC_BUILD_SUBJECT: ${NEXT_PUBLIC_BUILD_SUBJECT:-}
-  NEXT_PUBLIC_BUILD_TIME: ${NEXT_PUBLIC_BUILD_TIME:-}
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required}
-  NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${NEXT_PUBLIC_CLERK_SIGN_IN_URL:-/sign-in}
-  NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${NEXT_PUBLIC_CLERK_SIGN_UP_URL:-/sign-up}
-
-x-app-build: &app-build
-  context: .
-  dockerfile: Dockerfile
-  target: runner
-  args: *app-build-args
-
-x-migrate-build: &migrate-build
-  context: .
-  dockerfile: Dockerfile
-  target: migrate-runner
-  args: *app-build-args
-
 x-app-environment: &app-environment
   NODE_ENV: production
   NEXT_TELEMETRY_DISABLED: "1"
 
 services:
   migrate:
-    build: *migrate-build
+    image: ${MIGRATE_IMAGE:?MIGRATE_IMAGE is required}
+    pull_policy: always
     env_file:
       - .env
     environment:
@@ -35,7 +14,8 @@ services:
     restart: "no"
 
   web:
-    build: *app-build
+    image: ${APP_IMAGE:?APP_IMAGE is required}
+    pull_policy: always
     env_file:
       - .env
     environment:
@@ -48,7 +28,8 @@ services:
     restart: unless-stopped
 
   worker:
-    build: *app-build
+    image: ${APP_IMAGE:?APP_IMAGE is required}
+    pull_policy: always
     command: npm run worker
     env_file:
       - .env
