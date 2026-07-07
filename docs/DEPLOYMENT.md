@@ -34,6 +34,50 @@ Add domains in the Dokploy Domains tab rather than hard-coding Traefik labels:
 
 Dokploy writes service environment variables to a `.env` file next to `docker-compose.yml`. The compose file uses `env_file: .env` so runtime variables are injected into the containers.
 
+## Dev GHCR Image Bootstrap
+
+The dev image rollout is intentionally split into two phases:
+
+1. `60-ghcr-image-bootstrap`: build and publish GHCR images while Dokploy still
+   uses the source-build Compose flow above.
+2. `61-dokploy-image-compose`: switch the dev Dokploy Compose app to pull the
+   published images.
+
+Phase 60 publishes these dev images from the `dev` branch:
+
+- `ghcr.io/kimmin920/noti-console:dev`
+- `ghcr.io/kimmin920/noti-console-migrate:dev`
+
+The workflow also publishes immutable SHA tags that can be used for rollback:
+
+- `ghcr.io/kimmin920/noti-console:sha-<full-or-short-sha>`
+- `ghcr.io/kimmin920/noti-console-migrate:sha-<full-or-short-sha>`
+
+Configure these GitHub repository variables before relying on the dev image
+workflow:
+
+- `NEXT_PUBLIC_APP_URL_DEV`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY_DEV`
+- `NEXT_PUBLIC_APP_VERSION` if the image should override the version from
+  `package.json`
+
+The workflow derives `NEXT_PUBLIC_BUILD_SHA`, `NEXT_PUBLIC_BUILD_SUBJECT`, and
+`NEXT_PUBLIC_BUILD_TIME` from the checked-out commit and fails before building if
+required public build values are missing.
+
+If GHCR packages are private, log in on the VPS once with a token that has
+`read:packages` access:
+
+```bash
+docker login ghcr.io -u kimmin920
+```
+
+The success signal for phase 60 is that GitHub Actions can push both `:dev`
+images. Dokploy should continue source builds until phase 61 switches Compose to
+image pulls. After that switch, the VPS must not run `next build`; builds must
+happen in GitHub Actions and deployment should only pull the already-built
+images.
+
 ## Runtime
 
 The compose stack contains:
@@ -48,7 +92,7 @@ The compose stack contains:
 
 The console shows a compact build badge at the bottom of the left sidebar. By
 default it displays the `package.json` version, for example `v0.1.0`, and shows
-the git commit SHA and build timestamp on hover or click.
+the git commit SHA, commit subject, and build timestamp on hover or click.
 
 Dokploy does not need a runtime variable for this when the Docker build context
 contains `.git`. If the platform strips git metadata, set these optional build
@@ -56,6 +100,7 @@ arguments/env values before building:
 
 - `NEXT_PUBLIC_APP_VERSION`
 - `NEXT_PUBLIC_BUILD_SHA`
+- `NEXT_PUBLIC_BUILD_SUBJECT`
 - `NEXT_PUBLIC_BUILD_TIME`
 
 ## Required Variables
