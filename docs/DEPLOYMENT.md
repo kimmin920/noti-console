@@ -44,6 +44,20 @@ The compose stack contains:
 
 `web` and `worker` wait for `migrate` to complete successfully.
 
+## Build Version Badge
+
+The console shows a compact build badge at the bottom of the left sidebar. By
+default it displays the `package.json` version, for example `v0.1.0`, and shows
+the git commit SHA and build timestamp on hover.
+
+Dokploy does not need a runtime variable for this when the Docker build context
+contains `.git`. If the platform strips git metadata, set these optional build
+arguments/env values before building:
+
+- `NEXT_PUBLIC_APP_VERSION`
+- `NEXT_PUBLIC_BUILD_SHA`
+- `NEXT_PUBLIC_BUILD_TIME`
+
 ## Required Variables
 
 Use separate values for dev and prod. Start from `.env.example`.

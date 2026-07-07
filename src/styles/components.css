@@ -231,18 +231,73 @@ button {
   padding: 0 10px;
 }
 
-.sidebar-menu:not(.has-utility-actions) .account-button,
-.sidebar-menu.has-utility-actions .sidebar-utility-actions {
+.sidebar-bottom-stack {
   margin-top: auto;
-}
-
-.sidebar-menu.has-utility-actions .account-button {
-  margin-top: 8px;
+  display: grid;
+  gap: 8px;
 }
 
 .sidebar-utility-actions {
   display: grid;
   gap: 8px;
+}
+
+.build-version-badge {
+  position: relative;
+  min-width: 0;
+  width: fit-content;
+  min-height: 16px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  opacity: 0.72;
+  cursor: default;
+  user-select: text;
+}
+
+.build-version-badge::after {
+  content: attr(data-build-details);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: var(--layer-tooltip);
+  width: max-content;
+  max-width: min(280px, calc(100vw - 32px));
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(2px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+  visibility: hidden;
+}
+
+.build-version-badge:hover::after {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.build-version-badge-version {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-utility-button {
@@ -15787,6 +15842,10 @@ body.is-brand-message-button-dragging {
   .app-shell.app-mode .account-button,
   .app-shell.app-mode .nav-item {
     justify-content: center;
+  }
+
+  .app-shell.app-mode .build-version-badge {
+    display: none;
   }
 
   .app-shell.app-mode .workspace-name,
