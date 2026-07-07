@@ -86,6 +86,131 @@ image pulls. After that switch, the VPS must not run `next build`; builds must
 happen in GitHub Actions and deployment should only pull the already-built
 images.
 
+## Dev Image-Based Dokploy Rollout
+
+After phase 61, `docker-compose.yml` is the Dokploy runtime Compose file. It
+pulls prebuilt GHCR images and intentionally contains no service-level `build:`
+configuration.
+
+`docker-compose.build.yml` preserves the previous source-build flow as an
+emergency fallback. Use it only when the GHCR image path is unavailable and the
+VPS has enough spare memory to tolerate a source build.
+
+Set these values in the dev Dokploy app before redeploying `noti-console-dev`:
+
+```bash
+APP_IMAGE=ghcr.io/kimmin920/noti-console:dev
+MIGRATE_IMAGE=ghcr.io/kimmin920/noti-console-migrate:dev
+```
+
+`docker-compose.yml` fails fast when either image variable is missing. This is
+intentional so prod cannot accidentally pull dev images through a default value.
+
+If GHCR packages are private, the VPS must already be authenticated before the
+redeploy:
+
+```bash
+docker login ghcr.io -u kimmin920
+docker pull ghcr.io/kimmin920/noti-console:dev
+docker pull ghcr.io/kimmin920/noti-console-migrate:dev
+```
+
+For rollback, set both image variables to matching immutable tags from the same
+successful GitHub Actions image build:
+
+```bash
+APP_IMAGE=ghcr.io/kimmin920/noti-console:sha-<commit-sha>
+MIGRATE_IMAGE=ghcr.io/kimmin920/noti-console-migrate:sha-<commit-sha>
+```
+
+Do not merge this image-based Compose flow to `main` or prod until a prod image
+workflow exists and prod Dokploy env sets prod image tags. That prevents prod
+from accidentally using dev images.
+
+After redeploy, validate from the VPS:
+
+```bash
+date
+uptime
+free -h
+df -h
+docker system df
+ps -eo pid,comm,args | grep "next build" | grep -v grep || true
+docker ps
+docker stats --no-stream
+curl -I https://noti-dev.vizuo.work/message-send
+```
+
+A successful image-based deploy has no `next build` process on the VPS. Record
+before/after resource values so the migration proves operational improvement,
+not only functional availability.
+
+## Resource Comparison Runbook
+
+Use this runbook to confirm that GHCR image deployment solved the VPS resource
+pressure. Run the commands over SSH or the Hetzner web console.
+
+### Before Redeploy Snapshot
+
+Capture the current idle baseline before switching or redeploying the
+image-based Compose file. Do not intentionally run a source-build deploy to
+reproduce the outage.
+
+### After Image Redeploy Snapshot
+
+Capture the same values immediately after Dokploy redeploys `noti-console-dev`.
+The key check is that the app comes back without a `next build` process and
+without memory collapsing to tens of MiB.
+
+### Commands
+
+```bash
+date
+uptime
+free -h
+df -h
+docker system df
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}"
+ps -eo pid,comm,%cpu,%mem,rss,args --sort=-%mem | head -20
+ps -eo pid,comm,args | grep "next build" | grep -v grep || true
+curl -I https://noti-dev.vizuo.work/
+curl -I https://noti-dev.vizuo.work/message-send
+```
+
+### Comparison Table
+
+| Metric | Before redeploy | After image redeploy | Success signal |
+| --- | --- | --- | --- |
+| load average |  |  | Does not spike into sustained double digits |
+| memory available |  |  | Does not collapse to tens of MiB |
+| swap used |  |  | Does not rapidly grow during redeploy |
+| `next build` process present |  |  | `no` |
+| largest process RSS |  |  | No unexpected build process dominates memory |
+| `dokploy` memory |  |  | Stable after redeploy |
+| `dockerd` memory |  |  | Stable after image pull |
+| Docker image/cache size from `docker system df` |  |  | Track growth after pulling GHCR images |
+| `noti-dev` HTTP status |  |  | `/` returns 200; `/message-send` returns 307 or 200 |
+
+### Success Thresholds
+
+- No `next build` process appears on the VPS during image-based redeploy.
+- `noti-dev` returns HTTP 200 for `/` and 307 or 200 for `/message-send`.
+- Available memory does not collapse to tens of MiB.
+- Swap usage does not rapidly grow during redeploy.
+- SSH and Dokploy remain responsive during redeploy.
+
+### Failure Actions
+
+- If GHCR pull fails, verify `docker login ghcr.io`.
+- If `next build` appears, Dokploy is still using a build-based Compose file.
+- If Compose fails with `APP_IMAGE is required` or `MIGRATE_IMAGE is required`,
+  set those values in the Dokploy environment before redeploying.
+- If memory collapses without `next build`, inspect `docker stats` for the
+  largest container.
+- If rollout fails, set `APP_IMAGE` and `MIGRATE_IMAGE` to a known-good
+  `sha-*` tag or temporarily switch Dokploy back to `docker-compose.build.yml`.
+
 ## Runtime
 
 The compose stack contains:
