@@ -48,7 +48,7 @@ The compose stack contains:
 
 The console shows a compact build badge at the bottom of the left sidebar. By
 default it displays the `package.json` version, for example `v0.1.0`, and shows
-the git commit SHA and build timestamp on hover.
+the git commit SHA and build timestamp on hover or click.
 
 Dokploy does not need a runtime variable for this when the Docker build context
 contains `.git`. If the platform strips git metadata, set these optional build
