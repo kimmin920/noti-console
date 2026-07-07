@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Show, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/nextjs';
 import { BookOpen, CircleHelp } from 'lucide-react';
 import lottie from 'lottie-web';
@@ -167,6 +168,8 @@ function SidebarContent({
 
   return (
     <aside className={`sidebar-menu ${showUtilityActions ? 'has-utility-actions' : ''}`}>
+      <SidebarProductHeader href={getPageHref('emails')} />
+
       <nav className="sidebar-nav" aria-label="주 메뉴">
         {visibleNavItems.map(({ id, label }) => (
           <NavButton
@@ -197,6 +200,27 @@ function SidebarContent({
         <BuildVersionBadge />
       </div>
     </aside>
+  );
+}
+
+function SidebarProductHeader({ href }) {
+  return (
+    <Link aria-label="NOTI 홈" className="sidebar-product" href={href}>
+      <span className="sidebar-product-mark" aria-hidden="true">
+        <Image
+          alt=""
+          className="sidebar-product-logo"
+          height={32}
+          src="/static/icons/001_NOTI.png"
+          unoptimized
+          width={32}
+        />
+      </span>
+      <span className="sidebar-product-copy">
+        <span className="sidebar-product-title">NOTI</span>
+        <span className="sidebar-product-subtitle">SMS · 알림톡 · 브랜드 메시지</span>
+      </span>
+    </Link>
   );
 }
 

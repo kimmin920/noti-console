@@ -74,6 +74,67 @@ button {
   flex-direction: column;
 }
 
+.sidebar-product {
+  min-width: 0;
+  min-height: 48px;
+  border-radius: 8px;
+  color: var(--text);
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.sidebar-product:hover {
+  background: var(--control);
+}
+
+.sidebar-product-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sidebar-product-logo {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.sidebar-product-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.sidebar-product-title,
+.sidebar-product-subtitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-product-title {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
+.sidebar-product-subtitle {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
 .workspace-switcher,
 .account-button,
 .nav-item {
@@ -118,7 +179,7 @@ button {
 }
 
 .sidebar-nav {
-  margin-top: 30px;
+  margin-top: 24px;
   display: grid;
   gap: 8px;
 }
@@ -15886,15 +15947,22 @@ body.is-brand-message-button-dragging {
   }
 
   .app-shell.app-mode .workspace-switcher,
+  .app-shell.app-mode .sidebar-product,
   .app-shell.app-mode .account-button,
   .app-shell.app-mode .nav-item {
     justify-content: center;
+  }
+
+  .app-shell.app-mode .sidebar-product {
+    display: flex;
+    padding: 6px 0;
   }
 
   .app-shell.app-mode .build-version-badge {
     display: none;
   }
 
+  .app-shell.app-mode .sidebar-product-copy,
   .app-shell.app-mode .workspace-name,
   .app-shell.app-mode .nav-item-label,
   .app-shell.app-mode .account-email,

@@ -13,10 +13,25 @@ import { ToastProvider } from '../components/ui/Toast.jsx';
 import { ConsoleRootFrame } from '../features/console/ConsoleRootFrame.jsx';
 
 export const metadata = {
-  title: 'Messaging App',
-  description: 'Messaging web app stack scaffold',
+  title: 'NOTI',
+  description: 'SMS, 알림톡, 브랜드 메시지 운영 콘솔',
   icons: {
-    icon: '/icon.svg',
+    icon: [
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '762x762',
+        url: '/static/icons/001_NOTI.png',
+      },
+    ],
+    apple: [
+      {
+        rel: 'apple-touch-icon',
+        type: 'image/png',
+        sizes: '762x762',
+        url: '/static/icons/001_NOTI.png',
+      },
+    ],
   },
 };
 
