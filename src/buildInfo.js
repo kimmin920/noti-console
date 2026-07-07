@@ -12,16 +12,19 @@ const KST_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
 const defaultBuildEnv = {
   NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
   NEXT_PUBLIC_BUILD_SHA: process.env.NEXT_PUBLIC_BUILD_SHA,
+  NEXT_PUBLIC_BUILD_SUBJECT: process.env.NEXT_PUBLIC_BUILD_SUBJECT,
   NEXT_PUBLIC_BUILD_TIME: process.env.NEXT_PUBLIC_BUILD_TIME,
 };
 
 export function resolveBuildInfo(env = defaultBuildEnv) {
   const version = readOptionalEnv(env, 'NEXT_PUBLIC_APP_VERSION') ?? DEFAULT_APP_VERSION;
   const buildSha = readOptionalEnv(env, 'NEXT_PUBLIC_BUILD_SHA') ?? LOCAL_BUILD_SHA;
+  const buildSubject = readOptionalEnv(env, 'NEXT_PUBLIC_BUILD_SUBJECT');
   const buildTime = readOptionalEnv(env, 'NEXT_PUBLIC_BUILD_TIME');
 
   return Object.freeze({
     buildSha,
+    buildSubject,
     buildTime,
     shortSha: shortenBuildSha(buildSha),
     version,
@@ -40,13 +43,22 @@ export function shortenBuildSha(value) {
 
 export function formatBuildInfoTitle(info) {
   const parts = [`Version ${info.version}`, `build ${info.shortSha}`];
+  const buildSubject = formatBuildSubject(info.buildSubject);
   const buildTime = formatBuildTime(info.buildTime);
+
+  if (buildSubject) {
+    parts.push(`commit ${buildSubject}`);
+  }
 
   if (buildTime) {
     parts.push(`built ${buildTime}`);
   }
 
   return parts.join(', ');
+}
+
+export function formatBuildSubject(value) {
+  return normalizeText(value);
 }
 
 export function formatBuildTime(value) {
