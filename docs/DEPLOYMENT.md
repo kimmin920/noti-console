@@ -72,6 +72,14 @@ If GHCR packages are private, log in on the VPS once with a token that has
 docker login ghcr.io -u kimmin920
 ```
 
+Do not run `61-dokploy-image-compose` until both `:dev` GHCR images exist and
+can be pulled from the VPS:
+
+```bash
+docker pull ghcr.io/kimmin920/noti-console:dev
+docker pull ghcr.io/kimmin920/noti-console-migrate:dev
+```
+
 The success signal for phase 60 is that GitHub Actions can push both `:dev`
 images. Dokploy should continue source builds until phase 61 switches Compose to
 image pulls. After that switch, the VPS must not run `next build`; builds must
