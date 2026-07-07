@@ -14,6 +14,10 @@ import {
   refreshPublClientSession,
   resolvePublSdkAdapter,
 } from './sdkAdapter.js';
+import {
+  isPublClientSdkAvailable,
+  loadPublClientSdkScript,
+} from './sdkScriptLoader.js';
 import { registerPublClientRefreshTokenHandler } from './authToken.js';
 
 const CONNECTING_STATE = {
@@ -28,7 +32,23 @@ const REFRESH_FAILED_STATE = {
   title: '세션을 갱신하지 못했습니다',
 };
 
-export function PublClientBootstrap({ pageId = DEFAULT_CONSOLE_PAGE_ID }) {
+const SDK_NOT_CONFIGURED_STATE = {
+  message: 'Publ SDK script 주소가 설정되지 않았습니다. 테스트베드 연결 값을 확인해 주세요.',
+  status: 'sdk-not-configured',
+  title: 'Publ SDK 설정이 필요합니다',
+};
+
+const SDK_LOAD_FAILED_STATE = {
+  message: 'Publ SDK script를 불러오지 못했습니다. 네트워크와 SDK URL을 확인한 뒤 다시 시도해 주세요.',
+  status: 'sdk-load-error',
+  title: 'Publ SDK를 불러오지 못했습니다',
+};
+
+export function PublClientBootstrap({
+  clientConfig = null,
+  clientConfigError = '',
+  pageId = DEFAULT_CONSOLE_PAGE_ID,
+}) {
   const [attempt, setAttempt] = useState(0);
   const [sessionState, setSessionState] = useState(CONNECTING_STATE);
   const activePageId = normalizeConsolePageId(pageId);
@@ -43,8 +63,35 @@ export function PublClientBootstrap({ pageId = DEFAULT_CONSOLE_PAGE_ID }) {
     async function startPublSession() {
       setSessionState(CONNECTING_STATE);
 
-      const adapter = resolvePublSdkAdapter();
-      const result = await bootstrapPublClientSession({ adapter });
+      if (!clientConfig) {
+        setSessionState({
+          message: clientConfigError || 'Publ client 설정을 확인해 주세요.',
+          status: 'misconfigured',
+          title: 'Publ client 설정이 올바르지 않습니다',
+        });
+        return;
+      }
+
+      let adapter = resolvePublSdkAdapter({ clientConfig });
+      if (!adapter && !isPublClientSdkAvailable()) {
+        if (!clientConfig.sdkSrc) {
+          setSessionState(SDK_NOT_CONFIGURED_STATE);
+          return;
+        }
+
+        try {
+          await loadPublClientSdkScript(clientConfig.sdkSrc);
+        } catch {
+          if (!cancelled) {
+            setSessionState(SDK_LOAD_FAILED_STATE);
+          }
+          return;
+        }
+
+        adapter = resolvePublSdkAdapter({ clientConfig });
+      }
+
+      const result = await bootstrapPublClientSession({ adapter, clientConfig });
 
       if (cancelled) {
         return;
@@ -80,7 +127,7 @@ export function PublClientBootstrap({ pageId = DEFAULT_CONSOLE_PAGE_ID }) {
       cancelled = true;
       unregisterRefreshHandler?.();
     };
-  }, [attempt]);
+  }, [attempt, clientConfig, clientConfigError]);
 
   if (sessionState.status === 'ready') {
     return (

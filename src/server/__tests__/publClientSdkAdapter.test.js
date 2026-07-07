@@ -16,6 +16,59 @@ import {
 } from '../../features/publClient/authToken.js';
 
 describe('Publ iframe client SDK adapter', () => {
+  it('adapts the official PAppClientSDK seller-side pipeline', async () => {
+    const sdkClient = {
+      mount: vi.fn(async () => ({ data: { mounted: true } })),
+      pipeline: {
+        authorize: vi.fn(async () => ({ data: { authorized: true } })),
+        request: vi.fn(async () => ({
+          status: 'OK',
+          data: {
+            accessToken: 'official-access-token',
+            refreshToken: 'official-refresh-token',
+          },
+        })),
+      },
+    };
+    const source = {
+      PAppClientSDK: {
+        create: vi.fn(() => sdkClient),
+      },
+    };
+    const clientConfig = createClientConfig();
+    const adapter = resolvePublSdkAdapter({ clientConfig, source });
+
+    await expect(adapter.mount()).resolves.toEqual({ data: { mounted: true } });
+    await expect(adapter.authorize()).resolves.toEqual({ data: { authorized: true } });
+    await expect(adapter.exchangeToken()).resolves.toMatchObject({
+      data: {
+        accessToken: 'official-access-token',
+        refreshToken: 'official-refresh-token',
+      },
+    });
+    await adapter.refreshToken({
+      previousAccessToken: 'official-access-token',
+      refreshToken: 'official-refresh-token',
+    });
+    await adapter.request('PM_CONTACTS', { limit: 2 });
+
+    expect(source.PAppClientSDK.create).toHaveBeenCalledTimes(1);
+    expect(source.PAppClientSDK.create).toHaveBeenCalledWith('SELLER_SIDE');
+    expect(sdkClient.mount).toHaveBeenCalledWith({
+      clientHash: 'client-hash',
+      pAppCode: '3RD_A00003_TEST',
+    });
+    expect(sdkClient.pipeline.authorize).toHaveBeenCalledWith([
+      'PM_00000_EXCHANGE_TOKEN',
+      'PM_00000_REFRESH_TOKEN',
+      'PM_SELLER_INFO',
+      'PM_CONTACTS',
+    ]);
+    expect(sdkClient.pipeline.request).toHaveBeenNthCalledWith(1, 'PM_00000_EXCHANGE_TOKEN');
+    expect(sdkClient.pipeline.request).toHaveBeenNthCalledWith(2, 'PM_00000_REFRESH_TOKEN');
+    expect(sdkClient.pipeline.request).toHaveBeenNthCalledWith(3, 'PM_CONTACTS', { limit: 2 });
+  });
+
   it('stores exchanged tokens through the iframe session token provider', async () => {
     const storage = createSessionStorage();
     const adapter = {
@@ -84,6 +137,12 @@ describe('Publ iframe client SDK adapter', () => {
             accessToken: 'new-access-token',
           },
         })),
+        request: vi.fn(async (permissionId, payload) => ({
+          data: {
+            payload,
+            permissionId,
+          },
+        })),
       },
     };
     const adapter = resolvePublSdkAdapter({ source });
@@ -100,6 +159,12 @@ describe('Publ iframe client SDK adapter', () => {
     })).resolves.toEqual({
       data: {
         accessToken: 'new-access-token',
+      },
+    });
+    await expect(adapter.request('PM_CONTACTS', { limit: 2 })).resolves.toEqual({
+      data: {
+        payload: { limit: 2 },
+        permissionId: 'PM_CONTACTS',
       },
     });
   });
@@ -141,6 +206,25 @@ describe('Publ iframe client SDK adapter', () => {
     expect(messageSendRouteSource).not.toContain('PublClientBootstrap');
   });
 });
+
+function createClientConfig() {
+  return {
+    authorizationPermissionIds: [
+      'PM_00000_EXCHANGE_TOKEN',
+      'PM_00000_REFRESH_TOKEN',
+      'PM_SELLER_INFO',
+      'PM_CONTACTS',
+    ],
+    clientHash: 'client-hash',
+    pAppCode: '3RD_A00003_TEST',
+    permissions: {
+      exchangeToken: 'PM_00000_EXCHANGE_TOKEN',
+      memberContacts: 'PM_CONTACTS',
+      refreshToken: 'PM_00000_REFRESH_TOKEN',
+      sellerBusinessInformation: 'PM_SELLER_INFO',
+    },
+  };
+}
 
 function createSessionStorage(initialValues = {}) {
   const store = new Map(Object.entries(initialValues));
