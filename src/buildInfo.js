@@ -1,5 +1,6 @@
 const DEFAULT_APP_VERSION = '0.0.0';
 const LOCAL_BUILD_SHA = 'local';
+const UNKNOWN_BUILD_SUBJECT = '작업 설명 없음';
 const UNKNOWN_BUILD_SHA_VALUES = new Set(['', 'unknown', 'undefined', 'null', 'local']);
 const KST_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
   hour: '2-digit',
@@ -43,12 +44,10 @@ export function shortenBuildSha(value) {
 
 export function formatBuildInfoTitle(info) {
   const parts = [`Version ${info.version}`, `build ${info.shortSha}`];
-  const buildSubject = formatBuildSubject(info.buildSubject);
+  const buildSubject = formatBuildSubjectDisplay(info.buildSubject);
   const buildTime = formatBuildTime(info.buildTime);
 
-  if (buildSubject) {
-    parts.push(`commit ${buildSubject}`);
-  }
+  parts.push(`commit ${buildSubject}`);
 
   if (buildTime) {
     parts.push(`built ${buildTime}`);
@@ -58,7 +57,17 @@ export function formatBuildInfoTitle(info) {
 }
 
 export function formatBuildSubject(value) {
-  return normalizeText(value);
+  const normalized = normalizeText(value);
+
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? null;
+}
+
+export function formatBuildSubjectDisplay(value) {
+  return formatBuildSubject(value) ?? UNKNOWN_BUILD_SUBJECT;
 }
 
 export function formatBuildTime(value) {
