@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Show, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/nextjs';
 import { BookOpen, CircleHelp } from 'lucide-react';
 import lottie from 'lottie-web';
+import { BuildVersionBadge } from '../../components/layout/BuildVersionBadge.jsx';
 import { InspectorSidebar } from '../../components/layout/index.js';
 import { Button, CommandPalette, Kbd, Popover, PopoverClose, PopoverContent, PopoverTrigger } from '../../components/ui/index.js';
 import audienceAnimation from '../../nav-lotties/audience.json';
@@ -178,19 +179,23 @@ function SidebarContent({
         ))}
       </nav>
 
-      {showUtilityActions ? (
-        <div className="sidebar-utility-actions">
-          <Link className="sidebar-utility-button" href={docsHref}>
-            <BookOpen size={15} />
-            문서
-          </Link>
-          <button className="sidebar-utility-button" type="button">
-            도움이 필요하신가요?
-          </button>
-        </div>
-      ) : null}
+      <div className="sidebar-bottom-stack">
+        {showUtilityActions ? (
+          <div className="sidebar-utility-actions">
+            <Link className="sidebar-utility-button" href={docsHref}>
+              <BookOpen size={15} />
+              문서
+            </Link>
+            <button className="sidebar-utility-button" type="button">
+              도움이 필요하신가요?
+            </button>
+          </div>
+        ) : null}
 
-      {hideAccountControl ? null : <SidebarAccountControl />}
+        {hideAccountControl ? null : <SidebarAccountControl />}
+
+        <BuildVersionBadge />
+      </div>
     </aside>
   );
 }

@@ -8,7 +8,6 @@ dist
 !.env.example
 !.env.*.example
 
-.git
 .DS_Store
 *.log
 coverage
