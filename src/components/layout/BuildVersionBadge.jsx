@@ -1,6 +1,6 @@
 'use client';
 
-import { formatBuildInfoTitle, resolveBuildInfo } from '../../buildInfo.js';
+import { formatBuildInfoTitle, formatBuildTime, resolveBuildInfo } from '../../buildInfo.js';
 import {
   Dialog,
   DialogBody,
@@ -14,6 +14,7 @@ import {
 export function BuildVersionBadge({ info = resolveBuildInfo() }) {
   const title = formatBuildInfoTitle(info);
   const details = formatBuildDetails(info);
+  const buildTime = formatBuildTime(info.buildTime);
 
   return (
     <Dialog>
@@ -41,10 +42,10 @@ export function BuildVersionBadge({ info = resolveBuildInfo() }) {
               <dt>Build</dt>
               <dd>{info.shortSha}</dd>
             </div>
-            {info.buildTime ? (
+            {buildTime ? (
               <div className="build-version-dialog-row">
                 <dt>Built</dt>
-                <dd>{info.buildTime}</dd>
+                <dd>{buildTime}</dd>
               </div>
             ) : null}
           </dl>
@@ -56,9 +57,10 @@ export function BuildVersionBadge({ info = resolveBuildInfo() }) {
 
 function formatBuildDetails(info) {
   const parts = [`build ${info.shortSha}`];
+  const buildTime = formatBuildTime(info.buildTime);
 
-  if (info.buildTime) {
-    parts.push(`built ${info.buildTime}`);
+  if (buildTime) {
+    parts.push(`built ${buildTime}`);
   }
 
   return parts.join(', ');

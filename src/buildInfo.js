@@ -1,6 +1,13 @@
 const DEFAULT_APP_VERSION = '0.0.0';
 const LOCAL_BUILD_SHA = 'local';
 const UNKNOWN_BUILD_SHA_VALUES = new Set(['', 'unknown', 'undefined', 'null', 'local']);
+const KST_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  hourCycle: 'h23',
+  minute: '2-digit',
+  second: '2-digit',
+  timeZone: 'Asia/Seoul',
+});
 
 const defaultBuildEnv = {
   NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
@@ -33,12 +40,29 @@ export function shortenBuildSha(value) {
 
 export function formatBuildInfoTitle(info) {
   const parts = [`Version ${info.version}`, `build ${info.shortSha}`];
+  const buildTime = formatBuildTime(info.buildTime);
 
-  if (info.buildTime) {
-    parts.push(`built ${info.buildTime}`);
+  if (buildTime) {
+    parts.push(`built ${buildTime}`);
   }
 
   return parts.join(', ');
+}
+
+export function formatBuildTime(value) {
+  const normalized = normalizeText(value);
+
+  if (!normalized) {
+    return null;
+  }
+
+  const date = new Date(normalized);
+
+  if (Number.isNaN(date.getTime())) {
+    return normalized;
+  }
+
+  return `${formatKstTime(date)} KST`;
 }
 
 function readOptionalEnv(env, key) {
@@ -53,4 +77,11 @@ function normalizeText(value) {
   const normalized = value.trim();
 
   return normalized.length > 0 ? normalized : null;
+}
+
+function formatKstTime(date) {
+  const parts = KST_TIME_FORMATTER.formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${values.hour}:${values.minute}:${values.second}`;
 }

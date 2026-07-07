@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   formatBuildInfoTitle,
+  formatBuildTime,
   resolveBuildInfo,
   shortenBuildSha,
 } from '../../buildInfo.js';
@@ -37,7 +38,11 @@ describe('build info', () => {
       version: '1.2.3',
     });
 
-    expect(title).toBe('Version 1.2.3, build 2d72c0e9, built 2026-07-07T05:49:56Z');
+    expect(title).toBe('Version 1.2.3, build 2d72c0e9, built 14:49:56 KST');
+  });
+
+  it('formats build time as KST time only', () => {
+    expect(formatBuildTime('2026-07-07T08:44:55.682Z')).toBe('17:44:55 KST');
   });
 
   it('keeps non-hash build identifiers readable', () => {
