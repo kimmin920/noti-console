@@ -7,8 +7,8 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const isProduction = process.env.NODE_ENV === 'production';
 const packageJson = JSON.parse(readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
 const appVersion = readOptionalEnv('NEXT_PUBLIC_APP_VERSION') ?? packageJson.version ?? '0.0.0';
-const buildSha = readOptionalEnv('NEXT_PUBLIC_BUILD_SHA') ?? readGitSha() ?? 'local';
-const buildSubject = readOptionalEnv('NEXT_PUBLIC_BUILD_SUBJECT') ?? readGitSubject() ?? '';
+const buildSha = readOptionalEnv('NEXT_PUBLIC_BUILD_SHA') ?? readBuildShaEnv() ?? readGitSha() ?? 'local';
+const buildSubject = readSubjectEnv() ?? readGitSubject() ?? '';
 const buildTime = readOptionalEnv('NEXT_PUBLIC_BUILD_TIME') ?? new Date().toISOString();
 
 /** @type {import('next').NextConfig} */
@@ -40,6 +40,45 @@ function readOptionalEnv(name) {
   const normalized = value.trim();
 
   return normalized.length > 0 ? normalized : null;
+}
+
+function readBuildShaEnv() {
+  return readFirstOptionalEnv([
+    'VERCEL_GIT_COMMIT_SHA',
+    'GITHUB_SHA',
+    'CF_PAGES_COMMIT_SHA',
+    'RENDER_GIT_COMMIT',
+  ]);
+}
+
+function readSubjectEnv() {
+  return readSubjectFromEnv('NEXT_PUBLIC_BUILD_SUBJECT')
+    ?? readSubjectFromEnv('VERCEL_GIT_COMMIT_MESSAGE')
+    ?? readSubjectFromEnv('GITHUB_COMMIT_MESSAGE')
+    ?? readSubjectFromEnv('COMMIT_MESSAGE')
+    ?? readSubjectFromEnv('SOURCE_COMMIT_MESSAGE');
+}
+
+function readFirstOptionalEnv(names) {
+  for (const name of names) {
+    const value = readOptionalEnv(name);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function readSubjectFromEnv(name) {
+  const value = readOptionalEnv(name);
+
+  if (!value) {
+    return null;
+  }
+
+  return value.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? null;
 }
 
 function readGitSha() {
