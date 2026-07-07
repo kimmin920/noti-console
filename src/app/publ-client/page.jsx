@@ -3,6 +3,7 @@ import {
   DEFAULT_CONSOLE_PAGE_ID,
   normalizeConsolePageId,
 } from '@/features/console/routing.js';
+import { resolvePublPappClientConfigResult } from '@/server/publPapp/clientConfig.js';
 
 export const metadata = {
   title: 'Publ Client',
@@ -11,8 +12,15 @@ export const metadata = {
 
 export default async function PublClientPage({ searchParams }) {
   const params = await searchParams;
+  const clientConfigResult = resolvePublPappClientConfigResult();
 
-  return <PublClientBootstrap pageId={getPublClientPageId(params)} />;
+  return (
+    <PublClientBootstrap
+      clientConfig={clientConfigResult.ok ? clientConfigResult.config : null}
+      clientConfigError={clientConfigResult.ok ? '' : clientConfigResult.message}
+      pageId={getPublClientPageId(params)}
+    />
+  );
 }
 
 function getPublClientPageId(params) {

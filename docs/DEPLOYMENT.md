@@ -70,6 +70,14 @@ Use separate values for dev and prod. Start from `.env.example`.
 - `PUBL_PAPP_RELEASE_OUTGOING_SECRET_KEY`
 - `PUBL_PAPP_ACCESS_TOKEN_SECRET`
 - `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`
+- `PUBL_PAPP_CLIENT_STAGE`
+- `PUBL_PAPP_SDK_SRC`
+- `PUBL_PAPP_TEST_CLIENT_HASH`
+- `PUBL_PAPP_RELEASE_CLIENT_HASH`
+- `PUBL_PAPP_TEST_SELLER_INFO_PERMISSION_ID`
+- `PUBL_PAPP_TEST_MEMBER_CONTACTS_PERMISSION_ID`
+- `PUBL_PAPP_RELEASE_SELLER_INFO_PERMISSION_ID`
+- `PUBL_PAPP_RELEASE_MEMBER_CONTACTS_PERMISSION_ID`
 - `EVIDENCE_STORAGE_DRIVER`
 - `R2_ENDPOINT_URL`
 - `R2_ACCESS_KEY_ID`
@@ -91,18 +99,29 @@ Use the test pApp code `3RD_A00003_TEST` for dev and the release pApp code
 keys, and local token secrets only in server-side environment variables. Do not
 publish them through `NEXT_PUBLIC_*`.
 
+Client hash, SDK URL, and permission IDs are iframe client-visible
+configuration, not server secrets. They still live in Dokploy env so the server
+can choose the correct test/release values before rendering `/publ-client`.
+
 Deployment checklist:
 
 - Dev Dokploy app: set `PUBL_OPEN_API_WEBHOOK_SECRET`,
   `PUBL_PAPP_TEST_OUTGOING_API_KEY`,
   `PUBL_PAPP_TEST_OUTGOING_SECRET_KEY`, `PUBL_PAPP_ACCESS_TOKEN_SECRET`, and
-  `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`. `PUBL_PAPP_TEST_CODE` may stay at the
-  default `3RD_A00003_TEST`.
+  `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`. Also set
+  `PUBL_PAPP_CLIENT_STAGE=test`, `PUBL_PAPP_TEST_CLIENT_HASH`, and
+  `PUBL_PAPP_SDK_SRC=/vendor/publ-p-app-client-sdk.testflight.js` unless Publ
+  provides a hosted SDK URL. `PUBL_PAPP_TEST_CODE` may stay at the default
+  `3RD_A00003_TEST`.
 - Prod Dokploy app: set `PUBL_OPEN_API_WEBHOOK_SECRET`,
   `PUBL_PAPP_RELEASE_OUTGOING_API_KEY`,
   `PUBL_PAPP_RELEASE_OUTGOING_SECRET_KEY`, `PUBL_PAPP_ACCESS_TOKEN_SECRET`, and
-  `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`. `PUBL_PAPP_RELEASE_CODE` may stay at
-  the default `3RD_A00003`.
+  `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`. Also set
+  `PUBL_PAPP_CLIENT_STAGE=release`, `PUBL_PAPP_RELEASE_CLIENT_HASH`, and a
+  release-approved `PUBL_PAPP_SDK_SRC`. `PUBL_PAPP_RELEASE_CODE` may stay at the
+  default `3RD_A00003`.
+- Set seller-info and member-contacts permission ID env values only after Publ
+  confirms the stage-specific IDs granted to this PApp.
 - Keep Publ `incoming_api_key` and `incoming_secret_key` out of this deployment
   until a future Server-to-Publ-Server integration explicitly uses them.
 - Verify `/publ-client` is reachable from Publ's granted hosts and

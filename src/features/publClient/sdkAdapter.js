@@ -6,19 +6,25 @@ import {
 export const PUBL_CLIENT_ADAPTER_GLOBAL = '__VIZUO_PUBL_SDK_ADAPTER__';
 
 const PUBL_SDK_GLOBAL_CANDIDATES = [
+  'PAppClientSDK',
   '__VIZUO_PUBL_SDK__',
   'Publ',
   'PublSDK',
   'PublPApp',
   'publ',
   'publSdk',
-];
+].filter((value, index, list) => list.indexOf(value) === index);
 
-export function resolvePublSdkAdapter({ source = getGlobalSource() } = {}) {
+export function resolvePublSdkAdapter({ clientConfig = null, source = getGlobalSource() } = {}) {
   const injectedAdapter = normalizeDirectAdapter(source?.[PUBL_CLIENT_ADAPTER_GLOBAL]);
 
   if (injectedAdapter) {
     return injectedAdapter;
+  }
+
+  const officialAdapter = createPAppClientSdkAdapter(source?.PAppClientSDK, { clientConfig });
+  if (officialAdapter) {
+    return officialAdapter;
   }
 
   for (const key of PUBL_SDK_GLOBAL_CANDIDATES) {
@@ -32,7 +38,7 @@ export function resolvePublSdkAdapter({ source = getGlobalSource() } = {}) {
   return null;
 }
 
-export async function bootstrapPublClientSession({ adapter, storage } = {}) {
+export async function bootstrapPublClientSession({ adapter, clientConfig, storage } = {}) {
   if (!adapter) {
     return {
       ok: false,
@@ -43,8 +49,8 @@ export async function bootstrapPublClientSession({ adapter, storage } = {}) {
   }
 
   try {
-    await adapter.mount?.();
-    await adapter.authorize?.();
+    await adapter.mount?.(clientConfig);
+    await adapter.authorize?.(clientConfig?.authorizationPermissionIds ?? []);
 
     const tokens = getPublExchangeTokens(await adapter.exchangeToken());
     setPublClientTokens(tokens, { storage });
@@ -130,6 +136,38 @@ function createPublSdkAdapter(sdk) {
   };
 }
 
+function createPAppClientSdkAdapter(sdk, { clientConfig } = {}) {
+  if (!sdk || typeof sdk.create !== 'function') {
+    return null;
+  }
+
+  let client = null;
+
+  function getClient() {
+    if (!client) {
+      client = sdk.create('SELLER_SIDE');
+    }
+
+    return client;
+  }
+
+  return {
+    authorize: (permissionIds = clientConfig?.authorizationPermissionIds ?? []) =>
+      getClient().pipeline.authorize(permissionIds),
+    exchangeToken: () =>
+      getClient().pipeline.request(clientConfig?.permissions?.exchangeToken),
+    mount: (config = clientConfig) =>
+      getClient().mount({
+        clientHash: config?.clientHash,
+        pAppCode: config?.pAppCode,
+      }),
+    refreshToken: () =>
+      getClient().pipeline.request(clientConfig?.permissions?.refreshToken),
+    request: (permissionId, payload) =>
+      getClient().pipeline.request(permissionId, payload),
+  };
+}
+
 function normalizeDirectAdapter(adapter) {
   if (!adapter || typeof adapter !== 'object') {
     return null;
@@ -146,6 +184,9 @@ function normalizeDirectAdapter(adapter) {
     exchangeToken: () => adapter.exchangeToken.call(adapter),
     mount: typeof adapter.mount === 'function'
       ? () => adapter.mount.call(adapter)
+      : undefined,
+    request: typeof adapter.request === 'function'
+      ? (permissionId, payload) => adapter.request.call(adapter, permissionId, payload)
       : undefined,
     refreshToken: (payload) => adapter.refreshToken.call(adapter, payload),
   };
@@ -174,7 +215,15 @@ function getPublRefreshAccessToken(response) {
 }
 
 function getResponseData(response) {
-  return response?.data && typeof response.data === 'object' ? response.data : response;
+  if (response?.data && typeof response.data === 'object') {
+    return response.data;
+  }
+
+  if (response?.payload?.data && typeof response.payload.data === 'object') {
+    return response.payload.data;
+  }
+
+  return response;
 }
 
 function normalizeToken(value) {
