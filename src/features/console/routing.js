@@ -55,6 +55,32 @@ const CONSOLE_PAGE_IDS = new Set([
   'docs',
 ]);
 
+const CONSOLE_PATH_ROUTE_RULES = [
+  { pageId: DEFAULT_CONSOLE_PAGE_ID, pattern: /^\/message-send\/?$/ },
+  { pageId: 'automations', pattern: /^\/automations\/?$/ },
+  { pageId: 'automations-new', pattern: /^\/automations\/new\/?$/ },
+  { pageId: 'publ-event-new', pattern: /^\/automations\/publ-events\/new\/?$/ },
+  { pageId: 'publ-event-detail', pattern: /^\/automations\/publ-events\/[^/]+\/?$/ },
+  { pageId: 'automations-edit', pattern: /^\/automations\/[^/]+\/edit\/?$/ },
+  { pageId: 'automations-detail', pattern: /^\/automations\/[^/]+\/?$/ },
+  { pageId: 'templates', pattern: /^\/templates\/?$/ },
+  { pageId: 'templates-sms-new', pattern: /^\/templates\/sms\/new\/?$/ },
+  { pageId: 'templates-alimtalk-new', pattern: /^\/templates\/alimtalk\/new\/?$/ },
+  { pageId: 'templates-brand-new', pattern: /^\/templates\/brand\/new\/?$/ },
+  { pageId: 'templates-detail', pattern: /^\/templates\/[^/]+\/[^/]+\/?$/ },
+  { pageId: 'audience', pattern: /^\/audience\/?$/ },
+  { pageId: 'metrics', pattern: /^\/metrics\/?$/ },
+  { pageId: 'reservations', pattern: /^\/reservations\/?$/ },
+  { pageId: 'reservation-detail', pattern: /^\/reservations\/[^/]+\/?$/ },
+  { pageId: 'logs', pattern: /^\/logs\/?$/ },
+  { pageId: 'log-detail', pattern: /^\/logs\/[^/]+\/?$/ },
+  { pageId: 'settings', pattern: /^\/settings\/?$/ },
+  { pageId: 'settings-sender-sms-new', pattern: /^\/settings\/sender-resources\/sms\/new\/?$/ },
+  { pageId: 'settings-sender-kakao-new', pattern: /^\/settings\/sender-resources\/kakao\/new\/?$/ },
+  { pageId: 'admin-sender-resource-applications', pattern: /^\/admin\/sender-resource-applications\/?$/ },
+  { pageId: 'docs', pattern: /^\/docs\/?$/ },
+];
+
 export function normalizeConsolePageId(value) {
   if (value === 'message-send') {
     return DEFAULT_CONSOLE_PAGE_ID;
@@ -108,4 +134,13 @@ export function getConsolePagePath(pageId) {
 export function getConsolePageHref({ mode, pageId }) {
   const pathname = getConsolePagePath(pageId);
   return normalizeShellMode(mode) === 'embed' ? `${pathname}?mode=embed` : pathname;
+}
+
+export function getConsolePageIdFromPathname(pathname) {
+  if (typeof pathname !== 'string') {
+    return null;
+  }
+
+  const matchingRule = CONSOLE_PATH_ROUTE_RULES.find(({ pattern }) => pattern.test(pathname));
+  return matchingRule?.pageId ?? null;
 }

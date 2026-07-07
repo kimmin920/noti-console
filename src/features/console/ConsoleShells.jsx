@@ -32,7 +32,16 @@ const navAnimations = {
   admin: settingsAnimation,
 };
 
-export function AppShell({ activeMeta, activePage, docsHref, getPageHref, hideAccountControl, onDocs, pageProps }) {
+export function AppShell({
+  activeMeta,
+  activePage,
+  children,
+  docsHref,
+  getPageHref,
+  hideAccountControl,
+  onDocs,
+  pageProps,
+}) {
   const activeNavPage = getConsoleNavigationPageId(activePage);
 
   return (
@@ -45,14 +54,30 @@ export function AppShell({ activeMeta, activePage, docsHref, getPageHref, hideAc
       <div className="workspace">
         <Topbar docsHref={docsHref} getPageHref={getPageHref} />
         <main className="content">
-          <ConsolePages activePage={activePage} meta={activeMeta} onDocs={onDocs} pageProps={pageProps} />
+          <ConsoleShellContent
+            activeMeta={activeMeta}
+            activePage={activePage}
+            pageProps={pageProps}
+            onDocs={onDocs}
+          >
+            {children}
+          </ConsoleShellContent>
         </main>
       </div>
     </div>
   );
 }
 
-export function EmbedShell({ activeMeta, activePage, docsHref, getPageHref, hideAccountControl, onDocs, pageProps }) {
+export function EmbedShell({
+  activeMeta,
+  activePage,
+  children,
+  docsHref,
+  getPageHref,
+  hideAccountControl,
+  onDocs,
+  pageProps,
+}) {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const activeNavPage = getConsoleNavigationPageId(activePage);
 
@@ -70,10 +95,32 @@ export function EmbedShell({ activeMeta, activePage, docsHref, getPageHref, hide
       />
       <div className="workspace">
         <main className="content">
-          <ConsolePages activePage={activePage} meta={activeMeta} onDocs={onDocs} pageProps={pageProps} />
+          <ConsoleShellContent
+            activeMeta={activeMeta}
+            activePage={activePage}
+            pageProps={pageProps}
+            onDocs={onDocs}
+          >
+            {children}
+          </ConsoleShellContent>
         </main>
       </div>
     </div>
+  );
+}
+
+function ConsoleShellContent({ activeMeta, activePage, children, onDocs, pageProps }) {
+  if (children !== undefined) {
+    return children;
+  }
+
+  return (
+    <ConsolePages
+      activePage={activePage}
+      meta={activeMeta}
+      onDocs={onDocs}
+      pageProps={pageProps}
+    />
   );
 }
 
