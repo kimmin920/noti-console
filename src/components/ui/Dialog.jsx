@@ -39,6 +39,17 @@ function getFocusableControls(node) {
   );
 }
 
+function getMotionDurationMs(customProperty, fallbackMs) {
+  const rawValue = window.getComputedStyle(document.documentElement).getPropertyValue(customProperty).trim();
+  const parsedValue = Number.parseFloat(rawValue);
+
+  if (!Number.isFinite(parsedValue)) {
+    return fallbackMs;
+  }
+
+  return rawValue.endsWith('s') && !rawValue.endsWith('ms') ? parsedValue * 1000 : parsedValue;
+}
+
 export function Dialog({
   children,
   defaultOpen = false,
@@ -46,12 +57,16 @@ export function Dialog({
   open,
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const isControlled = open !== undefined;
+  const isOpen = isControlled ? open : uncontrolledOpen;
   const contentRef = useRef(null);
+  const presenceRef = useRef(isOpen ? 'closed' : 'unmounted');
   const [triggerNode, setTriggerNode] = useState(null);
   const titleId = useId();
   const descriptionId = useId();
-  const isControlled = open !== undefined;
-  const isOpen = isControlled ? open : uncontrolledOpen;
+  const [presenceState, setPresenceState] = useState(() => (isOpen ? 'closed' : 'unmounted'));
+  const isPresent = presenceState !== 'unmounted';
+  const motionState = presenceState === 'open' ? 'open' : 'closed';
 
   const setOpen = useCallback((nextOpen) => {
     if (!isControlled) {
@@ -62,32 +77,82 @@ export function Dialog({
   }, [isControlled, onOpenChange]);
 
   useEffect(() => {
-    if (!isOpen) return undefined;
+    let frame = 0;
+    let openFrame = 0;
+    let timeout = 0;
 
-    const previousOverflow = document.body.style.overflow;
-    const returnFocusNode = triggerNode;
-    document.body.style.overflow = 'hidden';
+    if (isOpen) {
+      presenceRef.current = 'closed';
 
-    const frame = window.requestAnimationFrame(() => {
-      getFocusableControls(contentRef.current)[0]?.focus();
+      frame = window.requestAnimationFrame(() => {
+        setPresenceState('closed');
+
+        openFrame = window.requestAnimationFrame(() => {
+          presenceRef.current = 'open';
+          setPresenceState('open');
+        });
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frame);
+        window.cancelAnimationFrame(openFrame);
+      };
+    }
+
+    if (presenceRef.current === 'unmounted') {
+      return undefined;
+    }
+
+    presenceRef.current = 'closed';
+    frame = window.requestAnimationFrame(() => {
+      setPresenceState('closed');
+
+      timeout = window.setTimeout(() => {
+        if (presenceRef.current !== 'closed') return;
+        presenceRef.current = 'unmounted';
+        setPresenceState('unmounted');
+      }, getMotionDurationMs('--modal-close-dur', 150));
     });
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.cancelAnimationFrame(frame);
-      returnFocusNode?.focus();
+      window.clearTimeout(timeout);
     };
-  }, [isOpen, triggerNode]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isPresent) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isPresent]);
+
+  useEffect(() => {
+    if (!isOpen || presenceState !== 'open') return;
+
+    getFocusableControls(contentRef.current)[0]?.focus();
+  }, [isOpen, presenceState]);
+
+  useEffect(() => {
+    if (isPresent) return;
+
+    triggerNode?.focus();
+  }, [isPresent, triggerNode]);
 
   const value = useMemo(() => ({
     contentRef,
     descriptionId,
     isOpen,
+    isPresent,
+    motionState,
     setOpen,
     setTriggerNode,
     titleId,
     triggerNode,
-  }), [descriptionId, isOpen, setOpen, titleId, triggerNode]);
+  }), [descriptionId, isOpen, isPresent, motionState, setOpen, titleId, triggerNode]);
 
   return (
     <DialogContext.Provider value={value}>
@@ -139,17 +204,25 @@ export function DialogContent({
   size = 'medium',
   ...props
 }) {
-  const { contentRef, descriptionId, isOpen, setOpen, titleId } = useDialogContext('DialogContent');
+  const {
+    contentRef,
+    descriptionId,
+    isPresent,
+    motionState,
+    setOpen,
+    titleId,
+  } = useDialogContext('DialogContent');
 
-  if (!isOpen) {
+  if (!isPresent) {
     return null;
   }
 
   return createPortal(
-    <div className="dialog-layer">
+    <div className="dialog-layer" data-state={motionState}>
       <button
         aria-label="닫기"
         className="dialog-backdrop"
+        data-state={motionState}
         onClick={() => setOpen(false)}
         type="button"
       />
@@ -157,7 +230,8 @@ export function DialogContent({
         aria-describedby={descriptionId}
         aria-labelledby={titleId}
         aria-modal="true"
-        className={['dialog-content', `dialog-${size}`, className].filter(Boolean).join(' ')}
+        className={['dialog-content', 't-modal', `dialog-${size}`, className].filter(Boolean).join(' ')}
+        data-state={motionState}
         onKeyDown={(event) => {
           const controls = getFocusableControls(contentRef.current);
           const currentIndex = controls.indexOf(document.activeElement);

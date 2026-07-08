@@ -152,12 +152,14 @@ All spacing derives from a 4px base.
 | --- | --- | --- | --- |
 | Micro | 120-160ms | ease | Button hover, color shifts |
 | Standard | 180-240ms | ease-in-out | Disclosures and local panel changes |
+| Dialog overlay | `--modal-open-dur` 200ms / `--modal-close-dur` 150ms | `--modal-ease` | Modal open and close transitions |
 
 ### Rules
 
 - Animate only `transform`, `opacity`, or color/background changes.
 - Every interactive control needs hover, active, focus, disabled, and invalid states where applicable.
 - Respect reduced motion for nonessential transitions.
+- Dialog motion uses `--modal-scale`, `--modal-scale-close`, and `--modal-y` with `data-state` so close transitions complete before unmount.
 
 ## 7. Depth & Surface
 

@@ -25,6 +25,12 @@
   --layer-toast: 100;
   --layer-tooltip: 110;
   --font-heading: var(--font-sans);
+  --modal-open-dur: 200ms;
+  --modal-close-dur: 150ms;
+  --modal-scale: 0.985;
+  --modal-scale-close: 0.985;
+  --modal-y: 6px;
+  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 button,
@@ -2229,6 +2235,11 @@ button {
   display: grid;
   place-items: center;
   padding: 24px;
+  pointer-events: none;
+}
+
+.dialog-layer[data-state="open"] {
+  pointer-events: auto;
 }
 
 .dialog-backdrop {
@@ -2236,7 +2247,17 @@ button {
   inset: 0;
   border: 0;
   background: rgba(0, 0, 0, 0.32);
-  animation: dialog-backdrop-in 150ms ease-out;
+  opacity: 0;
+  transition: opacity var(--modal-open-dur) var(--modal-ease);
+}
+
+.dialog-backdrop[data-state="open"] {
+  opacity: 1;
+}
+
+.dialog-backdrop[data-state="closed"] {
+  opacity: 0;
+  transition-duration: var(--modal-close-dur);
 }
 
 .dialog-content {
@@ -2254,29 +2275,28 @@ button {
   outline: 0;
   box-shadow: 0 24px 68px rgba(0, 0, 0, 0.22);
   transform-origin: center top;
-  animation: dialog-content-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translateY(var(--modal-y)) scale(var(--modal-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-open-dur) var(--modal-ease),
+    opacity var(--modal-open-dur) var(--modal-ease);
+  will-change: transform, opacity;
 }
 
-@keyframes dialog-backdrop-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+.dialog-content[data-state="open"] {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: auto;
 }
 
-@keyframes dialog-content-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.985);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.dialog-content[data-state="closed"] {
+  transform: translateY(var(--modal-y)) scale(var(--modal-scale-close));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-close-dur) var(--modal-ease),
+    opacity var(--modal-close-dur) var(--modal-ease);
 }
 
 .dialog-small {
@@ -9240,19 +9260,15 @@ body.is-brand-message-button-dragging {
   max-height: none;
   border: 0;
   border-radius: 0;
-  animation: email-send-form-template-dialog-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translateY(10px);
 }
 
-@keyframes email-send-form-template-dialog-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
+.dialog-content.email-send-form-template-dialog[data-state="open"] {
+  transform: translateY(0);
+}
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.dialog-content.email-send-form-template-dialog[data-state="closed"] {
+  transform: translateY(10px);
 }
 
 .email-send-form-template-dialog-description {
@@ -16425,12 +16441,18 @@ body.is-brand-message-button-dragging {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --modal-open-dur: 0ms;
+    --modal-close-dur: 0ms;
+  }
+
   .dropdown-menu-content,
   .dialog-backdrop,
   .dialog-content,
   .dialog-content.email-send-form-template-dialog,
   .email-send-form-disclosure {
     animation: none;
+    transition: none !important;
   }
 
   .dropdown-menu-item {
