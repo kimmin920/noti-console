@@ -2,12 +2,15 @@ const DEFAULT_APP_VERSION = '0.0.0';
 const LOCAL_BUILD_SHA = 'local';
 const UNKNOWN_BUILD_SUBJECT = '작업 설명 없음';
 const UNKNOWN_BUILD_SHA_VALUES = new Set(['', 'unknown', 'undefined', 'null', 'local']);
-const KST_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+const KST_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
   hour: '2-digit',
   hourCycle: 'h23',
   minute: '2-digit',
+  month: '2-digit',
   second: '2-digit',
   timeZone: 'Asia/Seoul',
+  year: 'numeric',
 });
 
 const defaultBuildEnv = {
@@ -83,7 +86,7 @@ export function formatBuildTime(value) {
     return normalized;
   }
 
-  return `${formatKstTime(date)} KST`;
+  return `${formatKstDateTime(date)} KST`;
 }
 
 function readOptionalEnv(env, key) {
@@ -100,9 +103,9 @@ function normalizeText(value) {
   return normalized.length > 0 ? normalized : null;
 }
 
-function formatKstTime(date) {
-  const parts = KST_TIME_FORMATTER.formatToParts(date);
+function formatKstDateTime(date) {
+  const parts = KST_DATE_TIME_FORMATTER.formatToParts(date);
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
 
-  return `${values.hour}:${values.minute}:${values.second}`;
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
 }
