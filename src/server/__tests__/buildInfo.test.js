@@ -41,11 +41,11 @@ describe('build info', () => {
       version: '1.2.3',
     });
 
-    expect(title).toBe('Version 1.2.3, build 2d72c0e9, commit feat: format build time in KST, built 14:49:56 KST');
+    expect(title).toBe('Version 1.2.3, build 2d72c0e9, commit feat: format build time in KST, built 2026-07-07 14:49:56 KST');
   });
 
-  it('formats build time as KST time only', () => {
-    expect(formatBuildTime('2026-07-07T08:44:55.682Z')).toBe('17:44:55 KST');
+  it('formats build time as KST date and time', () => {
+    expect(formatBuildTime('2026-07-07T08:44:55.682Z')).toBe('2026-07-07 17:44:55 KST');
   });
 
   it('keeps non-hash build identifiers readable', () => {
