@@ -6,6 +6,10 @@ on:
       - dev
   workflow_dispatch:
 
+concurrency:
+  group: docker-dev-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
@@ -79,6 +83,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push application image
+        id: build_application_image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -99,6 +104,7 @@ jobs:
             NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ steps.build-values.outputs.clerk_sign_up_url }}
 
       - name: Build and push migration image
+        id: build_migration_image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -124,3 +130,47 @@ jobs:
           GHCR_DEV_PACKAGES: noti-console,noti-console-migrate
           GHCR_DEV_SHA_KEEP: "3"
         run: node .github/scripts/prune-ghcr-dev-images.mjs
+
+      - name: Trigger Dokploy dev redeploy
+        env:
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_API_URL: ${{ vars.DOKPLOY_API_URL }}
+          DOKPLOY_DEV_COMPOSE_ID: ${{ vars.DOKPLOY_DEV_COMPOSE_ID }}
+        run: |
+          set -euo pipefail
+
+          missing=0
+          require_value() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "::error title=Missing Dokploy deploy value::${name} is required to deploy noti-console-dev after the image build."
+              missing=1
+            fi
+          }
+
+          require_value "vars.DOKPLOY_API_URL" "$DOKPLOY_API_URL"
+          require_value "vars.DOKPLOY_DEV_COMPOSE_ID" "$DOKPLOY_DEV_COMPOSE_ID"
+          require_value "secrets.DOKPLOY_API_KEY" "$DOKPLOY_API_KEY"
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "Triggering noti-console-dev after GHCR images are available."
+          echo "Application image digest: ${{ steps.build_application_image.outputs.digest }}"
+          echo "Migration image digest: ${{ steps.build_migration_image.outputs.digest }}"
+
+          curl \
+            --fail-with-body \
+            --retry 3 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --show-error \
+            --silent \
+            --header "accept: application/json" \
+            --header "content-type: application/json" \
+            --header "x-api-key: $DOKPLOY_API_KEY" \
+            --request POST \
+            --data "{\"composeId\":\"$DOKPLOY_DEV_COMPOSE_ID\"}" \
+            "$DOKPLOY_API_URL/api/compose.deploy"
