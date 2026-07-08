@@ -46,12 +46,12 @@ describe('proxy auth context contract', () => {
     vi.resetModules();
   });
 
-  it('keeps public routes outside Clerk middleware', async () => {
+  it.each(['/', '/sign-in', '/sign-up'])('passes public auth route %s through Clerk context without protection', async (path) => {
     const proxy = await loadProxy();
-    const response = await proxy(new Request('http://localhost:3000/'), {});
+    const response = await proxy(new Request(`http://localhost:3000${path}`), {});
 
     expect(response).toEqual({ type: 'next' });
-    expect(proxyMocks.clerkInvocations).toEqual([]);
+    expect(proxyMocks.clerkInvocations).toEqual([path]);
     expect(proxyMocks.protectCalls).toEqual([]);
   });
 

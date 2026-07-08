@@ -1,17 +1,27 @@
 import { SignUp } from '@clerk/nextjs';
 
-export default function SignUpPage() {
+import { AuthPageShell, clerkAuthAppearance } from '../../AuthPageShell.jsx';
+import { redirectSignedInUser } from '../../redirectSignedInUser.js';
+
+export const metadata = {
+  title: '회원가입 - NOTI',
+  description: 'NOTI 메시징 콘솔을 시작합니다.',
+};
+
+export default async function SignUpPage() {
+  await redirectSignedInUser('/message-send');
+
   return (
-    <main style={authPageStyle}>
-      <SignUp />
-    </main>
+    <AuthPageShell>
+      <SignUp
+        appearance={clerkAuthAppearance}
+        fallbackRedirectUrl="/message-send"
+        forceRedirectUrl="/message-send"
+        path="/sign-up"
+        routing="path"
+        signInFallbackRedirectUrl="/message-send"
+        signInUrl="/sign-in"
+      />
+    </AuthPageShell>
   );
 }
-
-const authPageStyle = {
-  minHeight: '100vh',
-  display: 'grid',
-  placeItems: 'center',
-  padding: '32px 16px',
-  background: '#f7f7f8',
-};

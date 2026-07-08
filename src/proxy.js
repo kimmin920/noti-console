@@ -3,10 +3,12 @@ import { NextResponse } from 'next/server';
 
 import { hasDevBrowserAuthBypass } from './server/auth/devAuth.js';
 
-const isPublicRoute = createRouteMatcher([
+const isPublicAuthRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
+]);
+const isPublicRoute = createRouteMatcher([
   '/__clerk(.*)',
   '/publ-client(.*)',
   '/integrations/exchange-token',
@@ -16,12 +18,17 @@ const isDomainDetailRoute = createRouteMatcher(['/domain-detail']);
 const isRelayApiRoute = createRouteMatcher(['/api(.*)']);
 const isPlaygroundRoute = createRouteMatcher(['/playground(.*)']);
 
+const publicAuthRouteProxy = clerkMiddleware(() => NextResponse.next());
 const relayApiRouteProxy = clerkMiddleware(() => NextResponse.next());
 const protectedRouteProxy = clerkMiddleware(async (auth) => {
   await auth.protect();
 });
 
 export default function proxy(request, event) {
+  if (isPublicAuthRoute(request)) {
+    return publicAuthRouteProxy(request, event);
+  }
+
   if (
     isPublicRoute(request)
     || (process.env.NODE_ENV !== 'production' && (isPlaygroundRoute(request) || isDomainDetailRoute(request)))

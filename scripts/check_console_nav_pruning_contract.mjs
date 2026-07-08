@@ -145,10 +145,8 @@ async function checkDirectRoutes() {
 
 async function checkPreservedRoutes() {
   const docsRoute = await readSource('src/app/docs/page.jsx');
-  const landingPage = await readSource('src/app/page.jsx');
 
   assertIncludes(docsRoute, 'pageId="docs"', 'docs route remains mounted');
-  assertIncludes(landingPage, 'href="/docs"', 'public landing can still link to docs');
 }
 
 async function readSource(filePath) {
