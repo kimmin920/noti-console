@@ -93,6 +93,42 @@ image pulls. After that switch, the VPS must not run `next build`; builds must
 happen in GitHub Actions and deployment should only pull the already-built
 images.
 
+## Dev Deploy Trigger
+
+After the dev app uses GHCR image pulls, do not rely on Dokploy's GitHub
+auto-deploy trigger or the Dokploy deploy webhook for `noti-console-dev`. A
+GitHub push can reach Dokploy before the GitHub Actions image build has pushed
+the new `:dev` tags, causing Dokploy to redeploy the previous image
+successfully. Dokploy also rejects deploy webhook requests when the service's
+auto deploy toggle is disabled.
+
+Use the image workflow as the single dev deploy trigger through the Dokploy API:
+
+1. In Dokploy, open `noti-console-dev`, turn off the `Toggle autodeploy` switch,
+   and keep the service connected to the `dev` branch.
+2. Generate a Dokploy API key from the profile/API settings.
+3. Add these GitHub Actions values:
+   - Secret: `DOKPLOY_API_KEY`
+   - Variable: `DOKPLOY_API_URL=https://dokploy.vizuo.work`
+   - Variable: `DOKPLOY_DEV_COMPOSE_ID=<noti-console-dev compose id>`
+4. Let `.github/workflows/docker-dev.yml` trigger
+   `POST /api/compose.deploy` after both GHCR images are pushed and old dev
+   image versions are pruned.
+
+The dev image workflow is serialized per branch. If a newer `dev` image build
+starts, GitHub Actions cancels the older in-progress run so an older workflow
+cannot push or deploy a stale `:dev` tag after the newer run.
+
+If the workflow fails with a missing Dokploy deploy value error, set the missing
+GitHub secret or variable and re-run the latest `Build dev Docker images`
+workflow for `dev`. If Dokploy deploys but `noti-dev` still shows an old build
+timestamp, check the Dokploy deployment logs for GHCR pull/auth failures and
+verify the running container image with:
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+```
+
 ## Dev Image-Based Dokploy Rollout
 
 After phase 61, `docker-compose.yml` is the Dokploy runtime Compose file. It
