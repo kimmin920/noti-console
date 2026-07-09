@@ -3,12 +3,29 @@ import { readFile } from 'node:fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authMocks = vi.hoisted(() => ({
+  devAuthEnabled: false,
+  devCookieValue: null,
   redirectCalls: [],
   userId: null,
 }));
 
 vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(async () => ({ userId: authMocks.userId })),
+}));
+
+vi.mock('@/server/auth/devAuth.js', () => ({
+  DEV_BROWSER_AUTH_USER_ID_COOKIE: '__dev_auth_user_id',
+  isDevBrowserAuthBypassEnabled: vi.fn(() => authMocks.devAuthEnabled),
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(async () => ({
+    get: vi.fn((name) => (
+      name === '__dev_auth_user_id' && authMocks.devCookieValue
+        ? { value: authMocks.devCookieValue }
+        : undefined
+    )),
+  })),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -20,6 +37,8 @@ vi.mock('next/navigation', () => ({
 
 describe('public auth page redirect contract', () => {
   beforeEach(() => {
+    authMocks.devAuthEnabled = false;
+    authMocks.devCookieValue = null;
     authMocks.redirectCalls.length = 0;
     authMocks.userId = null;
     vi.resetModules();
@@ -47,6 +66,16 @@ describe('public auth page redirect contract', () => {
     expect(authMocks.redirectCalls).toEqual([]);
 
     authMocks.userId = 'user_123';
+    await expect(redirectSignedInUser('/message-send')).rejects.toThrow('NEXT_REDIRECT');
+    expect(authMocks.redirectCalls).toEqual(['/message-send']);
+  });
+
+  it('treats an enabled dev auth browser cookie as signed in for local auth-page redirects', async () => {
+    const { redirectSignedInUser } = await import('../../app/redirectSignedInUser.js');
+
+    authMocks.devAuthEnabled = true;
+    authMocks.devCookieValue = 'operator_1';
+
     await expect(redirectSignedInUser('/message-send')).rejects.toThrow('NEXT_REDIRECT');
     expect(authMocks.redirectCalls).toEqual(['/message-send']);
   });
