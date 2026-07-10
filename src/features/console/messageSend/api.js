@@ -5,6 +5,7 @@ import {
   refreshPublClientAccessToken,
 } from '../../publClient/authToken.js';
 import {
+  createPublClientRuntimeStorage,
   getIdentity,
   isActiveForPath,
   isPublClientRuntimeGenerationActive,
@@ -177,11 +178,20 @@ async function refreshPublAccessTokenSafely() {
   const identity = getIdentity();
   if (!identity) return null;
 
-  if (publRefreshInFlight?.generation === identity.generation) {
+  if (
+    publRefreshInFlight?.generation === identity.generation
+    && publRefreshInFlight.identityKey === identity.identityKey
+  ) {
     return publRefreshInFlight.promise;
   }
 
-  const promise = refreshPublClientAccessToken()
+  const runtimeStorage = createPublClientRuntimeStorage({ identity });
+  const promise = refreshPublClientAccessToken({
+    storage: runtimeStorage,
+  })
+    .then((accessToken) => (
+      runtimeStorage.isActive() ? accessToken : null
+    ))
     .finally(() => {
       setTimeout(() => {
         if (publRefreshInFlight?.promise === promise) {
@@ -191,6 +201,7 @@ async function refreshPublAccessTokenSafely() {
     });
   publRefreshInFlight = {
     generation: identity.generation,
+    identityKey: identity.identityKey,
     promise,
   };
 

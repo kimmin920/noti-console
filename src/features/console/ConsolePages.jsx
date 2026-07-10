@@ -157,6 +157,7 @@ import { useMessageLogsExportMutation } from './messageLogs/mutations.js';
 import { useMessageLogGroupsQuery } from './messageLogs/queries.js';
 import { messageLogQueryKeys } from './messageLogs/queryKeys.js';
 import { MessageLogGroupDetailPage } from './messageLogs/MessageLogGroupDetailPage.jsx';
+import { MessageLogsExportAction } from './messageLogs/MessageLogsExportAction.jsx';
 import { MessageReservationsPage } from './messageReservations/MessageReservationsPage.jsx';
 import { MessageReservationDetailPage } from './messageReservations/MessageReservationDetailPage.jsx';
 import { MetricsPage } from './metrics/MetricsPage.jsx';
@@ -1439,16 +1440,12 @@ function MessageLogsPage() {
           <RefreshCcw aria-hidden="true" size={15} />
           새로고침
         </Button>
-        {publClient.isPublEmbed ? null : (
-          <Button
-            disabled={filters.demoCases || exportMutation.isPending}
-            onClick={exportLogs}
-            variant="secondary"
-          >
-            <Download aria-hidden="true" size={15} />
-            {exportMutation.isPending ? '내보내는 중…' : 'CSV 내보내기'}
-          </Button>
-        )}
+        <MessageLogsExportAction
+          disabled={filters.demoCases}
+          isPending={exportMutation.isPending}
+          isPublEmbed={publClient.isPublEmbed}
+          onExport={exportLogs}
+        />
       </div>
 
       {groupsQuery.isError ? (

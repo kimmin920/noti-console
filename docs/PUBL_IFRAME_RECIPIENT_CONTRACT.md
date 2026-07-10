@@ -16,9 +16,14 @@ verification.
 
 - The first valid iframe entry mounts and authorizes the SDK, exchanges tokens,
   and stores access and refresh tokens in `sessionStorage`.
-- Same-document `/publ-client?page=...` navigation stays inside the persistent
-  Publ session boundary and reuses the in-memory runtime without another
-  exchange.
+- Same-document pathname navigation such as `/publ-client/logs`,
+  `/publ-client/reservations/reservation-1`, and
+  `/publ-client/templates/sms/TPL-1` stays inside the persistent Publ session
+  boundary and reuses the in-memory runtime without another exchange.
+- The pathname determines route identity. Query parameters are reserved for
+  filters, pagination, tabs, and route-specific context, for example
+  `/publ-client/logs?channel=sms&page=2`; a `page` query parameter never selects
+  a console route.
 - A fresh JavaScript document never treats existing `sessionStorage` tokens as a
   resumable session. It clears stale local tokens, mounts and authorizes the SDK,
   and exchanges again so runtime identity and cache ownership are fresh.

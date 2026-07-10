@@ -1,14 +1,18 @@
-import { readFileSync } from 'node:fs';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import PublClientLayout from '../../app/publ-client/layout.jsx';
+import PublClientCatchAllPage from '../../app/publ-client/[[...path]]/page.jsx';
+import { PublClientBootstrap } from '../../features/publClient/PublClientBootstrap.jsx';
+import { PublClientRouteEntry } from '../../features/publClient/PublClientRouteEntry.jsx';
 import {
   activatePublClientRuntime,
   getIdentity,
+  getPublClientRuntimeGeneration,
   resetPublClientRuntime,
 } from '../../features/publClient/runtimeSession.js';
 import {
   clearPublClientRefreshTokenHandler,
+  getPublClientTokens,
   PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY,
   PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY,
   registerPublClientRefreshTokenHandler,
@@ -73,26 +77,70 @@ describe('Publ client fresh document session identity', () => {
     );
   });
 
-  it('keeps the Publ session boundary behind the catch-all route gate', () => {
-    const layoutSource = readFileSync(
-      new URL('../../app/publ-client/layout.jsx', import.meta.url),
-      'utf8'
-    );
-    const pageSource = readFileSync(
-      new URL('../../app/publ-client/[[...path]]/page.jsx', import.meta.url),
-      'utf8'
-    );
-    const routeEntrySource = readFileSync(
-      new URL('../../features/publClient/PublClientRouteEntry.jsx', import.meta.url),
-      'utf8'
-    );
+  it('renders changing catch-all routes inside one layout-owned session boundary', async () => {
+    const messageSendPage = await renderCatchAllPage(['message-send']);
+    const logDetailPage = await renderCatchAllPage(['logs', 'group-1']);
+    const layout = await PublClientLayout({ children: messageSendPage });
 
-    expect(layoutSource).not.toContain('PublClientBootstrap');
-    expect(pageSource).toContain('PublClientRouteEntry');
-    expect(routeEntrySource).toContain('PublClientBootstrap');
-    expect(routeEntrySource).toContain('PublClientConsole');
+    expect(layout.type).toBe(PublClientBootstrap);
+    expect(layout.props.children).toBe(messageSendPage);
+    expect(messageSendPage.type).toBe(PublClientRouteEntry);
+    expect(logDetailPage.type).toBe(PublClientRouteEntry);
+    expect(messageSendPage.props).toEqual({
+      routeResult: expect.objectContaining({ ok: true, pageId: 'emails' }),
+    });
+    expect(logDetailPage.props).toEqual({
+      routeResult: expect.objectContaining({
+        ok: true,
+        pageId: 'log-detail',
+        pageProps: { logDetail: { groupId: 'group-1' } },
+      }),
+    });
+  });
+
+  it('retains the runtime generation and exchanged token pair across nested paths', () => {
+    const iframeWindow = stubPublIframeWindow('/publ-client/message-send');
+    const accessToken = createAccessToken();
+    const storage = createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: accessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+    });
+    vi.stubGlobal('sessionStorage', storage);
+    registerPublClientRefreshTokenHandler(async () => 'unused');
+
+    expect(activatePublClientRuntime({ originPolicyConfigured: true })).toBe(true);
+    const generation = getPublClientRuntimeGeneration();
+    const tokens = getPublClientTokens();
+
+    iframeWindow.location.pathname = '/publ-client/logs/group-1';
+
+    expect(getIdentity()).toMatchObject({ generation });
+    expect(getPublClientRuntimeGeneration()).toBe(generation);
+    expect(getPublClientTokens()).toEqual(tokens);
+  });
+
+  it('deactivates an existing runtime when the document is no longer framed', () => {
+    const iframeWindow = stubPublIframeWindow('/publ-client/message-send');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: createAccessToken(),
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+    }));
+    registerPublClientRefreshTokenHandler(async () => 'unused');
+
+    expect(activatePublClientRuntime({ originPolicyConfigured: true })).toBe(true);
+    iframeWindow.top = iframeWindow;
+
+    expect(getIdentity()).toBeNull();
+    expect(getPublClientRuntimeGeneration()).toBeNull();
   });
 });
+
+function renderCatchAllPage(path) {
+  return PublClientCatchAllPage({
+    params: Promise.resolve({ path }),
+    searchParams: Promise.resolve({}),
+  });
+}
 
 function stubPublIframeWindow(pathname = '/publ-client') {
   const iframeWindow = {};

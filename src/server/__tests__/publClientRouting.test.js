@@ -4,12 +4,23 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { PublClientInvalidRouteView } from '../../features/publClient/PublClientRouteEntry.jsx';
+import PublClientCatchAllPage from '../../app/publ-client/[[...path]]/page.jsx';
 import {
   matchPublClientPath,
   getPublStandaloneHref,
 } from '../../features/console/routing.js';
 
 describe('Publ client canonical routing', () => {
+  const malformedPublPathCases = [
+    ['empty value', ''],
+    ['external URL', 'https://evil.example'],
+    ['decoded backslash', '/publ-client/logs/group\\1'],
+    ['invalid percent escape', '/publ-client/logs/group%'],
+    ['non-hex percent escape', '/publ-client/logs/group%ZZ'],
+    ['invalid UTF-8 escape', '/publ-client/logs/%E0%A4%A'],
+    ['encoded slash', '/publ-client/logs/group%2F1'],
+  ];
+
   it('strips a valid top-level Publ path to the matching standalone URL with query intact', () => {
     const routeResult = matchPublClientPath('/publ-client/logs/group-1?channel=sms&page=2');
 
@@ -36,6 +47,33 @@ describe('Publ client canonical routing', () => {
         pageId: null,
       });
     }
+  });
+
+  it.each(malformedPublPathCases)(
+    'fails closed for %s instead of defaulting to message send',
+    (_label, pathname) => {
+      expect(matchPublClientPath(pathname)).toMatchObject({
+        canonicalPathname: '',
+        ok: false,
+        pageId: null,
+      });
+    }
+  );
+
+  it.each([
+    ['decoded backslash', ['logs', 'group\\1']],
+    ['decoded slash', ['logs', 'group/1']],
+  ])('keeps a catch-all %s on the controlled invalid route', async (_label, path) => {
+    const result = await PublClientCatchAllPage({
+      params: Promise.resolve({ path }),
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(result.props.routeResult).toMatchObject({
+      canonicalPathname: '',
+      ok: false,
+      pageId: null,
+    });
   });
 
   it('renders a controlled invalid-route view without login controls', () => {

@@ -3,10 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { relayGet } from '../../features/console/messageSend/api.js';
 import {
   activatePublClientRuntime,
+  getIdentity,
+  getPublClientRuntimeGeneration,
   resetPublClientRuntime,
 } from '../../features/publClient/runtimeSession.js';
 import {
   clearPublClientRefreshTokenHandler,
+  getPublClientTokens,
   PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY,
   PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY,
   registerPublClientRefreshTokenHandler,
@@ -169,6 +172,140 @@ describe('Publ client relay fetch auth header', () => {
     }));
 
     await expect(request).rejects.toMatchObject({ code: 'STALE_PUBL_RUNTIME' });
+  });
+
+  it('does not apply a stale refresh success after the active identity changes', async () => {
+    const refreshStarted = createDeferred();
+    const refreshResult = createDeferred();
+    const fetchMock = vi.fn(async () => createUnauthorizedResponse());
+    const merchantAAccessToken = createAccessToken({ consumerId: 'merchant_a' });
+    const merchantBAccessToken = createAccessToken({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: merchantAAccessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token-a',
+    }));
+    registerPublClientRefreshTokenHandler(async () => {
+      refreshStarted.resolve();
+      return refreshResult.promise;
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const request = relayGet('/api/me');
+    await refreshStarted.promise;
+
+    setPublClientTokens({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const merchantBGeneration = getPublClientRuntimeGeneration();
+    refreshResult.resolve(createAccessToken({ consumerId: 'merchant_a', jti: 'refreshed-a' }));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getPublClientTokens()).toEqual({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    expect(getIdentity()).toMatchObject({
+      consumerId: 'merchant_b',
+      generation: merchantBGeneration,
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+  });
+
+  it('does not overwrite a newer token pair staged before its runtime activation', async () => {
+    const refreshStarted = createDeferred();
+    const refreshResult = createDeferred();
+    const fetchMock = vi.fn(async () => createUnauthorizedResponse());
+    const merchantAAccessToken = createAccessToken({ consumerId: 'merchant_a' });
+    const merchantBAccessToken = createAccessToken({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: merchantAAccessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token-a',
+    }));
+    registerPublClientRefreshTokenHandler(async () => {
+      refreshStarted.resolve();
+      return refreshResult.promise;
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const request = relayGet('/api/me');
+    await refreshStarted.promise;
+
+    setPublClientTokens({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    refreshResult.resolve(createAccessToken({ consumerId: 'merchant_a', jti: 'refreshed-a' }));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getPublClientTokens()).toEqual({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    expect(activatePublClientRuntime({ originPolicyConfigured: true })).toBe(true);
+    expect(getIdentity()).toMatchObject({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+  });
+
+  it('does not apply stale refresh failure cleanup after the active identity changes', async () => {
+    const refreshStarted = createDeferred();
+    const refreshResult = createDeferred();
+    const merchantAAccessToken = createAccessToken({ consumerId: 'merchant_a' });
+    const merchantBAccessToken = createAccessToken({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => createUnauthorizedResponse()));
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: merchantAAccessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token-a',
+    }));
+    registerPublClientRefreshTokenHandler(async () => {
+      refreshStarted.resolve();
+      return refreshResult.promise;
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const request = relayGet('/api/me');
+    await refreshStarted.promise;
+
+    setPublClientTokens({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const merchantBGeneration = getPublClientRuntimeGeneration();
+    refreshResult.reject(new Error('merchant A refresh failed'));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(getPublClientTokens()).toEqual({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    expect(getIdentity()).toMatchObject({
+      consumerId: 'merchant_b',
+      generation: merchantBGeneration,
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
   });
 
   it('does not attach stale Publ tokens from a framed standalone route', async () => {

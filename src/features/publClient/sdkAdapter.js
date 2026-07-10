@@ -5,6 +5,14 @@ import {
 
 export const PUBL_CLIENT_ADAPTER_GLOBAL = '__VIZUO_PUBL_SDK_ADAPTER__';
 
+export class PublClientAuthorizationError extends Error {
+  constructor() {
+    super('Publ SDK mandatory authorization was denied.');
+    this.name = 'PublClientAuthorizationError';
+    this.code = 'PUBL_CLIENT_AUTHORIZATION_DENIED';
+  }
+}
+
 const PUBL_SDK_GLOBAL_CANDIDATES = [
   'PAppClientSDK',
   '__VIZUO_PUBL_SDK__',
@@ -51,7 +59,10 @@ export async function bootstrapPublClientSession({ adapter, clientConfig, storag
   try {
     clearPublClientTokens({ storage });
     await adapter.mount?.(clientConfig);
-    await adapter.authorize?.(clientConfig?.bootstrapPermissionIds ?? []);
+    await assertMandatoryAuthorization(
+      adapter,
+      clientConfig?.bootstrapPermissionIds ?? []
+    );
 
     const tokens = getPublExchangeTokens(await adapter.exchangeToken());
     setPublClientTokens(tokens, { storage });
@@ -62,8 +73,18 @@ export async function bootstrapPublClientSession({ adapter, clientConfig, storag
       title: '연결되었습니다',
       message: '',
     };
-  } catch {
+  } catch (error) {
     clearPublClientTokens({ storage });
+
+    if (error instanceof PublClientAuthorizationError) {
+      return {
+        errorCode: error.code,
+        ok: false,
+        status: 'authorization-denied',
+        title: '필수 권한을 확인할 수 없습니다',
+        message: 'Publ 연결 권한을 확인한 뒤 다시 시도해 주세요.',
+      };
+    }
 
     return {
       ok: false,
@@ -78,25 +99,33 @@ export async function refreshPublClientSession({
   adapter,
   previousAccessToken,
   refreshToken,
+  shouldApplyResult = () => true,
   storage,
 } = {}) {
   if (!adapter) {
-    clearPublClientTokens({ storage });
+    if (shouldApplyResult()) {
+      clearPublClientTokens({ storage });
+    }
     throw new Error('Publ SDK adapter is unavailable.');
   }
 
   try {
-    await adapter.authorize?.();
+    if (!shouldApplyResult()) return null;
+    await assertMandatoryAuthorization(adapter);
+    if (!shouldApplyResult()) return null;
 
     const accessToken = getPublRefreshAccessToken(await adapter.refreshToken({
       previousAccessToken,
       refreshToken,
     }));
+    if (!shouldApplyResult()) return null;
 
     setPublClientTokens({ accessToken }, { storage });
     return accessToken;
   } catch (error) {
-    clearPublClientTokens({ storage });
+    if (shouldApplyResult()) {
+      clearPublClientTokens({ storage });
+    }
     throw error;
   }
 }
@@ -192,6 +221,35 @@ function getPublExchangeTokens(response) {
   }
 
   return { accessToken, refreshToken };
+}
+
+async function assertMandatoryAuthorization(adapter, permissionIds) {
+  if (typeof adapter?.authorize !== 'function') {
+    throw new PublClientAuthorizationError();
+  }
+
+  const response = await adapter.authorize(permissionIds);
+  if (!isPublAuthorizationGranted(response)) {
+    throw new PublClientAuthorizationError();
+  }
+}
+
+function isPublAuthorizationGranted(response) {
+  if (typeof response === 'boolean') return response;
+
+  const data = getResponseData(response);
+  const status = response?.status ?? response?.payload?.status ?? data?.status;
+  if (typeof status === 'string' && status.toUpperCase() !== 'OK') return false;
+
+  const authorizationFlags = [
+    response?.authorized,
+    response?.payload?.authorized,
+    data?.authorized,
+  ].filter((value) => typeof value === 'boolean');
+  if (authorizationFlags.includes(false)) return false;
+  if (authorizationFlags.includes(true)) return true;
+
+  return typeof status === 'string' && status.toUpperCase() === 'OK';
 }
 
 function getPublRefreshAccessToken(response) {

@@ -5,7 +5,23 @@ const JSON_HEADERS = {
 
 const apiResponses = [
   [/^\/api\/me$/u, { actor: { id: 'publ-user-e2e', source: 'publ' }, isOperator: false }],
-  [/^\/api\/sender-resources$/u, { applications: [], resources: [] }],
+  [/^\/api\/sender-resources$/u, {
+    applications: [],
+    resources: [
+      {
+        isDefault: true,
+        resource: {
+          displayName: 'E2E sender',
+          id: 'sender-1',
+          status: 'active',
+          type: 'sms_send_no',
+          value: '01000000000',
+        },
+        role: 'owner',
+        status: 'active',
+      },
+    ],
+  }],
   [/^\/api\/metrics\/summary/u, { cards: [], points: [] }],
   [/^\/api\/message-log-groups\/log-1/u, {
     group: {
@@ -53,7 +69,20 @@ const apiResponses = [
     hasNextPage: false,
     total: 1,
   }],
-  [/^\/api\/templates\/sms/u, { channel: 'sms', templates: [] }],
+  [/^\/api\/templates\/sms/u, {
+    channel: 'sms',
+    templates: [
+      {
+        body: 'E2E template body',
+        channel: 'sms',
+        id: 'template-1',
+        providerStatus: 'Y',
+        sendNo: '01000000000',
+        templateCode: 'TPL-1',
+        templateName: 'E2E SMS template',
+      },
+    ],
+  }],
   [/^\/api\/templates\/alimtalk/u, { channel: 'alimtalk', templates: [] }],
   [/^\/api\/templates\/brand/u, { channel: 'brand-message', templates: [] }],
   [/^\/api\/templates\/[^/]+\/[^/]+/u, {
@@ -103,12 +132,23 @@ const apiResponses = [
   }],
   [/^\/api\/admin\/sender-resource-applications/u, { applications: [], operatorUserId: 'operator-e2e' }],
   [/^\/api\/limit-increase-requests/u, { requests: [] }],
+  [/^\/api\/messages\/sms\/send$/u, {
+    recipientCount: 1,
+    requestId: 'sms-request-e2e',
+    state: 'accepted',
+  }],
 ];
 
 export async function installApiFixtures(page, state) {
   await page.route('**/api/**', async (route, request) => {
     const url = new URL(request.url());
     const authorization = request.headers().authorization ?? '';
+    const requestRecord = {
+      body: await readJsonBody(request),
+      method: request.method(),
+      pathname: url.pathname,
+    };
+    state.requests.push(requestRecord);
     state.requestHeaders.push({
       authorization: redactAuthorization(authorization),
       method: request.method(),
@@ -118,7 +158,8 @@ export async function installApiFixtures(page, state) {
     if (state.unauthorizedBudget > 0 && url.pathname.startsWith('/api/')) {
       state.unauthorizedHits += 1;
       state.unauthorizedBudget -= 1;
-      await delay(50);
+      state.resolveUnauthorizedGate?.();
+      await state.unauthorizedGate;
       await route.fulfill({
         body: JSON.stringify({
           error: {
@@ -144,9 +185,12 @@ export async function installApiFixtures(page, state) {
   });
 }
 
-function delay(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+export function armUnauthorizedResponses(state, count) {
+  state.unauthorizedBudget = count;
+  state.unauthorizedGate = new Promise((resolve) => {
+    state.resolveUnauthorizedGate = () => {
+      if (state.unauthorizedBudget === 0) resolve();
+    };
   });
 }
 
@@ -165,9 +209,22 @@ export async function installStandaloneSentinel(page, assertions) {
 export function createApiFixtureState() {
   return {
     requestHeaders: [],
+    requests: [],
     unauthorizedBudget: 0,
+    unauthorizedGate: Promise.resolve(),
     unauthorizedHits: 0,
+    resolveUnauthorizedGate: null,
   };
+}
+
+async function readJsonBody(request) {
+  if (request.method() === 'GET' || request.method() === 'HEAD') return null;
+
+  try {
+    return request.postDataJSON();
+  } catch {
+    return null;
+  }
 }
 
 function redactAuthorization(value) {

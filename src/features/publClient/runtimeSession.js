@@ -4,6 +4,8 @@ import {
   getPublClientAccessToken,
   getPublClientRefreshToken,
   hasPublClientRefreshTokenHandler,
+  PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY,
+  PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY,
 } from './authToken.js';
 import { isPublIframeContext } from './frameContext.js';
 
@@ -61,7 +63,7 @@ export function isActiveForPath(pathname = getWindow()?.location?.pathname) {
     return false;
   }
 
-  if (!isPublClientPath(pathname)) {
+  if (!isPublClientPath(pathname) || !isPublIframeContext(getWindow())) {
     resetPublClientRuntime();
     return false;
   }
@@ -116,12 +118,78 @@ export function isPublClientRuntimeGenerationActive(generation) {
   return Boolean(runtimeIdentity && runtimeIdentity.generation === generation && isActiveForPath());
 }
 
+export function isPublClientRuntimeIdentityActive(identity) {
+  return Boolean(
+    identity
+    && runtimeIdentity
+    && identity.generation === runtimeIdentity.generation
+    && identity.identityKey === runtimeIdentity.identityKey
+    && isActiveForPath()
+  );
+}
+
+export function createPublClientRuntimeStorage({
+  identity,
+  storage = getPublClientSessionStorage(),
+} = {}) {
+  let expectedAccessToken = getPublClientAccessToken({ storage });
+  let expectedRefreshToken = getPublClientRefreshToken({ storage });
+  const isActive = () => {
+    if (!isPublClientRuntimeIdentityActive(identity)) return false;
+
+    const currentAccessToken = getPublClientAccessToken({ storage });
+    const currentRefreshToken = getPublClientRefreshToken({ storage });
+    if (
+      currentAccessToken === expectedAccessToken
+      && currentRefreshToken === expectedRefreshToken
+    ) {
+      return true;
+    }
+    if (currentRefreshToken !== expectedRefreshToken) return false;
+
+    const currentTokenIdentity = decodePublClientAccessTokenIdentity(currentAccessToken);
+    return Boolean(
+      currentTokenIdentity
+      && createIdentityKey(currentTokenIdentity) === identity?.identityKey
+    );
+  };
+
+  return {
+    getItem: (key) => storage?.getItem?.(key) ?? null,
+    isActive,
+    removeItem: (key) => {
+      if (!isActive()) return;
+      storage?.removeItem?.(key);
+      if (key === PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY) expectedAccessToken = null;
+      if (key === PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY) expectedRefreshToken = null;
+    },
+    setItem: (key, value) => {
+      if (!isActive()) return;
+      storage?.setItem?.(key, value);
+      if (key === PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY) {
+        expectedAccessToken = getPublClientAccessToken({ storage });
+      }
+      if (key === PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY) {
+        expectedRefreshToken = getPublClientRefreshToken({ storage });
+      }
+    },
+  };
+}
+
 function isPublClientPath(pathname) {
   return pathname === PUBL_CLIENT_PATH_PREFIX || pathname?.startsWith(`${PUBL_CLIENT_PATH_PREFIX}/`);
 }
 
 function getWindow() {
   return typeof window === 'object' ? window : null;
+}
+
+function getPublClientSessionStorage() {
+  try {
+    return globalThis.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function decodePublClientAccessTokenIdentity(accessToken) {

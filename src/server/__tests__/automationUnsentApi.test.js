@@ -427,6 +427,7 @@ describe('automation unsent tab UI contract', () => {
     const newRouteSource = readSource('../../app/automations/new/page.jsx');
     const detailRouteSource = readSource('../../app/automations/[ruleId]/page.jsx');
     const editRouteSource = readSource('../../app/automations/[ruleId]/edit/page.jsx');
+    const routeDescriptorSource = readSource('../../features/console/routeDescriptors.js');
     const routingSource = readSource('../../features/console/routing.js');
     const configSource = readSource('../../features/console/consoleConfig.js');
     const consoleSource = readSource('../../features/console/ConsolePages.jsx');
@@ -434,10 +435,10 @@ describe('automation unsent tab UI contract', () => {
     expect(newRouteSource).toContain('pageId="automations-new"');
     expect(detailRouteSource).toContain('pageId="automations-detail"');
     expect(editRouteSource).toContain('pageId="automations-edit"');
-    expect(routingSource).toContain("route('automations-new', '/automations/new')");
-    expect(routingSource).toContain("route('automations-detail', '/automations/:ruleId'");
-    expect(routingSource).toContain("route('automations-edit', '/automations/:ruleId/edit'");
-    expect(routingSource).toContain('automationDetail: { ruleId }');
+    expect(routeDescriptorSource).toContain("route('automations-new', '/automations/new')");
+    expect(routeDescriptorSource).toContain("route('automations-detail', '/automations/:ruleId'");
+    expect(routeDescriptorSource).toContain("route('automations-edit', '/automations/:ruleId/edit'");
+    expect(routeDescriptorSource).toContain('automationDetail: { ruleId }');
     expect(routingSource).toContain("normalizedPageId.startsWith('automations-')");
     expect(configSource).toContain("'automations-new': { title: '자동화 생성' }");
     expect(configSource).toContain("'automations-detail': { title: '자동화 상세' }");

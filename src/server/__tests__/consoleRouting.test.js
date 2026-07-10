@@ -65,6 +65,24 @@ describe('console route helpers', () => {
     expect(getConsolePageIdFromPathname('/admin/sender-resource-applications')).toBe('admin-sender-resource-applications');
   });
 
+  it('uses pathnames for route identity and treats query values as page-local state', () => {
+    expect(matchPublClientPath('/publ-client/logs?channel=sms&page=2')).toMatchObject({
+      canonicalPathname: '/logs',
+      pageId: 'logs',
+      queryString: 'channel=sms&page=2',
+    });
+    expect(matchPublClientPath('/publ-client/reservations?page=logs')).toMatchObject({
+      canonicalPathname: '/reservations',
+      pageId: 'reservations',
+      queryString: 'page=logs',
+    });
+    expect(matchPublClientPath('/publ-client?page=logs')).toMatchObject({
+      canonicalPathname: '/message-send',
+      pageId: DEFAULT_CONSOLE_PAGE_ID,
+      queryString: 'page=logs',
+    });
+  });
+
   it('leaves non-console URLs outside the persistent shell', () => {
     expect(getConsolePageIdFromPathname('/')).toBeNull();
     expect(getConsolePageIdFromPathname('/publ-client')).toBeNull();

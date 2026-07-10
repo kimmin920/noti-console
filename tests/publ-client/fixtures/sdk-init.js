@@ -1,8 +1,11 @@
-export function createSdkInitScript() {
-  return () => {
-    const readCounter = (key) => Number(localStorage.getItem(`vizuo:e2e:${key}`) ?? 0);
+export function createSdkInitScript({ denyContacts = false } = {}) {
+  return `(${installSdkFixture.toString()})(${JSON.stringify({ denyContacts })});`;
+}
+
+function installSdkFixture({ denyContacts }) {
+    const readCounter = (key) => Number(sessionStorage.getItem(`vizuo:e2e:${key}`) ?? 0);
     const writeCounter = (key, value) => {
-      localStorage.setItem(`vizuo:e2e:${key}`, String(value));
+      sessionStorage.setItem(`vizuo:e2e:${key}`, String(value));
     };
     const incrementCounter = (key) => {
       const nextValue = readCounter(key) + 1;
@@ -10,8 +13,9 @@ export function createSdkInitScript() {
       return nextValue;
     };
     const state = {
-      denyContacts: false,
+      denyContacts,
       exchangeCount: readCounter('exchangeCount'),
+      ready: true,
       refreshCount: readCounter('refreshCount'),
       requestCount: readCounter('requestCount'),
     };
@@ -82,5 +86,4 @@ export function createSdkInitScript() {
         };
       },
     };
-  };
 }

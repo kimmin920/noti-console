@@ -1,14 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { RefreshCcw, ShieldAlert } from 'lucide-react';
 import { Button } from '../../components/ui/index.js';
-import { MessagingConsole } from '../console/MessagingConsole.jsx';
-import {
-  DEFAULT_CONSOLE_PAGE_ID,
-  buildPublClientPath,
-} from '../console/routing.js';
 import {
   bootstrapPublClientSession,
   refreshPublClientSession,
@@ -26,6 +27,7 @@ import { isPublIframeContext } from './frameContext.js';
 import { PublClientProvider } from './PublClientContext.jsx';
 import {
   activatePublClientRuntime,
+  createPublClientRuntimeStorage,
   getIdentity,
 } from './runtimeSession.js';
 
@@ -57,168 +59,184 @@ export function PublClientBootstrap({
   children = null,
   clientConfig = null,
   clientConfigError = '',
-  pageId = DEFAULT_CONSOLE_PAGE_ID,
-  pageProps = undefined,
-  routeResult = null,
 }) {
   const queryClient = useQueryClient();
   const [initialSessionInput] = useState(() => ({
     clientConfig,
     clientConfigError,
-    routeResult,
   }));
   const [attempt, setAttempt] = useState(0);
   const [sessionState, setSessionState] = useState(CONNECTING_STATE);
+  const lifecycleRef = useRef({ active: false, attempt: null, promise: null });
+  const isIframe = useSyncExternalStore(
+    subscribeFrameContext,
+    getFrameContextSnapshot,
+    getServerFrameContextSnapshot
+  );
   const stableClientConfig = initialSessionInput.clientConfig;
   const stableClientConfigError = initialSessionInput.clientConfigError;
-  const initialRouteResult = initialSessionInput.routeResult;
-  const getPageHref = useCallback(({ pageId: nextPageId }) => (
-    buildPublClientPath({ pageId: nextPageId })
-  ), []);
+  const handleRefreshError = useCallback(() => {
+    setSessionState(REFRESH_FAILED_STATE);
+  }, []);
 
   useEffect(() => {
+    const lifecycle = lifecycleRef.current;
     let cancelled = false;
 
-    async function startPublSession() {
-      setSessionState(CONNECTING_STATE);
-
-      if (!isPublIframeContext()) {
-        setSessionState({
-          message: 'Publ client는 iframe 안에서만 열 수 있습니다.',
-          status: 'invalid-context',
-          title: 'Publ client 경로를 확인해 주세요',
-        });
-        return;
-      }
-
-      if (!stableClientConfig) {
-        setSessionState({
-          message: stableClientConfigError || 'Publ client 설정을 확인해 주세요.',
-          status: 'misconfigured',
-          title: 'Publ client 설정이 올바르지 않습니다',
-        });
-        return;
-      }
-
-      let adapter = resolvePublSdkAdapter({ clientConfig: stableClientConfig });
-      if (!adapter && !isPublClientSdkAvailable()) {
-        if (!stableClientConfig.sdkSrc) {
-          setSessionState(SDK_NOT_CONFIGURED_STATE);
-          return;
-        }
-
-        try {
-          await loadPublClientSdkScript(stableClientConfig.sdkSrc);
-        } catch {
-          if (!cancelled) {
-            setSessionState(SDK_LOAD_FAILED_STATE);
-          }
-          return;
-        }
-
-        adapter = resolvePublSdkAdapter({ clientConfig: stableClientConfig });
-      }
-
-      await queryClient.cancelQueries();
-      queryClient.clear();
-
-      if (getIdentity() && hasPublClientRefreshTokenHandler()) {
-        setSessionState({
-          adapter,
-          message: '',
-          ok: true,
-          status: 'ready',
-          title: '연결되었습니다',
-        });
-        return;
-      }
-
-      const result = await bootstrapPublClientSession({ adapter, clientConfig: stableClientConfig });
-
-      if (cancelled) {
-        return;
-      }
-
-      if (!result.ok) {
-        setSessionState(result);
-        return;
-      }
-
-      registerPublClientRefreshTokenHandler(async ({
-        previousAccessToken,
-        refreshToken,
-      }) => {
-        try {
-          return await refreshPublClientSession({
-            adapter,
-            clientConfig: stableClientConfig,
-            previousAccessToken,
-            refreshToken,
-          });
-        } catch (error) {
-          setSessionState(REFRESH_FAILED_STATE);
-          throw error;
-        }
-      });
-
-      if (!activatePublClientRuntime({
-        originPolicyConfigured: Boolean(stableClientConfig?.framePolicy?.configured),
-      })) {
-        setSessionState({
-          message: 'Publ iframe origin policy or local session is not active.',
-          status: 'misconfigured',
-          title: 'Publ client 연결을 활성화할 수 없습니다',
-        });
-        return;
-      }
-
-      setSessionState({ ...result, adapter });
-      canonicalizePublClientPath(initialRouteResult);
+    lifecycle.active = isIframe;
+    if (!isIframe) {
+      return () => {
+        lifecycle.active = false;
+      };
     }
 
-    startPublSession();
+    if (lifecycle.attempt !== attempt) {
+      lifecycle.attempt = attempt;
+      lifecycle.promise = initializePublClientSession({
+        clientConfig: stableClientConfig,
+        clientConfigError: stableClientConfigError,
+        onRefreshError: handleRefreshError,
+        queryClient,
+        shouldContinue: () => lifecycle.active && lifecycle.attempt === attempt,
+      });
+    }
+
+    lifecycle.promise.then((nextState) => {
+      if (!cancelled && lifecycle.active && lifecycle.attempt === attempt && nextState) {
+        setSessionState(nextState);
+      }
+    });
 
     return () => {
       cancelled = true;
+      lifecycle.active = false;
     };
-  }, [attempt, initialRouteResult, queryClient, stableClientConfig, stableClientConfigError]);
+  }, [
+    attempt,
+    handleRefreshError,
+    isIframe,
+    queryClient,
+    stableClientConfig,
+    stableClientConfigError,
+  ]);
+
+  if (!isIframe) {
+    return children;
+  }
 
   if (sessionState.status === 'ready') {
     return (
       <PublClientProvider adapter={sessionState.adapter} clientConfig={stableClientConfig}>
-        {children ?? (
-          <MessagingConsole
-            getPageHref={getPageHref}
-            hideAccountControl
-            mode="embed"
-            pageId={routeResult?.pageId ?? pageId}
-            pageProps={routeResult?.pageProps ?? pageProps}
-          />
-        )}
+        {children}
       </PublClientProvider>
     );
   }
 
   return (
     <PublClientStatusView
-      onRetry={() => setAttempt((currentAttempt) => currentAttempt + 1)}
+      onRetry={() => {
+        setSessionState(CONNECTING_STATE);
+        setAttempt((currentAttempt) => currentAttempt + 1);
+      }}
       state={sessionState}
     />
   );
 }
 
-function canonicalizePublClientPath(routeResult) {
-  if (
-    routeResult?.ok &&
-    routeResult.canonicalPathname === '/message-send' &&
-    window.location.pathname === '/publ-client'
-  ) {
-    window.history.replaceState(
-      window.history.state,
-      '',
-      buildPublClientPath({ pageId: DEFAULT_CONSOLE_PAGE_ID, queryString: routeResult.queryString })
-    );
+async function initializePublClientSession({
+  clientConfig,
+  clientConfigError,
+  onRefreshError,
+  queryClient,
+  shouldContinue,
+}) {
+  if (!clientConfig) {
+    return {
+      message: clientConfigError || 'Publ client 설정을 확인해 주세요.',
+      status: 'misconfigured',
+      title: 'Publ client 설정이 올바르지 않습니다',
+    };
   }
+
+  let adapter = resolvePublSdkAdapter({ clientConfig });
+  if (!adapter && !isPublClientSdkAvailable()) {
+    if (!clientConfig.sdkSrc) {
+      return SDK_NOT_CONFIGURED_STATE;
+    }
+
+    try {
+      await loadPublClientSdkScript(clientConfig.sdkSrc);
+    } catch {
+      return shouldContinue() ? SDK_LOAD_FAILED_STATE : null;
+    }
+
+    if (!shouldContinue()) return null;
+    adapter = resolvePublSdkAdapter({ clientConfig });
+  }
+
+  await queryClient.cancelQueries();
+  if (!shouldContinue()) return null;
+  queryClient.clear();
+
+  if (getIdentity() && hasPublClientRefreshTokenHandler()) {
+    return {
+      adapter,
+      message: '',
+      ok: true,
+      status: 'ready',
+      title: '연결되었습니다',
+    };
+  }
+
+  const result = await bootstrapPublClientSession({ adapter, clientConfig });
+  if (!shouldContinue()) return null;
+  if (!result.ok) return result;
+
+  registerPublClientRefreshTokenHandler(async ({ previousAccessToken, refreshToken }) => {
+    const refreshIdentity = getIdentity();
+    const storage = createPublClientRuntimeStorage({ identity: refreshIdentity });
+    const shouldApplyResult = storage.isActive;
+
+    try {
+      return await refreshPublClientSession({
+        adapter,
+        clientConfig,
+        previousAccessToken,
+        refreshToken,
+        shouldApplyResult,
+        storage,
+      });
+    } catch (error) {
+      if (shouldApplyResult()) {
+        onRefreshError();
+      }
+      throw error;
+    }
+  });
+
+  if (!activatePublClientRuntime({
+    originPolicyConfigured: Boolean(clientConfig.framePolicy?.configured),
+  })) {
+    return {
+      message: 'Publ iframe origin policy or local session is not active.',
+      status: 'misconfigured',
+      title: 'Publ client 연결을 활성화할 수 없습니다',
+    };
+  }
+
+  return { ...result, adapter };
+}
+
+function subscribeFrameContext() {
+  return () => {};
+}
+
+function getFrameContextSnapshot() {
+  return isPublIframeContext();
+}
+
+function getServerFrameContextSnapshot() {
+  return false;
 }
 
 export function PublClientStatusView({ onRetry, state }) {

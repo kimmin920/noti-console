@@ -1,6 +1,5 @@
-import { PublClientRouteEntry } from '@/features/publClient/PublClientRouteEntry.jsx';
-import { matchPublClientPath } from '@/features/console/routing.js';
-import { resolvePublPappClientConfigResult } from '@/server/publPapp/clientConfig.js';
+import { PublClientRouteEntry } from '../../../features/publClient/PublClientRouteEntry.jsx';
+import { matchPublClientPath } from '../../../features/console/routing.js';
 
 export const metadata = {
   title: 'Publ Client',
@@ -13,12 +12,9 @@ export default async function PublClientCatchAllPage({ params, searchParams }) {
   const nestedPath = Array.isArray(resolvedParams?.path) ? resolvedParams.path.join('/') : '';
   const pathname = nestedPath ? `/publ-client/${nestedPath}` : '/publ-client';
   const queryString = toQueryString(resolvedSearchParams);
-  const clientConfigResult = resolvePublPappClientConfigResult();
 
   return (
     <PublClientRouteEntry
-      clientConfig={clientConfigResult.ok ? clientConfigResult.config : null}
-      clientConfigError={clientConfigResult.ok ? '' : clientConfigResult.message}
       routeResult={matchPublClientPath(queryString ? `${pathname}?${queryString}` : pathname)}
     />
   );

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { PLAYWRIGHT_OUTPUT_DIR } from './tests/publ-client/global-teardown.mjs';
 
 const APP_PORT = 3410;
 const PARENT_PORT = 3411;
@@ -9,7 +10,8 @@ export default defineConfig({
     timeout: 10_000,
   },
   fullyParallel: false,
-  outputDir: '.omo/evidence/task-8-publ-client-boundary-routing-hardening/playwright-output',
+  globalTeardown: './tests/publ-client/global-teardown.mjs',
+  outputDir: PLAYWRIGHT_OUTPUT_DIR,
   projects: [
     {
       name: 'chromium-desktop',
@@ -32,32 +34,29 @@ export default defineConfig({
   reporter: [['list']],
   testDir: './tests/publ-client',
   timeout: 60_000,
+  workers: 1,
   use: {
     baseURL: `http://127.0.0.1:${APP_PORT}`,
-    trace: 'retain-on-failure',
+    screenshot: 'off',
+    trace: 'off',
+    video: 'off',
   },
   webServer: [
     {
-      command: [
-        'PUBL_PAPP_CLIENT_STAGE=test',
-        'PUBL_PAPP_TEST_CLIENT_HASH=e2e-client-hash',
-        'PUBL_PAPP_TEST_MEMBER_CONTACTS_PERMISSION_ID=PM_19177_READ_MEMBER_CONTACTS',
-        `PUBL_PAPP_TEST_PARENT_ORIGINS=https://console.dev.publ.biz,http://127.0.0.1:${PARENT_PORT}`,
-        `npm run dev -- -H 127.0.0.1 -p ${APP_PORT}`,
-      ].join(' '),
+      command: `npm run dev -- -H 127.0.0.1 -p ${APP_PORT}`,
       env: {
         PUBL_PAPP_CLIENT_STAGE: 'test',
         PUBL_PAPP_TEST_CLIENT_HASH: 'e2e-client-hash',
         PUBL_PAPP_TEST_MEMBER_CONTACTS_PERMISSION_ID: 'PM_19177_READ_MEMBER_CONTACTS',
         PUBL_PAPP_TEST_PARENT_ORIGINS: `https://console.dev.publ.biz,http://127.0.0.1:${PARENT_PORT}`,
       },
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120_000,
       url: `http://127.0.0.1:${APP_PORT}/publ-client/message-send`,
     },
     {
       command: `node tests/publ-client/fixtures/parent-server.mjs --app-port=${APP_PORT} --approved-port=${PARENT_PORT} --denied-port=${DENIED_PARENT_PORT}`,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 30_000,
       url: `http://127.0.0.1:${PARENT_PORT}/healthz`,
     },

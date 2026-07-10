@@ -4,24 +4,28 @@ import Link from 'next/link';
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert } from 'lucide-react';
-import { getPublStandaloneHref } from '../console/routing.js';
+import {
+  buildPublClientPath,
+  DEFAULT_CONSOLE_PAGE_ID,
+  getPublStandaloneHref,
+} from '../console/routing.js';
 import { clearPublClientTokens } from './authToken.js';
 import { isPublIframeContext } from './frameContext.js';
-import { PublClientBootstrap } from './PublClientBootstrap.jsx';
 import { PublClientConsole } from './PublClientConsole.jsx';
 import { resetPublClientRuntime } from './runtimeSession.js';
 
-export function PublClientRouteEntry({
-  clientConfig = null,
-  clientConfigError = '',
-  routeResult,
-}) {
+export function PublClientRouteEntry({ routeResult }) {
   const queryClient = useQueryClient();
-  const isIframe = useSyncExternalStore(subscribeFrameContext, getFrameContextSnapshot, getServerFrameContextSnapshot);
+  const frameContext = useSyncExternalStore(subscribeFrameContext, getFrameContextSnapshot, getServerFrameContextSnapshot);
   const standaloneHref = useMemo(() => getPublStandaloneHref(routeResult), [routeResult]);
 
   useEffect(() => {
-    if (!routeResult?.ok || isIframe) {
+    if (!routeResult?.ok || frameContext === null) {
+      return;
+    }
+
+    if (frameContext) {
+      canonicalizePublClientPath(routeResult);
       return;
     }
 
@@ -30,13 +34,13 @@ export function PublClientRouteEntry({
     queryClient.cancelQueries();
     queryClient.clear();
     window.location.replace(standaloneHref);
-  }, [isIframe, queryClient, routeResult, standaloneHref]);
+  }, [frameContext, queryClient, routeResult, standaloneHref]);
 
   if (!routeResult?.ok) {
     return <PublClientInvalidRouteView />;
   }
 
-  if (!isIframe) {
+  if (!frameContext) {
     return (
       <main className="publ-client-boot" aria-labelledby="publ-client-redirect-title">
         <section className="publ-client-boot-panel" role="status">
@@ -51,17 +55,27 @@ export function PublClientRouteEntry({
   }
 
   return (
-    <PublClientBootstrap
-      clientConfig={clientConfig}
-      clientConfigError={clientConfigError}
-      routeResult={routeResult}
-    >
-      <PublClientConsole
-        pageId={routeResult.pageId}
-        pageProps={routeResult.pageProps}
-      />
-    </PublClientBootstrap>
+    <PublClientConsole
+      pageId={routeResult.pageId}
+      pageProps={routeResult.pageProps}
+    />
   );
+}
+
+function canonicalizePublClientPath(routeResult) {
+  if (
+    routeResult.canonicalPathname === '/message-send'
+    && window.location.pathname === '/publ-client'
+  ) {
+    window.history.replaceState(
+      window.history.state,
+      '',
+      buildPublClientPath({
+        pageId: DEFAULT_CONSOLE_PAGE_ID,
+        queryString: routeResult.queryString,
+      })
+    );
+  }
 }
 
 function subscribeFrameContext() {
@@ -73,7 +87,7 @@ function getFrameContextSnapshot() {
 }
 
 function getServerFrameContextSnapshot() {
-  return false;
+  return null;
 }
 
 export function PublClientInvalidRouteView() {
