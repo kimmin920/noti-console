@@ -69,5 +69,12 @@ async function requestPublTap(adapter, permissionId, payload) {
     throw new Error('Publ SDK adapter does not support tap requests.');
   }
 
-  return adapter.request(permissionId, payload);
+  const response = await adapter.request(permissionId, payload);
+  const status = response?.status ?? response?.payload?.status;
+
+  if (status && status !== 'OK') {
+    throw new Error('Publ SDK tap request was rejected.');
+  }
+
+  return response;
 }

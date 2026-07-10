@@ -19,6 +19,8 @@ import {
   loadPublClientSdkScript,
 } from './sdkScriptLoader.js';
 import { registerPublClientRefreshTokenHandler } from './authToken.js';
+import { isPublIframeContext } from './frameContext.js';
+import { PublClientProvider } from './PublClientContext.jsx';
 
 const CONNECTING_STATE = {
   message: 'Publ iframe 연결을 확인하고 있습니다.',
@@ -44,6 +46,12 @@ const SDK_LOAD_FAILED_STATE = {
   title: 'Publ SDK를 불러오지 못했습니다',
 };
 
+const STANDALONE_REDIRECT_STATE = {
+  message: '일반 웹 콘솔로 이동하고 있습니다.',
+  status: 'redirecting',
+  title: '콘솔로 이동 중',
+};
+
 export function PublClientBootstrap({
   clientConfig = null,
   clientConfigError = '',
@@ -62,6 +70,12 @@ export function PublClientBootstrap({
 
     async function startPublSession() {
       setSessionState(CONNECTING_STATE);
+
+      if (!isPublIframeContext()) {
+        setSessionState(STANDALONE_REDIRECT_STATE);
+        window.location.replace('/message-send');
+        return;
+      }
 
       if (!clientConfig) {
         setSessionState({
@@ -118,7 +132,7 @@ export function PublClientBootstrap({
         }
       });
 
-      setSessionState(result);
+      setSessionState({ ...result, adapter });
     }
 
     startPublSession();
@@ -131,12 +145,14 @@ export function PublClientBootstrap({
 
   if (sessionState.status === 'ready') {
     return (
-      <MessagingConsole
-        getPageHref={getPageHref}
-        hideAccountControl
-        mode="embed"
-        pageId={activePageId}
-      />
+      <PublClientProvider adapter={sessionState.adapter} clientConfig={clientConfig}>
+        <MessagingConsole
+          getPageHref={getPageHref}
+          hideAccountControl
+          mode="embed"
+          pageId={activePageId}
+        />
+      </PublClientProvider>
     );
   }
 
@@ -149,7 +165,7 @@ export function PublClientBootstrap({
 }
 
 export function PublClientStatusView({ onRetry, state }) {
-  const isConnecting = state.status === 'connecting';
+  const isConnecting = state.status === 'connecting' || state.status === 'redirecting';
 
   return (
     <main className="publ-client-boot" aria-labelledby="publ-client-boot-title">

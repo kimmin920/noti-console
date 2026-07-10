@@ -62,7 +62,9 @@ release-approved SDK URL explicitly.
 
 Exchange and refresh permission IDs default to Publ's fixed values:
 `PM_00000_EXCHANGE_TOKEN` and `PM_00000_REFRESH_TOKEN`. Seller-info and member
-contacts permission IDs are optional until Publ grants them for the same stage.
+contacts permission IDs can be overridden per stage. The bundled testflight SDK
+defaults member contacts to `PM_19177_READ_MEMBER_CONTACTS`; release still
+requires the granted release permission ID to be configured explicitly.
 
 ## Token Exchange
 
@@ -151,15 +153,19 @@ await client.pipeline.request('PM_00000_REFRESH_TOKEN');
 
 When exchange succeeds it stores VIZUO access/refresh tokens in iframe
 `sessionStorage`, attaches `Authorization: Bearer {accessToken}` to same-origin
-`/api/*` relay calls, and renders the existing messaging console in embed mode.
+`/api/*` relay calls only while running in an iframe, and renders the existing
+messaging console in embed mode. A top-level `/publ-client` load does not call
+the SDK and redirects to the standalone `/message-send` route. A complete token
+pair already in session storage is reused without another exchange.
 When the local access token expires, the client asks the SDK for
 `PM_00000_REFRESH_TOKEN`; the SDK includes the previous access/refresh token from
 its session, and VIZUO returns only the next access token.
 
 The SDK adapter also exposes generic tap requests for granted Publ permissions.
-Current helpers cover seller business information
-`PM_00002_READ_SELLER_BUSINESS_INFORMATION` and member contacts
-`PM_00002_READ_MEMBER_CONTACTS` once Publ confirms those permission IDs.
+The bundled testflight SDK currently grants seller business information through
+`PM_24439_READ_SELLER_BUSINESS_INFORMATION` and member contacts through
+`PM_19177_READ_MEMBER_CONTACTS`. Release permission IDs remain deployment
+configuration because Publ may grant different release values.
 
 If the Publ SDK is unavailable locally, `/publ-client` renders a safe connection
 unavailable state instead of attempting a raw `postMessage` protocol.

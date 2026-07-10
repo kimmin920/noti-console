@@ -66,7 +66,7 @@ describe('Publ PApp client runtime config', () => {
     expect(result.message).not.toContain('outgoing');
   });
 
-  it('does not require optional common or catalog tap permission IDs', () => {
+  it('defaults the testflight member contacts permission without requiring optional common taps', () => {
     const config = resolvePublPappClientConfig({
       PUBL_PAPP_CLIENT_STAGE: 'test',
       PUBL_PAPP_TEST_CLIENT_HASH: 'test-client-hash',
@@ -75,8 +75,11 @@ describe('Publ PApp client runtime config', () => {
     expect(config.authorizationPermissionIds).toEqual([
       PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.EXCHANGE_TOKEN,
       PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.REFRESH_TOKEN,
+      PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.TEST_MEMBER_CONTACTS,
     ]);
     expect(config.permissions.sellerBusinessInformation).toBeNull();
-    expect(config.permissions.memberContacts).toBeNull();
+    expect(config.permissions.memberContacts).toBe(
+      PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.TEST_MEMBER_CONTACTS
+    );
   });
 });

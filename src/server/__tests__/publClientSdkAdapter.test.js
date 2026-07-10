@@ -14,6 +14,7 @@ import {
   PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY,
   PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY,
 } from '../../features/publClient/authToken.js';
+import { isPublIframeContext } from '../../features/publClient/frameContext.js';
 
 describe('Publ iframe client SDK adapter', () => {
   it('adapts the official PAppClientSDK seller-side pipeline', async () => {
@@ -93,6 +94,42 @@ describe('Publ iframe client SDK adapter', () => {
     expect(adapter.exchangeToken).toHaveBeenCalledTimes(1);
     expect(storage.getItem(PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY)).toBe('access-token');
     expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBe('refresh-token');
+  });
+
+  it('reuses a complete iframe session without exchanging another token', async () => {
+    const storage = createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'access-token',
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+    });
+    const adapter = {
+      authorize: vi.fn(),
+      exchangeToken: vi.fn(),
+      mount: vi.fn(async () => undefined),
+      refreshToken: vi.fn(),
+    };
+
+    await expect(bootstrapPublClientSession({ adapter, storage })).resolves.toMatchObject({
+      ok: true,
+      resumed: true,
+      status: 'ready',
+    });
+
+    expect(adapter.mount).toHaveBeenCalledTimes(1);
+    expect(adapter.authorize).toHaveBeenCalledTimes(1);
+    expect(adapter.exchangeToken).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes iframe and top-level browser contexts', () => {
+    const topLevelWindow = {};
+    topLevelWindow.self = topLevelWindow;
+    topLevelWindow.top = topLevelWindow;
+    const parentWindow = {};
+    const iframeWindow = { self: null, top: parentWindow };
+    iframeWindow.self = iframeWindow;
+
+    expect(isPublIframeContext(topLevelWindow)).toBe(false);
+    expect(isPublIframeContext(iframeWindow)).toBe(true);
+    expect(isPublIframeContext(null)).toBe(false);
   });
 
   it('returns a safe unavailable state when no SDK adapter exists', async () => {

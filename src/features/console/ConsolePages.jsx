@@ -163,6 +163,8 @@ import { MetricsPage } from './metrics/MetricsPage.jsx';
 import { usePublEventsQuery } from './publEvents/queries.js';
 import { PublEventCreatePage } from './publEvents/PublEventCreatePage.jsx';
 import { PublEventDetailPage } from './publEvents/PublEventDetailPage.jsx';
+import { usePublMessageRecipients } from '../publClient/usePublMessageRecipients.js';
+import { usePublClient } from '../publClient/PublClientContext.jsx';
 import { TemplateDetailPage } from './templates/TemplateDetailPage.jsx';
 import { TemplatePage } from './templates/TemplatePage.jsx';
 import { BrandTemplateCreatePage } from './templates/BrandTemplateCreatePage.jsx';
@@ -214,6 +216,7 @@ function getStatusTone(cell) {
 }
 
 export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
+  const publClient = usePublClient();
   let page = <ConsolePage key={activePage} meta={meta} onDocs={onDocs} />;
   const templateDetail = pageProps?.templateDetail;
   const publEventDetail = pageProps?.publEventDetail;
@@ -221,6 +224,8 @@ export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
 
   if (activePage === DEFAULT_CONSOLE_PAGE_ID) {
     page = <MessageSendPage meta={meta} onDocs={onDocs} />;
+  } else if (activePage === 'audience' && publClient.isPublEmbed) {
+    page = <PublAudiencePage />;
   } else if (activePage === 'settings') {
     page = <SettingsPage />;
   } else if (activePage === 'settings-sender-sms-new') {
@@ -277,6 +282,86 @@ export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
   );
 }
 
+function PublAudiencePage() {
+  const [activeTab, setActiveTab] = useState('contacts');
+  const [searchValue, setSearchValue] = useState('');
+  const publRecipients = usePublMessageRecipients();
+  const normalizedSearch = searchValue.trim().toLocaleLowerCase('ko-KR');
+  const rows = publRecipients.contacts.filter((contact) => (
+    !normalizedSearch
+    || [contact.label, contact.detail, contact.externalId]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('ko-KR')
+      .includes(normalizedSearch)
+  ));
+
+  return (
+    <section className="page-frame publ-audience-page">
+      <PageHeader title="수신자" />
+      <SegmentedControl
+        items={[
+          { label: 'Publ 수신자', value: 'contacts' },
+          { label: 'Publ 세그먼트', value: 'segments' },
+        ]}
+        onValueChange={setActiveTab}
+        value={activeTab}
+      />
+
+      {activeTab === 'contacts' ? (
+        <>
+          <div className="publ-audience-toolbar">
+            <SearchField
+              aria-label="Publ 수신자 검색"
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="이름, 전화번호, Publ ID 검색"
+              value={searchValue}
+            />
+          </div>
+          <DataTableV2
+            columns={[
+              { accessor: 'label', header: '수신자' },
+              {
+                accessor: 'value',
+                cell: ({ value }) => <code>{value}</code>,
+                header: '휴대폰',
+              },
+              {
+                accessor: (row) => row.externalId || '-',
+                cell: ({ value }) => <code>{value}</code>,
+                header: 'Publ ID',
+              },
+            ]}
+            data={rows}
+            empty={(
+              <span className="admin-empty-row">
+                {getPublAudienceEmptyMessage(publRecipients.contactsState, normalizedSearch)}
+              </span>
+            )}
+            getRowId={(row) => row.externalId || row.value}
+            loading={publRecipients.contactsState.isPending}
+            loadingSlot={<span className="admin-state-row">Publ 수신자를 불러오는 중입니다.</span>}
+            pagination
+            tableClassName="console-data-table-v2 publ-audience-data-table"
+          />
+        </>
+      ) : (
+        <EmptyState
+          copy="Publ 세그먼트 SDK 권한이 추가되면 이 화면에서 조회하고 발송 대상으로 선택할 수 있습니다."
+          icon={Sparkles}
+          title="Publ 세그먼트 연동 준비 중"
+        />
+      )}
+    </section>
+  );
+}
+
+function getPublAudienceEmptyMessage(state, searchValue) {
+  if (state.isError) return 'Publ 수신자를 불러오지 못했습니다.';
+  if (searchValue) return '검색 조건에 맞는 Publ 수신자가 없습니다.';
+  return '전화번호가 등록된 Publ 수신자가 없습니다.';
+}
+
 function SmsBulkSendRunWatcher() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -308,6 +393,7 @@ function MessageSendPage({ meta, onDocs }) {
   const searchParamText = searchParams.toString();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const publRecipients = usePublMessageRecipients();
   const [activeTab, setActiveTab] = useState(() => getMessageSendTabFromQuery(searchParams, meta.tabs));
   const [alimtalkMessage, setAlimtalkMessage] = useState(() => ({
     ...defaultAlimtalkSendFormValue,
@@ -919,11 +1005,12 @@ function MessageSendPage({ meta, onDocs }) {
           <div className="message-send-compose-layout message-send-sms-layout">
             <SmsSendForm
               onChange={setSmsMessage}
-              onRecipientCreate={openAudiencePage}
+              onRecipientCreate={publRecipients.isPublEmbed ? undefined : openAudiencePage}
               onSenderNumberCreate={() => openSenderResourcePage('sms')}
-              recipientContacts={[]}
-              recipientCreateLabel="수신자 추가하기"
-              recipients={[]}
+              recipientContacts={publRecipients.contacts}
+              recipientCreateLabel={publRecipients.isPublEmbed ? undefined : '수신자 추가하기'}
+              recipientSelectProps={publRecipients.selectProps}
+              recipients={publRecipients.options}
               senderNumberCreateLabel="발신번호 추가하기"
               senderNumbers={smsSenderOptionsForForm}
               templates={smsTemplates}
@@ -941,11 +1028,12 @@ function MessageSendPage({ meta, onDocs }) {
               fallbackSenderNumbers={smsSenderOptions}
               onChange={setAlimtalkMessage}
               onFallbackSenderNumberCreate={() => openSenderResourcePage('sms')}
-              onRecipientCreate={openAudiencePage}
+              onRecipientCreate={publRecipients.isPublEmbed ? undefined : openAudiencePage}
               onSenderProfileCreate={() => openSenderResourcePage('kakao')}
-              recipientContacts={[]}
-              recipientCreateLabel="수신자 추가하기"
-              recipients={[]}
+              recipientContacts={publRecipients.contacts}
+              recipientCreateLabel={publRecipients.isPublEmbed ? undefined : '수신자 추가하기'}
+              recipientSelectProps={publRecipients.selectProps}
+              recipients={publRecipients.options}
               senderProfileCreateLabel="발신채널 추가하기"
               senderProfiles={alimtalkSenderProfiles}
               templates={alimtalkTemplates}
@@ -971,8 +1059,9 @@ function MessageSendPage({ meta, onDocs }) {
                 onFallbackSenderNumberCreate={() => openSenderResourcePage('sms')}
                 onSenderProfileCreate={() => openSenderResourcePage('kakao')}
                 ref={brandFormRef}
-                recipientContacts={[]}
-                recipients={[]}
+                recipientContacts={publRecipients.contacts}
+                recipientSelectProps={publRecipients.selectProps}
+                recipients={publRecipients.options}
                 senderProfileCreateLabel="발신채널 추가하기"
                 senderProfiles={alimtalkSenderProfiles}
                 templates={brandTemplates}

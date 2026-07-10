@@ -166,6 +166,7 @@ export function AlimtalkSendForm({
   onSenderProfileCreate,
   recipientContacts,
   recipientCreateLabel,
+  recipientSelectProps,
   recipients = defaultEmailSendFormSegments,
   scheduleOptions = defaultEmailSendFormSchedules,
   senderProfileCreateLabel = '발신채널 추가하기',
@@ -276,6 +277,7 @@ export function AlimtalkSendForm({
         >
           <EmailSendFormLabel>수신자</EmailSendFormLabel>
           <RecipientSelect
+            {...recipientSelectProps}
             ariaLabel="알림톡 수신자 선택"
             contacts={recipientContacts}
             emptyActionLabel={recipientCreateLabel}

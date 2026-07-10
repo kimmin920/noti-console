@@ -4,6 +4,7 @@ import {
   hasPublClientRefreshTokenHandler,
   refreshPublClientAccessToken,
 } from '../../publClient/authToken.js';
+import { isPublIframeContext } from '../../publClient/frameContext.js';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -113,7 +114,7 @@ async function relayFetchWithPublRefresh(path, init, { retried }) {
 }
 
 function withPublBearerAuthorization(path, init) {
-  if (!isLocalApiPath(path)) {
+  if (!isLocalApiPath(path) || !isPublIframeContext()) {
     return init;
   }
 
@@ -139,6 +140,7 @@ function isLocalApiPath(path) {
 
 function shouldAttemptPublTokenRefresh(path, error) {
   return isLocalApiPath(path)
+    && isPublIframeContext()
     && error?.status === 401
     && Boolean(getPublClientAccessToken())
     && Boolean(getPublClientRefreshToken())

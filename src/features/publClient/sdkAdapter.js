@@ -1,5 +1,6 @@
 import {
   clearPublClientTokens,
+  hasPublClientSession,
   setPublClientTokens,
 } from './authToken.js';
 
@@ -50,6 +51,19 @@ export async function bootstrapPublClientSession({ adapter, clientConfig, storag
 
   try {
     await adapter.mount?.(clientConfig);
+
+    if (hasPublClientSession({ storage })) {
+      await adapter.authorize?.(clientConfig?.authorizationPermissionIds ?? []);
+
+      return {
+        ok: true,
+        resumed: true,
+        status: 'ready',
+        title: '연결되었습니다',
+        message: '',
+      };
+    }
+
     await adapter.authorize?.(clientConfig?.authorizationPermissionIds ?? []);
 
     const tokens = getPublExchangeTokens(await adapter.exchangeToken());

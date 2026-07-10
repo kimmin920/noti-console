@@ -17,6 +17,7 @@ describe('Publ client relay fetch auth header', () => {
 
   it('attaches the Publ bearer token to local API calls when session storage has one', async () => {
     const fetchMock = stubRelayFetch();
+    stubPublIframeWindow();
     vi.stubGlobal('sessionStorage', createSessionStorage({
       [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: ' local-access-token ',
     }));
@@ -41,6 +42,7 @@ describe('Publ client relay fetch auth header', () => {
 
   it('does not attach Publ Authorization to non-API requests', async () => {
     const fetchMock = stubRelayFetch();
+    stubPublIframeWindow();
     vi.stubGlobal('sessionStorage', createSessionStorage({
       [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'local-access-token',
     }));
@@ -72,6 +74,7 @@ describe('Publ client relay fetch auth header', () => {
         status: 200,
       }));
     vi.stubGlobal('fetch', fetchMock);
+    stubPublIframeWindow();
     vi.stubGlobal('sessionStorage', createSessionStorage({
       [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'old-access-token',
       [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
@@ -89,7 +92,30 @@ describe('Publ client relay fetch auth header', () => {
     expect(fetchMock.mock.calls[0][1].headers.get('authorization')).toBe('Bearer old-access-token');
     expect(fetchMock.mock.calls[1][1].headers.get('authorization')).toBe('Bearer new-access-token');
   });
+
+  it('does not attach a stored Publ token from a top-level standalone window', async () => {
+    const fetchMock = stubRelayFetch();
+    const topLevelWindow = {};
+    topLevelWindow.self = topLevelWindow;
+    topLevelWindow.top = topLevelWindow;
+    vi.stubGlobal('window', topLevelWindow);
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'stale-publ-token',
+    }));
+
+    await relayGet('/api/me');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init).toEqual({ cache: 'no-store' });
+  });
 });
+
+function stubPublIframeWindow() {
+  const iframeWindow = {};
+  iframeWindow.self = iframeWindow;
+  iframeWindow.top = {};
+  vi.stubGlobal('window', iframeWindow);
+}
 
 function stubRelayFetch() {
   const fetchMock = vi.fn(async () => new Response(JSON.stringify({

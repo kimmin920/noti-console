@@ -37,6 +37,7 @@
     "test:console-nav-pruning-contract": "node scripts/check_console_nav_pruning_contract.mjs",
     "test:settings-profile-tab-contract": "node scripts/check_settings_profile_tab_contract.mjs",
     "test:metrics-console-contract": "node scripts/check_metrics_console_contract.mjs",
+    "test:publ-iframe-recipient-contract": "node scripts/check_publ_iframe_recipient_contract.mjs",
     "build": "next build",
     "db:migration:generate": "drizzle-kit generate --config=drizzle.config.js",
     "db:migration:check": "drizzle-kit check --config=drizzle.config.js",
