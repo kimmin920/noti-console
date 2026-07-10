@@ -24,7 +24,7 @@ describe('Publ client relay fetch auth header', () => {
     const fetchMock = stubRelayFetch();
     stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
-      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: ' local-access-token ',
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: ` ${createAccessToken()} `,
       [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
     }));
     registerPublClientRefreshTokenHandler(async () => 'new-token');
@@ -35,7 +35,7 @@ describe('Publ client relay fetch auth header', () => {
     const [, init] = fetchMock.mock.calls[0];
     expect(init.cache).toBe('no-store');
     expect(init.headers).toBeInstanceOf(Headers);
-    expect(init.headers.get('authorization')).toBe('Bearer local-access-token');
+    expect(init.headers.get('authorization')).toBe(`Bearer ${createAccessToken()}`);
     expect(init.headers.get('x-noti-auth-context')).toBe('publ-client');
   });
 
@@ -85,23 +85,90 @@ describe('Publ client relay fetch auth header', () => {
     vi.stubGlobal('fetch', fetchMock);
     stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
-      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'old-access-token',
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: createAccessToken({ jti: 'old-token' }),
       [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
     }));
+    const oldAccessToken = createAccessToken({ jti: 'old-token' });
+    const newAccessToken = createAccessToken({ jti: 'new-token' });
     registerPublClientRefreshTokenHandler(async ({ previousAccessToken, refreshToken }) => {
-      expect(previousAccessToken).toBe('old-access-token');
+      expect(previousAccessToken).toBe(oldAccessToken);
       expect(refreshToken).toBe('refresh-token');
-      setPublClientTokens({ accessToken: 'new-access-token' });
-      return 'new-access-token';
+      setPublClientTokens({ accessToken: newAccessToken });
+      return newAccessToken;
     });
     activatePublClientRuntime({ originPolicyConfigured: true });
 
     await expect(relayGet('/api/me')).resolves.toEqual({ user: { id: 'user_1' } });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][1].headers.get('authorization')).toBe('Bearer old-access-token');
-    expect(fetchMock.mock.calls[1][1].headers.get('authorization')).toBe('Bearer new-access-token');
+    expect(fetchMock.mock.calls[0][1].headers.get('authorization')).toBe(`Bearer ${oldAccessToken}`);
+    expect(fetchMock.mock.calls[1][1].headers.get('authorization')).toBe(`Bearer ${newAccessToken}`);
     expect(fetchMock.mock.calls[1][1].headers.get('x-noti-auth-context')).toBe('publ-client');
+  });
+
+  it('coalesces simultaneous 401 refreshes for one active runtime generation', async () => {
+    const oldAccessToken = createAccessToken({ jti: 'old-token' });
+    const newAccessToken = createAccessToken({ jti: 'new-token' });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(createUnauthorizedResponse())
+      .mockResolvedValueOnce(createUnauthorizedResponse())
+      .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({
+        ok: true,
+        data: { ok: true },
+      }), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      })));
+    vi.stubGlobal('fetch', fetchMock);
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: oldAccessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+    }));
+    const refreshHandler = vi.fn(async () => {
+      setPublClientTokens({ accessToken: newAccessToken });
+      return newAccessToken;
+    });
+    registerPublClientRefreshTokenHandler(refreshHandler);
+    activatePublClientRuntime({ originPolicyConfigured: true });
+
+    await expect(Promise.all([
+      relayGet('/api/me'),
+      relayGet('/api/sender-resources'),
+    ])).resolves.toEqual([{ ok: true }, { ok: true }]);
+
+    expect(refreshHandler).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[2][1].headers.get('authorization')).toBe(`Bearer ${newAccessToken}`);
+    expect(fetchMock.mock.calls[3][1].headers.get('authorization')).toBe(`Bearer ${newAccessToken}`);
+  });
+
+  it('discards a delayed success when an older Publ runtime generation is no longer active', async () => {
+    const delayed = createDeferred();
+    vi.stubGlobal('fetch', vi.fn(() => delayed.promise));
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: createAccessToken({ consumerId: 'merchant_a' }),
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token-a',
+    }));
+    registerPublClientRefreshTokenHandler(async () => createAccessToken({ consumerId: 'merchant_a', jti: 'new' }));
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const request = relayGet('/api/me');
+
+    setPublClientTokens({
+      accessToken: createAccessToken({ consumerId: 'merchant_b', sessionId: 'session_b', userId: 'user_b' }),
+      refreshToken: 'refresh-token-b',
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    delayed.resolve(new Response(JSON.stringify({
+      ok: true,
+      data: { user: { id: 'user_a' } },
+    }), {
+      headers: { 'content-type': 'application/json' },
+      status: 200,
+    }));
+
+    await expect(request).rejects.toMatchObject({ code: 'STALE_PUBL_RUNTIME' });
   });
 
   it('does not attach stale Publ tokens from a framed standalone route', async () => {
@@ -129,7 +196,7 @@ describe('Publ client relay fetch auth header', () => {
     vi.stubGlobal('fetch', fetchMock);
     const iframeWindow = stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
-      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'old-access-token',
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: createAccessToken(),
       [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
     }));
     const refreshHandler = vi.fn(async () => 'new-access-token');
@@ -180,6 +247,50 @@ function stubRelayFetch() {
   }));
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
+}
+
+function createUnauthorizedResponse() {
+  return new Response(JSON.stringify({
+    ok: false,
+    error: { code: 'UNAUTHORIZED', message: 'Unauthorized.', source: 'relay' },
+  }), {
+    headers: { 'content-type': 'application/json' },
+    status: 401,
+  });
+}
+
+function createAccessToken({
+  consumerId = 'consumer_1',
+  jti = 'access_jti_1',
+  sessionId = 'session_1',
+  userId = 'user_1',
+} = {}) {
+  const payload = {
+    consumerId,
+    jti,
+    sessionId,
+    userId,
+  };
+  return [
+    encodeBase64Url({ alg: 'none', typ: 'JWT' }),
+    encodeBase64Url(payload),
+    'signature',
+  ].join('.');
+}
+
+function encodeBase64Url(value) {
+  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+}
+
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, reject, resolve };
 }
 
 function createSessionStorage(initialValues = {}) {

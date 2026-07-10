@@ -10,7 +10,7 @@ import {
   getPublMemberContacts,
   toPublRecipientOptions,
 } from '../../features/publClient/recipientOptions.js';
-import { loadPublMemberContacts } from '../../features/publClient/queries.js';
+import { loadPublMemberContacts, publClientQueryKeys } from '../../features/publClient/queries.js';
 
 describe('Publ common/catalog tap request helpers', () => {
   it('requests seller business information through the configured permission', async () => {
@@ -126,6 +126,29 @@ describe('Publ common/catalog tap request helpers', () => {
       },
     });
     expect(adapter.request).toHaveBeenCalledTimes(2);
+  });
+
+  it('scopes member contact query keys by active Publ identity', () => {
+    expect(publClientQueryKeys.memberContacts({
+      consumerId: 'merchant_a',
+      sessionId: 'session_a',
+      userId: 'user_a',
+    })).toEqual([
+      'publ-client',
+      'member-contacts',
+      'merchant_a',
+      'session_a',
+      'user_a',
+    ]);
+    expect(publClientQueryKeys.memberContacts({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    })).not.toEqual(publClientQueryKeys.memberContacts({
+      consumerId: 'merchant_a',
+      sessionId: 'session_a',
+      userId: 'user_a',
+    }));
   });
 });
 

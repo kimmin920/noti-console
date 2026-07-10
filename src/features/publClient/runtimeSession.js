@@ -10,6 +10,7 @@ import { isPublIframeContext } from './frameContext.js';
 const PUBL_CLIENT_PATH_PREFIX = '/publ-client';
 
 let runtimeIdentity = null;
+let runtimeGeneration = 0;
 
 export function activatePublClientRuntime({
   originPolicyConfigured,
@@ -32,9 +33,19 @@ export function activatePublClientRuntime({
     return false;
   }
 
+  const tokenIdentity = decodePublClientAccessTokenIdentity(accessToken);
+  if (!tokenIdentity) {
+    resetPublClientRuntime();
+    return false;
+  }
+
+  runtimeGeneration += 1;
   runtimeIdentity = Object.freeze({
+    ...tokenIdentity,
     accessToken,
     activatedPathname: windowRef.location.pathname,
+    generation: runtimeGeneration,
+    identityKey: createIdentityKey(tokenIdentity),
   });
   return true;
 }
@@ -68,6 +79,12 @@ export function getIdentity() {
   }
 
   if (runtimeIdentity.accessToken !== accessToken) {
+    const tokenIdentity = decodePublClientAccessTokenIdentity(accessToken);
+    if (!tokenIdentity || createIdentityKey(tokenIdentity) !== runtimeIdentity.identityKey) {
+      resetPublClientRuntime();
+      return null;
+    }
+
     runtimeIdentity = Object.freeze({
       ...runtimeIdentity,
       accessToken,
@@ -77,10 +94,57 @@ export function getIdentity() {
   return runtimeIdentity;
 }
 
+export function getPublClientRuntimeGeneration() {
+  return runtimeIdentity?.generation ?? null;
+}
+
+export function isPublClientRuntimeGenerationActive(generation) {
+  return Boolean(runtimeIdentity && runtimeIdentity.generation === generation && isActiveForPath());
+}
+
 function isPublClientPath(pathname) {
   return pathname === PUBL_CLIENT_PATH_PREFIX || pathname?.startsWith(`${PUBL_CLIENT_PATH_PREFIX}/`);
 }
 
 function getWindow() {
   return typeof window === 'object' ? window : null;
+}
+
+function decodePublClientAccessTokenIdentity(accessToken) {
+  const payload = decodeJwtPayload(accessToken);
+  const consumerId = normalizeIdentityField(payload?.consumerId);
+  const sessionId = normalizeIdentityField(payload?.sessionId);
+  const userId = normalizeIdentityField(payload?.userId);
+
+  if (!consumerId || !sessionId || !userId) {
+    return null;
+  }
+
+  return { consumerId, sessionId, userId };
+}
+
+function createIdentityKey(identity) {
+  return `${identity.consumerId}:${identity.sessionId}:${identity.userId}`;
+}
+
+function decodeJwtPayload(token) {
+  try {
+    const payload = String(token).split('.')[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
+    const decoded = typeof atob === 'function'
+      ? atob(padded)
+      : globalThis.Buffer?.from?.(padded, 'base64')?.toString('utf8');
+    if (!decoded) return null;
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeIdentityField(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized || null;
 }

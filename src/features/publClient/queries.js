@@ -3,20 +3,28 @@
 import { useQuery } from '@tanstack/react-query';
 import { requestPublMemberContacts } from './tapRequests.js';
 import { getPublMemberContacts } from './recipientOptions.js';
+import { getIdentity } from './runtimeSession.js';
 
 const PUBL_MEMBER_CONTACTS_PAGE_SIZE = 50;
 const PUBL_MEMBER_CONTACTS_MAX_PAGES = 200;
 
 export const publClientQueryKeys = Object.freeze({
-  memberContacts: ['publ-client', 'member-contacts'],
+  memberContacts: (identity = null) => [
+    'publ-client',
+    'member-contacts',
+    identity?.consumerId ?? 'anonymous',
+    identity?.sessionId ?? 'no-session',
+    identity?.userId ?? 'no-user',
+  ],
 });
 
 export function usePublMemberContactsQuery({ adapter, clientConfig, enabled = true } = {}) {
   const permissionId = clientConfig?.permissions?.memberContacts;
+  const identity = getIdentity();
 
   return useQuery({
-    enabled: enabled !== false && Boolean(adapter && permissionId),
-    queryKey: publClientQueryKeys.memberContacts,
+    enabled: enabled !== false && Boolean(adapter && permissionId && identity),
+    queryKey: publClientQueryKeys.memberContacts(identity),
     queryFn: () => loadPublMemberContacts({
       adapter,
       clientConfig,

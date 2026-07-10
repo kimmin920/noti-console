@@ -96,27 +96,33 @@ describe('Publ iframe client SDK adapter', () => {
     expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBe('refresh-token');
   });
 
-  it('reuses a complete iframe session without exchanging another token', async () => {
+  it('exchanges again instead of trusting pre-existing sessionStorage tokens in a fresh document', async () => {
     const storage = createSessionStorage({
-      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'access-token',
-      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'stale-access-token',
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'stale-refresh-token',
     });
     const adapter = {
       authorize: vi.fn(),
-      exchangeToken: vi.fn(),
+      exchangeToken: vi.fn(async () => ({
+        data: {
+          accessToken: 'fresh-access-token',
+          refreshToken: 'fresh-refresh-token',
+        },
+      })),
       mount: vi.fn(async () => undefined),
       refreshToken: vi.fn(),
     };
 
     await expect(bootstrapPublClientSession({ adapter, storage })).resolves.toMatchObject({
       ok: true,
-      resumed: true,
       status: 'ready',
     });
 
     expect(adapter.mount).toHaveBeenCalledTimes(1);
     expect(adapter.authorize).toHaveBeenCalledTimes(1);
-    expect(adapter.exchangeToken).not.toHaveBeenCalled();
+    expect(adapter.exchangeToken).toHaveBeenCalledTimes(1);
+    expect(storage.getItem(PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY)).toBe('fresh-access-token');
+    expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBe('fresh-refresh-token');
   });
 
   it('distinguishes iframe and top-level browser contexts', () => {
@@ -234,7 +240,8 @@ describe('Publ iframe client SDK adapter', () => {
     const sdkAdapterSource = readSource('../../features/publClient/sdkAdapter.js');
     const messageSendRouteSource = readSource('../../app/message-send/page.jsx');
 
-    expect(publRouteSource).toContain('PublClientBootstrap');
+    expect(publRouteSource).toContain('PublClientConsole');
+    expect(readSource('../../app/publ-client/layout.jsx')).toContain('PublClientBootstrap');
     expect(publRouteSource).not.toContain('LandingAuthControls');
     expect(publClientSource).toContain('mode="embed"');
     expect(publClientSource).toContain('hideAccountControl');

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { RefreshCcw, ShieldAlert } from 'lucide-react';
 import { Button } from '../../components/ui/index.js';
 import { MessagingConsole } from '../console/MessagingConsole.jsx';
@@ -57,13 +58,16 @@ const STANDALONE_REDIRECT_STATE = {
 };
 
 export function PublClientBootstrap({
+  children = null,
   clientConfig = null,
   clientConfigError = '',
   pageId = DEFAULT_CONSOLE_PAGE_ID,
 }) {
+  const queryClient = useQueryClient();
   const [attempt, setAttempt] = useState(0);
   const [sessionState, setSessionState] = useState(CONNECTING_STATE);
   const activePageId = normalizeConsolePageId(pageId);
+  const stableClientConfig = clientConfig;
   const getPageHref = useCallback(({ pageId: nextPageId }) => (
     getPublClientPageHref({ pageId: normalizeConsolePageId(nextPageId) })
   ), []);
@@ -81,7 +85,7 @@ export function PublClientBootstrap({
         return;
       }
 
-      if (!clientConfig) {
+      if (!stableClientConfig) {
         setSessionState({
           message: clientConfigError || 'Publ client 설정을 확인해 주세요.',
           status: 'misconfigured',
@@ -90,15 +94,15 @@ export function PublClientBootstrap({
         return;
       }
 
-      let adapter = resolvePublSdkAdapter({ clientConfig });
+      let adapter = resolvePublSdkAdapter({ clientConfig: stableClientConfig });
       if (!adapter && !isPublClientSdkAvailable()) {
-        if (!clientConfig.sdkSrc) {
+        if (!stableClientConfig.sdkSrc) {
           setSessionState(SDK_NOT_CONFIGURED_STATE);
           return;
         }
 
         try {
-          await loadPublClientSdkScript(clientConfig.sdkSrc);
+          await loadPublClientSdkScript(stableClientConfig.sdkSrc);
         } catch {
           if (!cancelled) {
             setSessionState(SDK_LOAD_FAILED_STATE);
@@ -106,10 +110,12 @@ export function PublClientBootstrap({
           return;
         }
 
-        adapter = resolvePublSdkAdapter({ clientConfig });
+        adapter = resolvePublSdkAdapter({ clientConfig: stableClientConfig });
       }
 
-      const result = await bootstrapPublClientSession({ adapter, clientConfig });
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      const result = await bootstrapPublClientSession({ adapter, clientConfig: stableClientConfig });
 
       if (cancelled) {
         return;
@@ -127,6 +133,7 @@ export function PublClientBootstrap({
         try {
           return await refreshPublClientSession({
             adapter,
+            clientConfig: stableClientConfig,
             previousAccessToken,
             refreshToken,
           });
@@ -137,7 +144,7 @@ export function PublClientBootstrap({
       });
 
       if (!activatePublClientRuntime({
-        originPolicyConfigured: Boolean(clientConfig?.framePolicy?.configured),
+        originPolicyConfigured: Boolean(stableClientConfig?.framePolicy?.configured),
       })) {
         setSessionState({
           message: 'Publ iframe origin policy or local session is not active.',
@@ -157,17 +164,19 @@ export function PublClientBootstrap({
       unregisterRefreshHandler?.();
       resetPublClientRuntime();
     };
-  }, [attempt, clientConfig, clientConfigError]);
+  }, [attempt, stableClientConfig, clientConfigError, queryClient]);
 
   if (sessionState.status === 'ready') {
     return (
-      <PublClientProvider adapter={sessionState.adapter} clientConfig={clientConfig}>
-        <MessagingConsole
-          getPageHref={getPageHref}
-          hideAccountControl
-          mode="embed"
-          pageId={activePageId}
-        />
+      <PublClientProvider adapter={sessionState.adapter} clientConfig={stableClientConfig}>
+        {children ?? (
+          <MessagingConsole
+            getPageHref={getPageHref}
+            hideAccountControl
+            mode="embed"
+            pageId={activePageId}
+          />
+        )}
       </PublClientProvider>
     );
   }

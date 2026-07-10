@@ -164,8 +164,10 @@ When exchange succeeds it stores VIZUO access/refresh tokens in iframe
 `sessionStorage`, attaches `Authorization: Bearer {accessToken}` to same-origin
 `/api/*` relay calls only while running in an iframe, and renders the existing
 messaging console in embed mode. A top-level `/publ-client` load does not call
-the SDK and redirects to the standalone `/message-send` route. A complete token
-pair already in session storage is reused without another exchange.
+the SDK and redirects to the standalone `/message-send` route. Same-document
+navigation under `/publ-client` reuses the active in-memory runtime, but a fresh
+JavaScript document clears stale stored tokens and exchanges again instead of
+treating `sessionStorage` as proof of a resumable session.
 When the local access token expires, the client asks the SDK for
 `PM_00000_REFRESH_TOKEN`; the SDK includes the previous access/refresh token from
 its session, and VIZUO returns only the next access token.

@@ -16,9 +16,12 @@ verification.
 
 - The first valid iframe entry mounts and authorizes the SDK, exchanges tokens,
   and stores access and refresh tokens in `sessionStorage`.
-- Subsequent `/publ-client?page=...` loads mount and authorize the SDK so tap and
-  refresh capabilities are restored, but reuse a complete stored token pair and
-  do not exchange another token.
+- Same-document `/publ-client?page=...` navigation stays inside the persistent
+  Publ session boundary and reuses the in-memory runtime without another
+  exchange.
+- A fresh JavaScript document never treats existing `sessionStorage` tokens as a
+  resumable session. It clears stale local tokens, mounts and authorizes the SDK,
+  and exchanges again so runtime identity and cache ownership are fresh.
 - A local API `401` refreshes once through the SDK. Refresh failure clears both
   tokens and returns the iframe to its reconnect state.
 

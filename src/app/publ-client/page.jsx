@@ -1,9 +1,8 @@
-import { PublClientBootstrap } from '@/features/publClient/PublClientBootstrap.jsx';
+import { PublClientConsole } from '@/features/publClient/PublClientConsole.jsx';
 import {
   DEFAULT_CONSOLE_PAGE_ID,
   normalizeConsolePageId,
 } from '@/features/console/routing.js';
-import { resolvePublPappClientConfigResult } from '@/server/publPapp/clientConfig.js';
 
 export const metadata = {
   title: 'Publ Client',
@@ -12,15 +11,8 @@ export const metadata = {
 
 export default async function PublClientPage({ searchParams }) {
   const params = await searchParams;
-  const clientConfigResult = resolvePublPappClientConfigResult();
 
-  return (
-    <PublClientBootstrap
-      clientConfig={clientConfigResult.ok ? clientConfigResult.config : null}
-      clientConfigError={clientConfigResult.ok ? '' : clientConfigResult.message}
-      pageId={getPublClientPageId(params)}
-    />
-  );
+  return <PublClientConsole pageId={getPublClientPageId(params)} />;
 }
 
 function getPublClientPageId(params) {

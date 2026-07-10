@@ -253,6 +253,51 @@ describe('Publ PApp token exchange endpoints', () => {
     });
   });
 
+  it('rejects the previous local token pair after the same consumer exchanges again', async () => {
+    const harness = createExchangeHarness({
+      accessTokenJtis: ['access_jti_1', 'access_jti_2'],
+      refreshTokens: ['refresh_token_1', 'refresh_token_2'],
+    });
+    const firstExchange = await callExchange({
+      harness,
+      jwt: createPublJwt(),
+    });
+    const firstBody = await firstExchange.json();
+    const secondExchange = await callExchange({
+      harness,
+      jwt: createPublJwt(),
+    });
+    const secondBody = await secondExchange.json();
+
+    expect(harness.store.sessions).toHaveLength(1);
+    expect(harness.store.sessions[0]).toMatchObject({
+      accessTokenJti: 'access_jti_2',
+      refreshTokenHash: hashPublPappRefreshToken(
+        'refresh_token_2',
+        CONFIG.tokenSecrets.refreshTokenHashSecret
+      ),
+    });
+    expect(verifyLocalAccessToken(firstBody.data.accessToken, {
+      now: () => FIXED_NOW,
+      secret: CONFIG.tokenSecrets.accessTokenSecret,
+    })).toMatchObject({ jti: 'access_jti_1' });
+    expect(verifyLocalAccessToken(secondBody.data.accessToken, {
+      now: () => FIXED_NOW,
+      secret: CONFIG.tokenSecrets.accessTokenSecret,
+    })).toMatchObject({ jti: 'access_jti_2' });
+
+    const refreshWithOldPair = await callRefresh({
+      body: {
+        previousAccessToken: firstBody.data.accessToken,
+        refreshToken: firstBody.data.refreshToken,
+      },
+      harness,
+      jwt: createPublJwt(),
+    });
+
+    await expectSafeError(refreshWithOldPair, 401, 'UNAUTHORIZED', 'Invalid api key or token');
+  });
+
   it('rejects refresh requests with missing refresh body fields', async () => {
     const harness = createExchangeHarness();
     const response = await callRefresh({
