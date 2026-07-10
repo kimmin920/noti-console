@@ -4,7 +4,7 @@ import {
   hasPublClientRefreshTokenHandler,
   refreshPublClientAccessToken,
 } from '../../publClient/authToken.js';
-import { isPublIframeContext } from '../../publClient/frameContext.js';
+import { getIdentity, isActiveForPath } from '../../publClient/runtimeSession.js';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -114,19 +114,20 @@ async function relayFetchWithPublRefresh(path, init, { retried }) {
 }
 
 function withPublBearerAuthorization(path, init) {
-  if (!isLocalApiPath(path) || !isPublIframeContext()) {
+  if (!isLocalApiPath(path) || !isActiveForPath()) {
     return init;
   }
 
-  const accessToken = getPublClientAccessToken();
-  if (!accessToken) {
+  const identity = getIdentity();
+  if (!identity?.accessToken) {
     return init;
   }
 
   const headers = new Headers(init?.headers);
   if (!headers.has('authorization')) {
-    headers.set('authorization', `Bearer ${accessToken}`);
+    headers.set('authorization', `Bearer ${identity.accessToken}`);
   }
+  headers.set('x-noti-auth-context', 'publ-client');
 
   return {
     ...init,
@@ -140,7 +141,7 @@ function isLocalApiPath(path) {
 
 function shouldAttemptPublTokenRefresh(path, error) {
   return isLocalApiPath(path)
-    && isPublIframeContext()
+    && isActiveForPath()
     && error?.status === 401
     && Boolean(getPublClientAccessToken())
     && Boolean(getPublClientRefreshToken())

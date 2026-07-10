@@ -14,6 +14,7 @@ describe('Publ PApp client runtime config', () => {
       PUBL_PAPP_CLIENT_STAGE: 'test',
       PUBL_PAPP_TEST_CLIENT_HASH: ' test-client-hash ',
       PUBL_PAPP_TEST_MEMBER_CONTACTS_PERMISSION_ID: 'PM_TEST_CONTACTS',
+      PUBL_PAPP_TEST_PARENT_ORIGINS: 'https://console.dev.publ.biz',
       PUBL_PAPP_TEST_OUTGOING_API_KEY: 'must-not-leak',
       PUBL_PAPP_TEST_OUTGOING_SECRET_KEY: 'must-not-leak-secret',
     });
@@ -43,6 +44,7 @@ describe('Publ PApp client runtime config', () => {
       APP_ENV: 'production',
       PUBL_PAPP_RELEASE_CLIENT_HASH: 'release-client-hash',
       PUBL_PAPP_RELEASE_CODE: '3RD_A00003',
+      PUBL_PAPP_RELEASE_PARENT_ORIGINS: 'https://console.publ.biz',
       PUBL_PAPP_SDK_SRC: 'https://publ.example/sdk.js',
     });
 
@@ -70,6 +72,7 @@ describe('Publ PApp client runtime config', () => {
     const config = resolvePublPappClientConfig({
       PUBL_PAPP_CLIENT_STAGE: 'test',
       PUBL_PAPP_TEST_CLIENT_HASH: 'test-client-hash',
+      PUBL_PAPP_TEST_PARENT_ORIGINS: 'https://console.dev.publ.biz',
     });
 
     expect(config.authorizationPermissionIds).toEqual([
@@ -81,5 +84,19 @@ describe('Publ PApp client runtime config', () => {
     expect(config.permissions.memberContacts).toBe(
       PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.TEST_MEMBER_CONTACTS
     );
+  });
+
+  it('includes only non-secret parent origin policy metadata', () => {
+    const config = resolvePublPappClientConfig({
+      PUBL_PAPP_CLIENT_STAGE: 'release',
+      PUBL_PAPP_RELEASE_CLIENT_HASH: 'release-client-hash',
+      PUBL_PAPP_RELEASE_PARENT_ORIGINS: 'https://console.publ.biz',
+      PUBL_PAPP_SDK_SRC: 'https://publ.example/sdk.js',
+    });
+
+    expect(config.framePolicy).toEqual({
+      configured: true,
+      origins: ['https://console.publ.biz'],
+    });
   });
 });

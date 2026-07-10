@@ -21,6 +21,10 @@ import {
 import { registerPublClientRefreshTokenHandler } from './authToken.js';
 import { isPublIframeContext } from './frameContext.js';
 import { PublClientProvider } from './PublClientContext.jsx';
+import {
+  activatePublClientRuntime,
+  resetPublClientRuntime,
+} from './runtimeSession.js';
 
 const CONNECTING_STATE = {
   message: 'Publ iframe 연결을 확인하고 있습니다.',
@@ -132,6 +136,17 @@ export function PublClientBootstrap({
         }
       });
 
+      if (!activatePublClientRuntime({
+        originPolicyConfigured: Boolean(clientConfig?.framePolicy?.configured),
+      })) {
+        setSessionState({
+          message: 'Publ iframe origin policy or local session is not active.',
+          status: 'misconfigured',
+          title: 'Publ client 연결을 활성화할 수 없습니다',
+        });
+        return;
+      }
+
       setSessionState({ ...result, adapter });
     }
 
@@ -140,6 +155,7 @@ export function PublClientBootstrap({
     return () => {
       cancelled = true;
       unregisterRefreshHandler?.();
+      resetPublClientRuntime();
     };
   }, [attempt, clientConfig, clientConfigError]);
 

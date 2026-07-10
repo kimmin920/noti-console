@@ -2,6 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 import { hasDevBrowserAuthBypass } from './server/auth/devAuth.js';
+import { resolvePublClientFramePolicy } from './server/publPapp/framePolicy.js';
 
 const isPublicAuthRoute = createRouteMatcher([
   '/',
@@ -17,6 +18,7 @@ const isPublicRoute = createRouteMatcher([
 const isDomainDetailRoute = createRouteMatcher(['/domain-detail']);
 const isRelayApiRoute = createRouteMatcher(['/api(.*)']);
 const isPlaygroundRoute = createRouteMatcher(['/playground(.*)']);
+const isPublClientRoute = createRouteMatcher(['/publ-client(.*)']);
 
 const publicAuthRouteProxy = clerkMiddleware(() => NextResponse.next());
 const relayApiRouteProxy = clerkMiddleware(() => NextResponse.next());
@@ -25,6 +27,10 @@ const protectedRouteProxy = clerkMiddleware(async (auth) => {
 });
 
 export default function proxy(request, event) {
+  if (isPublClientRoute(request)) {
+    return publClientPublicResponse();
+  }
+
   if (isPublicAuthRoute(request)) {
     return publicAuthRouteProxy(request, event);
   }
@@ -47,8 +53,18 @@ export default function proxy(request, event) {
   return protectedRouteProxy(request, event);
 }
 
+function publClientPublicResponse() {
+  const framePolicy = resolvePublClientFramePolicy();
+  return NextResponse.next({
+    headers: {
+      'Content-Security-Policy': framePolicy.contentSecurityPolicy,
+    },
+  });
+}
+
 export const config = {
   matcher: [
+    '/publ-client/:path*',
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
     '/__clerk/(.*)',

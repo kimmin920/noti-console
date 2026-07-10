@@ -47,6 +47,8 @@ are client-visible, so do not place Publ secret keys here.
 ```bash
 PUBL_PAPP_CLIENT_STAGE=test
 PUBL_PAPP_SDK_SRC=/vendor/publ-p-app-client-sdk.testflight.js
+PUBL_PAPP_TEST_PARENT_ORIGINS=https://console.dev.publ.biz
+PUBL_PAPP_RELEASE_PARENT_ORIGINS=https://console.publ.biz
 PUBL_PAPP_TEST_CLIENT_HASH=
 PUBL_PAPP_RELEASE_CLIENT_HASH=
 PUBL_PAPP_TEST_SELLER_INFO_PERMISSION_ID=
@@ -59,6 +61,13 @@ PUBL_PAPP_RELEASE_MEMBER_CONTACTS_PERMISSION_ID=
 otherwise it defaults to `test`. `PUBL_PAPP_SDK_SRC` defaults to the bundled
 testflight SDK only in the test stage. Release must set the Publ-hosted or
 release-approved SDK URL explicitly.
+
+`PUBL_PAPP_TEST_PARENT_ORIGINS` and `PUBL_PAPP_RELEASE_PARENT_ORIGINS` are
+server-only comma-separated iframe parent origins used for `/publ-client`
+`frame-ancestors` CSP and iframe runtime activation. Do not configure them as
+`NEXT_PUBLIC_*`. Values must be origins only, without paths, credentials, or
+wildcards. HTTPS is required in production; local HTTP loopback origins are
+accepted only outside production for development testing.
 
 Exchange and refresh permission IDs default to Publ's fixed values:
 `PM_00000_EXCHANGE_TOKEN` and `PM_00000_REFRESH_TOKEN`. Seller-info and member
@@ -212,6 +221,7 @@ export PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET=test-only-refresh-hash-secret
 export PUBL_PAPP_CLIENT_STAGE=test
 export PUBL_PAPP_TEST_CLIENT_HASH=test-only-client-hash
 export PUBL_PAPP_SDK_SRC=/vendor/publ-p-app-client-sdk.testflight.js
+export PUBL_PAPP_TEST_PARENT_ORIGINS=http://localhost:3000
 
 npm run dev
 ```

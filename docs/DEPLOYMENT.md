@@ -309,6 +309,8 @@ Use separate values for dev and prod. Start from `.env.example`.
 - `PUBL_PAPP_SDK_SRC`
 - `PUBL_PAPP_TEST_CLIENT_HASH`
 - `PUBL_PAPP_RELEASE_CLIENT_HASH`
+- `PUBL_PAPP_TEST_PARENT_ORIGINS`
+- `PUBL_PAPP_RELEASE_PARENT_ORIGINS`
 - `PUBL_PAPP_TEST_SELLER_INFO_PERMISSION_ID`
 - `PUBL_PAPP_TEST_MEMBER_CONTACTS_PERMISSION_ID`
 - `PUBL_PAPP_RELEASE_SELLER_INFO_PERMISSION_ID`
@@ -344,7 +346,8 @@ Deployment checklist:
   `PUBL_PAPP_TEST_OUTGOING_API_KEY`,
   `PUBL_PAPP_TEST_OUTGOING_SECRET_KEY`, `PUBL_PAPP_ACCESS_TOKEN_SECRET`, and
   `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`. Also set
-  `PUBL_PAPP_CLIENT_STAGE=test`, `PUBL_PAPP_TEST_CLIENT_HASH`, and
+  `PUBL_PAPP_CLIENT_STAGE=test`, `PUBL_PAPP_TEST_CLIENT_HASH`,
+  `PUBL_PAPP_TEST_PARENT_ORIGINS=https://console.dev.publ.biz`, and
   `PUBL_PAPP_SDK_SRC=/vendor/publ-p-app-client-sdk.testflight.js` unless Publ
   provides a hosted SDK URL. `PUBL_PAPP_TEST_CODE` may stay at the default
   `3RD_A00003_TEST`.
@@ -352,9 +355,10 @@ Deployment checklist:
   `PUBL_PAPP_RELEASE_OUTGOING_API_KEY`,
   `PUBL_PAPP_RELEASE_OUTGOING_SECRET_KEY`, `PUBL_PAPP_ACCESS_TOKEN_SECRET`, and
   `PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET`. Also set
-  `PUBL_PAPP_CLIENT_STAGE=release`, `PUBL_PAPP_RELEASE_CLIENT_HASH`, and a
-  release-approved `PUBL_PAPP_SDK_SRC`. `PUBL_PAPP_RELEASE_CODE` may stay at the
-  default `3RD_A00003`.
+  `PUBL_PAPP_CLIENT_STAGE=release`, `PUBL_PAPP_RELEASE_CLIENT_HASH`,
+  `PUBL_PAPP_RELEASE_PARENT_ORIGINS=https://console.publ.biz`, and a
+  release-approved `PUBL_PAPP_SDK_SRC`. `PUBL_PAPP_RELEASE_CODE` may stay at
+  the default `3RD_A00003`.
 - Set seller-info and member-contacts permission ID env values only after Publ
   confirms the stage-specific IDs granted to this PApp.
 - Keep Publ `incoming_api_key` and `incoming_secret_key` out of this deployment
@@ -363,6 +367,9 @@ Deployment checklist:
   `/api/open/v1/publ/events` returns `invalid_signature` for unsigned requests
   before asking Publ to run end-to-end staging validation.
 - Do not configure any Publ value through `NEXT_PUBLIC_*`.
+- Keep Publ parent origins server-only. They drive `/publ-client`
+  `Content-Security-Policy: frame-ancestors ...` and must be exact origins,
+  not paths, wildcards, credentials, or production HTTP URLs.
 
 See `docs/PUBL_PAPP_INTEGRATION.md` for token exchange and webhook smoke-test
 commands.

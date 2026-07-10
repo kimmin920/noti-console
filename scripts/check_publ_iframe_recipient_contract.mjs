@@ -9,6 +9,7 @@ const files = {
   payloads: 'src/features/console/messageSend/payloads.js',
   recipientSelect: 'src/components/ui/RecipientSelect.jsx',
   recipientSource: 'src/features/publClient/usePublMessageRecipients.js',
+  runtimeSession: 'src/features/publClient/runtimeSession.js',
   schema: 'src/db/schema.js',
   sdkAdapter: 'src/features/publClient/sdkAdapter.js',
 };
@@ -22,7 +23,8 @@ checkIncludes(source.contract, 'Top-level `/publ-client`', 'contract fixes top-l
 checkIncludes(source.contract, 'Do not add `recipientSnapshotJson`', 'contract fixes history parity');
 checkIncludes(source.bootstrap, 'isPublIframeContext()', 'bootstrap checks the iframe boundary');
 checkIncludes(source.bootstrap, "window.location.replace('/message-send')", 'top-level entry redirects to standalone');
-checkIncludes(source.clientApi, '!isPublIframeContext()', 'standalone API calls do not attach Publ bearer tokens');
+checkIncludes(source.clientApi, "from '../../publClient/runtimeSession.js'", 'relay auth delegates to behavior-tested Publ runtime helpers');
+checkIncludes(source.runtimeSession, "const PUBL_CLIENT_PATH_PREFIX = '/publ-client'", 'Publ runtime is path-scoped');
 checkIncludes(source.sdkAdapter, 'hasPublClientSession({ storage })', 'SDK bootstrap reuses stored sessions');
 checkIncludes(source.config, 'PM_19177_READ_MEMBER_CONTACTS', 'testflight contact permission is configured');
 checkIncludes(source.consolePages, '<PublAudiencePage />', 'Publ embed has a dedicated audience view');

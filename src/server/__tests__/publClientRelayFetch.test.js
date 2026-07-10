@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { relayGet } from '../../features/console/messageSend/api.js';
 import {
+  activatePublClientRuntime,
+  resetPublClientRuntime,
+} from '../../features/publClient/runtimeSession.js';
+import {
   clearPublClientRefreshTokenHandler,
   PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY,
   PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY,
@@ -12,15 +16,19 @@ import {
 describe('Publ client relay fetch auth header', () => {
   afterEach(() => {
     clearPublClientRefreshTokenHandler();
+    resetPublClientRuntime();
     vi.unstubAllGlobals();
   });
 
-  it('attaches the Publ bearer token to local API calls when session storage has one', async () => {
+  it('attaches Publ auth headers only when the Publ runtime is active for the current path', async () => {
     const fetchMock = stubRelayFetch();
-    stubPublIframeWindow();
+    stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
       [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: ' local-access-token ',
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
     }));
+    registerPublClientRefreshTokenHandler(async () => 'new-token');
+    activatePublClientRuntime({ originPolicyConfigured: true });
 
     await relayGet('/api/me');
 
@@ -28,6 +36,7 @@ describe('Publ client relay fetch auth header', () => {
     expect(init.cache).toBe('no-store');
     expect(init.headers).toBeInstanceOf(Headers);
     expect(init.headers.get('authorization')).toBe('Bearer local-access-token');
+    expect(init.headers.get('x-noti-auth-context')).toBe('publ-client');
   });
 
   it('does not attach Authorization when no Publ token is available', async () => {
@@ -42,7 +51,7 @@ describe('Publ client relay fetch auth header', () => {
 
   it('does not attach Publ Authorization to non-API requests', async () => {
     const fetchMock = stubRelayFetch();
-    stubPublIframeWindow();
+    stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
       [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'local-access-token',
     }));
@@ -74,7 +83,7 @@ describe('Publ client relay fetch auth header', () => {
         status: 200,
       }));
     vi.stubGlobal('fetch', fetchMock);
-    stubPublIframeWindow();
+    stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
       [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'old-access-token',
       [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
@@ -85,12 +94,54 @@ describe('Publ client relay fetch auth header', () => {
       setPublClientTokens({ accessToken: 'new-access-token' });
       return 'new-access-token';
     });
+    activatePublClientRuntime({ originPolicyConfigured: true });
 
     await expect(relayGet('/api/me')).resolves.toEqual({ user: { id: 'user_1' } });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][1].headers.get('authorization')).toBe('Bearer old-access-token');
     expect(fetchMock.mock.calls[1][1].headers.get('authorization')).toBe('Bearer new-access-token');
+    expect(fetchMock.mock.calls[1][1].headers.get('x-noti-auth-context')).toBe('publ-client');
+  });
+
+  it('does not attach stale Publ tokens from a framed standalone route', async () => {
+    const fetchMock = stubRelayFetch();
+    stubPublIframeWindow('/message-send');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'stale-publ-token',
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'stale-refresh-token',
+    }));
+
+    await relayGet('/api/me');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init).toEqual({ cache: 'no-store' });
+  });
+
+  it('stops attaching and refreshing when an active document leaves the Publ path', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      ok: false,
+      error: { code: 'UNAUTHORIZED', message: 'Unauthorized.', source: 'relay' },
+    }), {
+      headers: { 'content-type': 'application/json' },
+      status: 401,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const iframeWindow = stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'old-access-token',
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+    }));
+    const refreshHandler = vi.fn(async () => 'new-access-token');
+    registerPublClientRefreshTokenHandler(refreshHandler);
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    iframeWindow.location.pathname = '/message-send';
+
+    await expect(relayGet('/api/me')).rejects.toMatchObject({ status: 401 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1]).toEqual({ cache: 'no-store' });
+    expect(refreshHandler).not.toHaveBeenCalled();
   });
 
   it('does not attach a stored Publ token from a top-level standalone window', async () => {
@@ -110,11 +161,13 @@ describe('Publ client relay fetch auth header', () => {
   });
 });
 
-function stubPublIframeWindow() {
+function stubPublIframeWindow(pathname = '/publ-client') {
   const iframeWindow = {};
   iframeWindow.self = iframeWindow;
   iframeWindow.top = {};
+  iframeWindow.location = { pathname };
   vi.stubGlobal('window', iframeWindow);
+  return iframeWindow;
 }
 
 function stubRelayFetch() {
