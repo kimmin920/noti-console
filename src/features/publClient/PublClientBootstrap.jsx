@@ -18,12 +18,15 @@ import {
   isPublClientSdkAvailable,
   loadPublClientSdkScript,
 } from './sdkScriptLoader.js';
-import { registerPublClientRefreshTokenHandler } from './authToken.js';
+import {
+  hasPublClientRefreshTokenHandler,
+  registerPublClientRefreshTokenHandler,
+} from './authToken.js';
 import { isPublIframeContext } from './frameContext.js';
 import { PublClientProvider } from './PublClientContext.jsx';
 import {
   activatePublClientRuntime,
-  resetPublClientRuntime,
+  getIdentity,
 } from './runtimeSession.js';
 
 const CONNECTING_STATE = {
@@ -59,16 +62,22 @@ export function PublClientBootstrap({
   routeResult = null,
 }) {
   const queryClient = useQueryClient();
+  const [initialSessionInput] = useState(() => ({
+    clientConfig,
+    clientConfigError,
+    routeResult,
+  }));
   const [attempt, setAttempt] = useState(0);
   const [sessionState, setSessionState] = useState(CONNECTING_STATE);
-  const stableClientConfig = clientConfig;
+  const stableClientConfig = initialSessionInput.clientConfig;
+  const stableClientConfigError = initialSessionInput.clientConfigError;
+  const initialRouteResult = initialSessionInput.routeResult;
   const getPageHref = useCallback(({ pageId: nextPageId }) => (
     buildPublClientPath({ pageId: nextPageId })
   ), []);
 
   useEffect(() => {
     let cancelled = false;
-    let unregisterRefreshHandler = null;
 
     async function startPublSession() {
       setSessionState(CONNECTING_STATE);
@@ -84,7 +93,7 @@ export function PublClientBootstrap({
 
       if (!stableClientConfig) {
         setSessionState({
-          message: clientConfigError || 'Publ client 설정을 확인해 주세요.',
+          message: stableClientConfigError || 'Publ client 설정을 확인해 주세요.',
           status: 'misconfigured',
           title: 'Publ client 설정이 올바르지 않습니다',
         });
@@ -112,6 +121,18 @@ export function PublClientBootstrap({
 
       await queryClient.cancelQueries();
       queryClient.clear();
+
+      if (getIdentity() && hasPublClientRefreshTokenHandler()) {
+        setSessionState({
+          adapter,
+          message: '',
+          ok: true,
+          status: 'ready',
+          title: '연결되었습니다',
+        });
+        return;
+      }
+
       const result = await bootstrapPublClientSession({ adapter, clientConfig: stableClientConfig });
 
       if (cancelled) {
@@ -123,7 +144,7 @@ export function PublClientBootstrap({
         return;
       }
 
-      unregisterRefreshHandler = registerPublClientRefreshTokenHandler(async ({
+      registerPublClientRefreshTokenHandler(async ({
         previousAccessToken,
         refreshToken,
       }) => {
@@ -152,17 +173,15 @@ export function PublClientBootstrap({
       }
 
       setSessionState({ ...result, adapter });
-      canonicalizePublClientPath(routeResult);
+      canonicalizePublClientPath(initialRouteResult);
     }
 
     startPublSession();
 
     return () => {
       cancelled = true;
-      unregisterRefreshHandler?.();
-      resetPublClientRuntime();
     };
-  }, [attempt, stableClientConfig, clientConfigError, queryClient, routeResult]);
+  }, [attempt, initialRouteResult, queryClient, stableClientConfig, stableClientConfigError]);
 
   if (sessionState.status === 'ready') {
     return (

@@ -91,12 +91,16 @@ export function withQuery(path, params) {
   return query ? `${path}?${query}` : path;
 }
 
+if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+  window.__VIZUO_E2E_RELAY_GET__ = relayGet;
+}
+
 async function relayFetch(path, init) {
   return relayFetchWithPublRefresh(path, init, { retried: false });
 }
 
 async function relayFetchWithPublRefresh(path, init, { retried }) {
-  const requestIdentity = isLocalApiPath(path) && isActiveForPath() ? getIdentity() : null;
+  const requestIdentity = snapshotPublRequestIdentity(path);
   const response = await fetch(path, {
     cache: 'no-store',
     ...withPublBearerAuthorization(path, init),
@@ -123,6 +127,15 @@ async function relayFetchWithPublRefresh(path, init, { retried }) {
   }
 
   throw error;
+}
+
+function snapshotPublRequestIdentity(path) {
+  if (!isLocalApiPath(path) || !isActiveForPath()) {
+    return null;
+  }
+
+  const identity = getIdentity();
+  return identity ? { ...identity } : null;
 }
 
 function withPublBearerAuthorization(path, init) {
@@ -170,9 +183,11 @@ async function refreshPublAccessTokenSafely() {
 
   const promise = refreshPublClientAccessToken()
     .finally(() => {
-      if (publRefreshInFlight?.promise === promise) {
-        publRefreshInFlight = null;
-      }
+      setTimeout(() => {
+        if (publRefreshInFlight?.promise === promise) {
+          publRefreshInFlight = null;
+        }
+      }, 100);
     });
   publRefreshInFlight = {
     generation: identity.generation,

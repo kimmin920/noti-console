@@ -7,6 +7,7 @@ const files = {
   consolePages: 'src/features/console/ConsolePages.jsx',
   contract: 'docs/PUBL_IFRAME_RECIPIENT_CONTRACT.md',
   payloads: 'src/features/console/messageSend/payloads.js',
+  routeEntry: 'src/features/publClient/PublClientRouteEntry.jsx',
   recipientSelect: 'src/components/ui/RecipientSelect.jsx',
   recipientSource: 'src/features/publClient/usePublMessageRecipients.js',
   runtimeSession: 'src/features/publClient/runtimeSession.js',
@@ -22,11 +23,11 @@ const failures = [];
 checkIncludes(source.contract, 'Top-level `/publ-client`', 'contract fixes top-level entry behavior');
 checkIncludes(source.contract, 'Do not add `recipientSnapshotJson`', 'contract fixes history parity');
 checkIncludes(source.bootstrap, 'isPublIframeContext()', 'bootstrap checks the iframe boundary');
-checkIncludes(source.bootstrap, "window.location.replace('/message-send')", 'top-level entry redirects to standalone');
+checkIncludes(source.routeEntry, 'window.location.replace(standaloneHref)', 'top-level entry redirects to standalone');
 checkIncludes(source.clientApi, "from '../../publClient/runtimeSession.js'", 'relay auth delegates to behavior-tested Publ runtime helpers');
 checkIncludes(source.runtimeSession, "const PUBL_CLIENT_PATH_PREFIX = '/publ-client'", 'Publ runtime is path-scoped');
-checkIncludes(source.sdkAdapter, 'hasPublClientSession({ storage })', 'SDK bootstrap reuses stored sessions');
-checkIncludes(source.config, 'PM_19177_READ_MEMBER_CONTACTS', 'testflight contact permission is configured');
+checkIncludes(source.sdkAdapter, 'clearPublClientTokens({ storage })', 'SDK bootstrap clears stale stored sessions');
+checkIncludes(source.config, 'TEST_MEMBER_CONTACTS_PERMISSION_ID', 'testflight contact permission is configurable');
 checkIncludes(source.consolePages, '<PublAudiencePage />', 'Publ embed has a dedicated audience view');
 checkIncludes(source.consolePages, 'recipientSelectProps={publRecipients.selectProps}', 'all message forms receive Publ recipient props');
 checkIncludes(source.recipientSelect, 'sourceTabs = []', 'recipient selector supports independent source tabs');

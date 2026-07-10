@@ -181,6 +181,44 @@ configuration because Publ may grant different release values.
 If the Publ SDK is unavailable locally, `/publ-client` renders a safe connection
 unavailable state instead of attempting a raw `postMessage` protocol.
 
+### Path Mirroring And Browser Release Gate
+
+The iframe route mirrors registered console paths under the `/publ-client`
+prefix. For example, `/publ-client/logs?channel=sms` renders the same console
+surface as `/logs?channel=sms`, but all in-app navigation remains prefixed while
+the document is in Publ embed mode. A top-level browser visit to a registered
+`/publ-client/...` path strips the prefix and redirects to the standalone
+console path; malformed or unregistered Publ paths stay on `/publ-client` and
+render the invalid-route state.
+
+Every fresh JavaScript document must exchange through the SDK before activating
+local API authorization. Same-document navigation inside `/publ-client` reuses
+the active runtime and must not exchange again. A reload is a fresh document and
+must exchange again so merchant identity, runtime generation, and contact cache
+ownership are deterministic.
+
+`PUBL_PAPP_TEST_PARENT_ORIGINS` and `PUBL_PAPP_RELEASE_PARENT_ORIGINS` are exact
+server-only origin allowlists for iframe `frame-ancestors`. Local deterministic
+browser QA uses only `http://127.0.0.1:3411` as an approved parent fixture and
+`http://127.0.0.1:3412` as a denied parent fixture. Do not add the denied origin
+or any loopback origin to release configuration.
+
+The repo-owned Playwright gate is:
+
+```bash
+npm run test:publ-client-e2e
+```
+
+It runs desktop and mobile Chromium projects against local app and parent
+fixtures. It does not require Clerk, Postgres, real Publ credentials, or locally
+signed access tokens. Evidence is written to
+`.omo/evidence/task-8-publ-client-boundary-routing-hardening/` with screenshots,
+final URLs, redacted request headers, SDK exchange/refresh counters, browser
+console errors, and failed network requests.
+
+Real `https://console.dev.publ.biz` iframe validation remains a post-deploy
+smoke gate. Do not mark that gate passed from the local parent fixture.
+
 ## Publ Automation Webhook
 
 `POST /api/open/v1/publ/events` receives Publ automation events. It validates

@@ -371,6 +371,33 @@ Deployment checklist:
   `Content-Security-Policy: frame-ancestors ...` and must be exact origins,
   not paths, wildcards, credentials, or production HTTP URLs.
 
+### Publ Iframe Release Gates
+
+Before deploying Publ iframe changes, run the deterministic local browser gate:
+
+```bash
+npm run test:publ-client-e2e
+```
+
+The gate starts the app on port `3410` and a local parent fixture with approved
+origin `http://127.0.0.1:3411` and denied origin `http://127.0.0.1:3412`. These
+fixture origins are for local QA only. Release environment variables must keep
+only the Publ-provided parent origins, such as `https://console.dev.publ.biz`
+for dev/test and `https://console.publ.biz` for prod/release.
+
+After deploying to dev, validate the real Publ parent separately from the local
+fixture:
+
+```text
+Open https://console.dev.publ.biz and confirm it frames
+https://noti-dev.vizuo.work/publ-client, exchanges through the Publ SDK on a
+fresh document, keeps in-app navigation under /publ-client, hides CSV export,
+and preserves route params for logs, reservations, templates, and automations.
+```
+
+Record this as a post-deploy smoke result. Local Playwright evidence must not be
+used as proof that `console.dev.publ.biz` itself has been validated.
+
 See `docs/PUBL_PAPP_INTEGRATION.md` for token exchange and webhook smoke-test
 commands.
 

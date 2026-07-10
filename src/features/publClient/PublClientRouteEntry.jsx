@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert } from 'lucide-react';
 import { getPublStandaloneHref } from '../console/routing.js';
@@ -17,7 +17,7 @@ export function PublClientRouteEntry({
   routeResult,
 }) {
   const queryClient = useQueryClient();
-  const [isIframe] = useState(() => isPublIframeContext());
+  const isIframe = useSyncExternalStore(subscribeFrameContext, getFrameContextSnapshot, getServerFrameContextSnapshot);
   const standaloneHref = useMemo(() => getPublStandaloneHref(routeResult), [routeResult]);
 
   useEffect(() => {
@@ -62,6 +62,18 @@ export function PublClientRouteEntry({
       />
     </PublClientBootstrap>
   );
+}
+
+function subscribeFrameContext() {
+  return () => {};
+}
+
+function getFrameContextSnapshot() {
+  return isPublIframeContext();
+}
+
+function getServerFrameContextSnapshot() {
+  return false;
 }
 
 export function PublClientInvalidRouteView() {

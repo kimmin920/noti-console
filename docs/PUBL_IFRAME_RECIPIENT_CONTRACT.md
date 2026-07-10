@@ -47,6 +47,11 @@ verification.
   render the standalone mock audience table in embed mode.
 - Missing segment capability renders an explicit empty state and does not fall
   back to standalone segments.
+- If the member-contacts permission is missing or the SDK denies it, the
+  recipient source state is `permission-denied`. The UI renders the permission
+  error and still allows direct manual recipient entry where the channel form
+  supports it. The app must not fabricate contacts or segments from standalone
+  mock data.
 
 ## Send and history parity
 
@@ -58,11 +63,15 @@ verification.
 - Existing history behavior remains: one recipient may show a representative
   number, multiple recipients show a count, and the detail result table lists
   stored failures.
+- CSV export remains deferred to the standalone console in this phase. Embed
+  mode hides download actions and shows the CSV-unavailable copy instead of
+  attempting a Publ-authenticated CSV download.
 
 ## Verification
 
 ```bash
 npm run test:publ-iframe-recipient-contract
+npm run test:publ-client-e2e
 npm run test:server
 npm run harness:test
 npm run lint && npm run build
