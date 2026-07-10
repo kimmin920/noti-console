@@ -289,6 +289,7 @@ function PublAudiencePage() {
   const [activeTab, setActiveTab] = useState('contacts');
   const [searchValue, setSearchValue] = useState('');
   const publRecipients = usePublMessageRecipients();
+  const contactsSourceState = publRecipients.contactsSourceState;
   const normalizedSearch = searchValue.trim().toLocaleLowerCase('ko-KR');
   const rows = publRecipients.contacts.filter((contact) => (
     !normalizedSearch
@@ -338,11 +339,11 @@ function PublAudiencePage() {
             data={rows}
             empty={(
               <span className="admin-empty-row">
-                {getPublAudienceEmptyMessage(publRecipients.contactsState, normalizedSearch)}
+                {getPublAudienceEmptyMessage(contactsSourceState, normalizedSearch)}
               </span>
             )}
             getRowId={(row) => row.externalId || row.value}
-            loading={publRecipients.contactsState.isPending}
+            loading={contactsSourceState === 'loading'}
             loadingSlot={<span className="admin-state-row">Publ 수신자를 불러오는 중입니다.</span>}
             pagination
             tableClassName="console-data-table-v2 publ-audience-data-table"
@@ -360,7 +361,8 @@ function PublAudiencePage() {
 }
 
 function getPublAudienceEmptyMessage(state, searchValue) {
-  if (state.isError) return 'Publ 수신자를 불러오지 못했습니다.';
+  if (state === 'permission-denied') return 'Publ 수신자 조회 권한이 없습니다';
+  if (state === 'error') return 'Publ 수신자를 불러오지 못했습니다.';
   if (searchValue) return '검색 조건에 맞는 Publ 수신자가 없습니다.';
   return '전화번호가 등록된 Publ 수신자가 없습니다.';
 }
@@ -1340,6 +1342,7 @@ function MessageLogsPage() {
   const queryFilters = useMemo(() => toMessageLogQueryParams(filters), [filters]);
   const groupsQuery = useMessageLogGroupsQuery(queryFilters);
   const exportMutation = useMessageLogsExportMutation();
+  const publClient = usePublClient();
   const groups = groupsQuery.data?.groups ?? [];
   const total = getMessageLogGroupPageTotal(groupsQuery.data);
   const mode = searchParams.get('mode') === 'embed' ? 'embed' : null;
@@ -1436,14 +1439,16 @@ function MessageLogsPage() {
           <RefreshCcw aria-hidden="true" size={15} />
           새로고침
         </Button>
-        <Button
-          disabled={filters.demoCases || exportMutation.isPending}
-          onClick={exportLogs}
-          variant="secondary"
-        >
-          <Download aria-hidden="true" size={15} />
-          {exportMutation.isPending ? '내보내는 중…' : 'CSV 내보내기'}
-        </Button>
+        {publClient.isPublEmbed ? null : (
+          <Button
+            disabled={filters.demoCases || exportMutation.isPending}
+            onClick={exportLogs}
+            variant="secondary"
+          >
+            <Download aria-hidden="true" size={15} />
+            {exportMutation.isPending ? '내보내는 중…' : 'CSV 내보내기'}
+          </Button>
+        )}
       </div>
 
       {groupsQuery.isError ? (

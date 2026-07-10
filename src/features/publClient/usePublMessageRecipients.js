@@ -28,18 +28,19 @@ export function usePublMessageRecipients() {
     () => toPublRecipientOptions(contactsQuery.data),
     [contactsQuery.data]
   );
+  const contactsSourceState = getPublRecipientSourceState({
+    contacts,
+    configured: contactsPermissionConfigured,
+    query: contactsQuery,
+  });
   const sourceTabs = useMemo(() => [
     {
       allowManual: true,
       emptyDescription: getPublContactsEmptyDescription({
-        configured: contactsPermissionConfigured,
-        isError: contactsQuery.isError,
-        isPending: contactsQuery.isPending,
+        state: contactsSourceState,
       }),
       emptyTitle: getPublContactsEmptyTitle({
-        configured: contactsPermissionConfigured,
-        isError: contactsQuery.isError,
-        isPending: contactsQuery.isPending,
+        state: contactsSourceState,
       }),
       id: 'publ-contacts',
       label: 'Publ 수신자',
@@ -53,12 +54,13 @@ export function usePublMessageRecipients() {
       label: 'Publ 세그먼트',
       types: ['publ-segment'],
     },
-  ], [contactsPermissionConfigured, contactsQuery.isError, contactsQuery.isPending]);
+  ], [contactsSourceState]);
 
   if (!publClient.isPublEmbed) {
     return {
       contacts: [],
       contactsState: { isError: false, isPending: false },
+      contactsSourceState: 'ready',
       isPublEmbed: false,
       options: [],
       selectProps: {},
@@ -70,7 +72,9 @@ export function usePublMessageRecipients() {
     contactsState: {
       isError: contactsQuery.isError,
       isPending: contactsQuery.isPending,
+      sourceState: contactsSourceState,
     },
+    contactsSourceState,
     isPublEmbed: true,
     options: [],
     selectProps: {
@@ -86,16 +90,24 @@ export function usePublMessageRecipients() {
   };
 }
 
-function getPublContactsEmptyTitle({ configured, isError, isPending }) {
-  if (!configured) return 'Publ 수신자 권한이 필요합니다';
-  if (isPending) return 'Publ 수신자를 불러오는 중입니다';
-  if (isError) return 'Publ 수신자를 불러오지 못했습니다';
+export function getPublRecipientSourceState({ contacts = [], configured, query }) {
+  if (!configured || query?.error?.code === 'permission-denied') return 'permission-denied';
+  if (query?.fetchStatus === 'fetching' || query?.isFetching) return 'loading';
+  if (query?.isError) return 'error';
+  if (!contacts.length) return 'empty';
+  return 'ready';
+}
+
+function getPublContactsEmptyTitle({ state }) {
+  if (state === 'permission-denied') return 'Publ 수신자 조회 권한이 없습니다';
+  if (state === 'loading') return 'Publ 수신자를 불러오는 중입니다';
+  if (state === 'error') return 'Publ 수신자를 불러오지 못했습니다';
   return '발송 가능한 Publ 수신자가 없습니다';
 }
 
-function getPublContactsEmptyDescription({ configured, isError, isPending }) {
-  if (!configured) return '현재 환경의 Publ 연락처 permission ID를 확인해 주세요.';
-  if (isPending) return '잠시 후 목록이 표시됩니다.';
-  if (isError) return 'Publ 연결 상태를 확인한 뒤 다시 열어 주세요.';
+function getPublContactsEmptyDescription({ state }) {
+  if (state === 'permission-denied') return '현재 환경의 Publ 연락처 permission ID를 확인해 주세요.';
+  if (state === 'loading') return '잠시 후 목록이 표시됩니다.';
+  if (state === 'error') return 'Publ 연결 상태를 확인한 뒤 다시 열어 주세요.';
   return '전화번호가 등록된 Publ 수신자만 표시됩니다. 번호를 직접 입력할 수도 있습니다.';
 }

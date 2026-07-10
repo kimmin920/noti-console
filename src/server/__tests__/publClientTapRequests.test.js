@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  PublTapCapabilityError,
   PUBL_MEMBER_CONTACT_RESOURCES,
   PUBL_SELLER_BUSINESS_INFORMATION_RESOURCES,
   requestPublMemberContacts,
@@ -64,7 +65,49 @@ describe('Publ common/catalog tap request helpers', () => {
     await expect(requestPublMemberContacts({
       adapter,
       clientConfig: createClientConfig({ memberContacts: 'PM_CONTACTS' }),
-    })).rejects.toThrow('Publ SDK tap request was rejected.');
+    })).rejects.toMatchObject({
+      code: 'permission-denied',
+      safeMessage: 'Publ 수신자 조회 권한이 없습니다',
+    });
+  });
+
+  it('skips member contact tap requests when contact permission is not configured', async () => {
+    const adapter = createAdapter();
+
+    await expect(requestPublMemberContacts({
+      adapter,
+      clientConfig: createClientConfig({ memberContacts: null }),
+    })).rejects.toBeInstanceOf(PublTapCapabilityError);
+    expect(adapter.request).not.toHaveBeenCalled();
+  });
+
+  it('authorizes the contact capability only once per runtime identity', async () => {
+    const adapter = {
+      authorize: vi.fn(async () => ({ status: 'OK' })),
+      request: vi.fn(async () => ({ data: { memberContacts: [] }, status: 'OK' })),
+    };
+    const clientConfig = createClientConfig({ memberContacts: 'PM_CONTACTS' });
+    const identity = { identityKey: 'consumer:session:user' };
+
+    await requestPublMemberContacts({ adapter, clientConfig, identity });
+    await requestPublMemberContacts({ adapter, clientConfig, identity });
+
+    expect(adapter.authorize).toHaveBeenCalledTimes(1);
+    expect(adapter.authorize).toHaveBeenCalledWith(['PM_CONTACTS']);
+    expect(adapter.request).toHaveBeenCalledTimes(2);
+  });
+
+  it('repeats contact capability authorization for a fresh runtime identity', async () => {
+    const adapter = {
+      authorize: vi.fn(async () => ({ status: 'OK' })),
+      request: vi.fn(async () => ({ data: { memberContacts: [] }, status: 'OK' })),
+    };
+    const clientConfig = createClientConfig({ memberContacts: 'PM_CONTACTS' });
+
+    await requestPublMemberContacts({ adapter, clientConfig, identity: { identityKey: 'first' } });
+    await requestPublMemberContacts({ adapter, clientConfig, identity: { identityKey: 'second' } });
+
+    expect(adapter.authorize).toHaveBeenCalledTimes(2);
   });
 
   it('maps Publ member contacts with phone numbers into sendable recipient options', () => {

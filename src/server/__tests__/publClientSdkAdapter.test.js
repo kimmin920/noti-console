@@ -62,8 +62,6 @@ describe('Publ iframe client SDK adapter', () => {
     expect(sdkClient.pipeline.authorize).toHaveBeenCalledWith([
       'PM_00000_EXCHANGE_TOKEN',
       'PM_00000_REFRESH_TOKEN',
-      'PM_SELLER_INFO',
-      'PM_CONTACTS',
     ]);
     expect(sdkClient.pipeline.request).toHaveBeenNthCalledWith(1, 'PM_00000_EXCHANGE_TOKEN');
     expect(sdkClient.pipeline.request).toHaveBeenNthCalledWith(2, 'PM_00000_REFRESH_TOKEN');
@@ -169,6 +167,9 @@ describe('Publ iframe client SDK adapter', () => {
   it('adapts an injected SDK boundary without relying on postMessage', async () => {
     const source = {
       [PUBL_CLIENT_ADAPTER_GLOBAL]: {
+        authorize: vi.fn(async (permissionIds) => ({
+          data: { permissionIds },
+        })),
         exchangeToken: vi.fn(async () => ({
           data: {
             accessToken: 'access-token',
@@ -190,6 +191,11 @@ describe('Publ iframe client SDK adapter', () => {
     };
     const adapter = resolvePublSdkAdapter({ source });
 
+    await expect(adapter.authorize(['PM_CONTACTS'])).resolves.toEqual({
+      data: {
+        permissionIds: ['PM_CONTACTS'],
+      },
+    });
     await expect(adapter.exchangeToken()).resolves.toEqual({
       data: {
         accessToken: 'access-token',
@@ -210,6 +216,7 @@ describe('Publ iframe client SDK adapter', () => {
         permissionId: 'PM_CONTACTS',
       },
     });
+    expect(source[PUBL_CLIENT_ADAPTER_GLOBAL].authorize).toHaveBeenCalledWith(['PM_CONTACTS']);
   });
 
   it('clears stored tokens when refresh fails', async () => {
@@ -255,11 +262,9 @@ describe('Publ iframe client SDK adapter', () => {
 
 function createClientConfig() {
   return {
-    authorizationPermissionIds: [
+    bootstrapPermissionIds: [
       'PM_00000_EXCHANGE_TOKEN',
       'PM_00000_REFRESH_TOKEN',
-      'PM_SELLER_INFO',
-      'PM_CONTACTS',
     ],
     clientHash: 'client-hash',
     pAppCode: '3RD_A00003_TEST',

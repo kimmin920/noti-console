@@ -68,22 +68,35 @@ describe('Publ PApp client runtime config', () => {
     expect(result.message).not.toContain('outgoing');
   });
 
-  it('defaults the testflight member contacts permission without requiring optional common taps', () => {
+  it('keeps optional tap permissions out of bootstrap authorization and requires explicit contact config', () => {
+    const config = resolvePublPappClientConfig({
+      PUBL_PAPP_CLIENT_STAGE: 'test',
+      PUBL_PAPP_TEST_CLIENT_HASH: 'test-client-hash',
+      PUBL_PAPP_TEST_MEMBER_CONTACTS_PERMISSION_ID: 'PM_TEST_CONTACTS',
+      PUBL_PAPP_TEST_PARENT_ORIGINS: 'https://console.dev.publ.biz',
+    });
+
+    expect(config.bootstrapPermissionIds).toEqual([
+      PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.EXCHANGE_TOKEN,
+      PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.REFRESH_TOKEN,
+    ]);
+    expect(config.authorizationPermissionIds).toBeUndefined();
+    expect(config.permissions.sellerBusinessInformation).toBeNull();
+    expect(config.permissions.memberContacts).toBe('PM_TEST_CONTACTS');
+  });
+
+  it('does not hardcode a test member contact permission fallback', () => {
     const config = resolvePublPappClientConfig({
       PUBL_PAPP_CLIENT_STAGE: 'test',
       PUBL_PAPP_TEST_CLIENT_HASH: 'test-client-hash',
       PUBL_PAPP_TEST_PARENT_ORIGINS: 'https://console.dev.publ.biz',
     });
 
-    expect(config.authorizationPermissionIds).toEqual([
+    expect(config.bootstrapPermissionIds).toEqual([
       PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.EXCHANGE_TOKEN,
       PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.REFRESH_TOKEN,
-      PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.TEST_MEMBER_CONTACTS,
     ]);
-    expect(config.permissions.sellerBusinessInformation).toBeNull();
-    expect(config.permissions.memberContacts).toBe(
-      PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.TEST_MEMBER_CONTACTS
-    );
+    expect(config.permissions.memberContacts).toBeNull();
   });
 
   it('includes only non-secret parent origin policy metadata', () => {

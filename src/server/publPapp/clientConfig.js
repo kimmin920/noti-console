@@ -28,7 +28,6 @@ export const PUBL_PAPP_CLIENT_ENV = Object.freeze({
 export const PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS = Object.freeze({
   EXCHANGE_TOKEN: 'PM_00000_EXCHANGE_TOKEN',
   REFRESH_TOKEN: 'PM_00000_REFRESH_TOKEN',
-  TEST_MEMBER_CONTACTS: 'PM_19177_READ_MEMBER_CONTACTS',
 });
 
 export const PUBL_PAPP_CLIENT_DEFAULT_SDK_SRC = '/vendor/publ-p-app-client-sdk.testflight.js';
@@ -36,7 +35,6 @@ export const PUBL_PAPP_CLIENT_DEFAULT_SDK_SRC = '/vendor/publ-p-app-client-sdk.t
 const STAGE_DEFINITIONS = Object.freeze({
   [PUBL_PAPP_CLIENT_STAGES.TEST]: Object.freeze({
     clientHashEnvName: PUBL_PAPP_CLIENT_ENV.TEST_CLIENT_HASH,
-    defaultMemberContactsPermissionId: PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.TEST_MEMBER_CONTACTS,
     defaultPAppCode: PUBL_PAPP_DEFAULT_CODES.TEST,
     memberContactsPermissionEnvName: PUBL_PAPP_CLIENT_ENV.TEST_MEMBER_CONTACTS_PERMISSION_ID,
     pAppCodeEnvName: PUBL_PAPP_CLIENT_ENV.TEST_CODE,
@@ -44,7 +42,6 @@ const STAGE_DEFINITIONS = Object.freeze({
   }),
   [PUBL_PAPP_CLIENT_STAGES.RELEASE]: Object.freeze({
     clientHashEnvName: PUBL_PAPP_CLIENT_ENV.RELEASE_CLIENT_HASH,
-    defaultMemberContactsPermissionId: null,
     defaultPAppCode: PUBL_PAPP_DEFAULT_CODES.RELEASE,
     memberContactsPermissionEnvName: PUBL_PAPP_CLIENT_ENV.RELEASE_MEMBER_CONTACTS_PERMISSION_ID,
     pAppCodeEnvName: PUBL_PAPP_CLIENT_ENV.RELEASE_CODE,
@@ -84,14 +81,16 @@ export function resolvePublPappClientConfig(env = process.env) {
 
   const permissions = Object.freeze({
     exchangeToken: PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.EXCHANGE_TOKEN,
-    memberContacts: readOptionalEnv(env, definition.memberContactsPermissionEnvName)
-      ?? definition.defaultMemberContactsPermissionId,
+    memberContacts: readOptionalEnv(env, definition.memberContactsPermissionEnvName),
     refreshToken: PUBL_PAPP_CLIENT_DEFAULT_PERMISSION_IDS.REFRESH_TOKEN,
     sellerBusinessInformation: readOptionalEnv(env, definition.sellerInfoPermissionEnvName),
   });
 
   return Object.freeze({
-    authorizationPermissionIds: Object.freeze(getAuthorizationPermissionIds(permissions)),
+    bootstrapPermissionIds: Object.freeze([
+      permissions.exchangeToken,
+      permissions.refreshToken,
+    ]),
     clientHash,
     framePolicy: Object.freeze({
       configured: framePolicy.configured,
@@ -116,15 +115,6 @@ function resolveSdkSrc(env, stage) {
   }
 
   return stage === PUBL_PAPP_CLIENT_STAGES.TEST ? PUBL_PAPP_CLIENT_DEFAULT_SDK_SRC : null;
-}
-
-function getAuthorizationPermissionIds(permissions) {
-  return [
-    permissions.exchangeToken,
-    permissions.refreshToken,
-    permissions.sellerBusinessInformation,
-    permissions.memberContacts,
-  ].filter(Boolean);
 }
 
 function readOptionalEnv(env, name) {

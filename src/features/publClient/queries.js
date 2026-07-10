@@ -23,11 +23,12 @@ export function usePublMemberContactsQuery({ adapter, clientConfig, enabled = tr
   const identity = getIdentity();
 
   return useQuery({
-    enabled: enabled !== false && Boolean(adapter && permissionId && identity),
+    enabled: enabled !== false && Boolean(adapter && identity),
     queryKey: publClientQueryKeys.memberContacts(identity),
     queryFn: () => loadPublMemberContacts({
       adapter,
       clientConfig,
+      identity,
     }),
     staleTime: 30_000,
   });

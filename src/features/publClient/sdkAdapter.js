@@ -51,7 +51,7 @@ export async function bootstrapPublClientSession({ adapter, clientConfig, storag
   try {
     clearPublClientTokens({ storage });
     await adapter.mount?.(clientConfig);
-    await adapter.authorize?.(clientConfig?.authorizationPermissionIds ?? []);
+    await adapter.authorize?.(clientConfig?.bootstrapPermissionIds ?? []);
 
     const tokens = getPublExchangeTokens(await adapter.exchangeToken());
     setPublClientTokens(tokens, { storage });
@@ -116,7 +116,7 @@ function createPublSdkAdapter(sdk) {
 
   return {
     authorize: typeof sdk.authorize === 'function'
-      ? () => sdk.authorize()
+      ? (permissionIds) => sdk.authorize(permissionIds)
       : undefined,
     exchangeToken: () => exchangeToken.call(proxy),
     mount: typeof sdk.mount === 'function'
@@ -142,7 +142,7 @@ function createPAppClientSdkAdapter(sdk, { clientConfig } = {}) {
   }
 
   return {
-    authorize: (permissionIds = clientConfig?.authorizationPermissionIds ?? []) =>
+    authorize: (permissionIds = clientConfig?.bootstrapPermissionIds ?? []) =>
       getClient().pipeline.authorize(permissionIds),
     exchangeToken: () =>
       getClient().pipeline.request(clientConfig?.permissions?.exchangeToken),
@@ -169,7 +169,7 @@ function normalizeDirectAdapter(adapter) {
 
   return {
     authorize: typeof adapter.authorize === 'function'
-      ? () => adapter.authorize.call(adapter)
+      ? (permissionIds) => adapter.authorize.call(adapter, permissionIds)
       : undefined,
     exchangeToken: () => adapter.exchangeToken.call(adapter),
     mount: typeof adapter.mount === 'function'

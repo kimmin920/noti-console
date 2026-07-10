@@ -11,6 +11,7 @@ const PUBL_CLIENT_PATH_PREFIX = '/publ-client';
 
 let runtimeIdentity = null;
 let runtimeGeneration = 0;
+const capabilityStates = new Map();
 
 export function activatePublClientRuntime({
   originPolicyConfigured,
@@ -52,6 +53,7 @@ export function activatePublClientRuntime({
 
 export function resetPublClientRuntime() {
   runtimeIdentity = null;
+  capabilityStates.clear();
 }
 
 export function isActiveForPath(pathname = getWindow()?.location?.pathname) {
@@ -98,6 +100,18 @@ export function getPublClientRuntimeGeneration() {
   return runtimeIdentity?.generation ?? null;
 }
 
+export function getPublClientCapabilityState({ identity = getIdentity(), permissionId }) {
+  if (!identity || !permissionId) return null;
+  return capabilityStates.get(createCapabilityKey(identity, permissionId)) ?? null;
+}
+
+export function setPublClientCapabilityState({ identity = getIdentity(), permissionId, state }) {
+  if (!identity || !permissionId || !state) return null;
+  const key = createCapabilityKey(identity, permissionId);
+  capabilityStates.set(key, state);
+  return state;
+}
+
 export function isPublClientRuntimeGenerationActive(generation) {
   return Boolean(runtimeIdentity && runtimeIdentity.generation === generation && isActiveForPath());
 }
@@ -125,6 +139,10 @@ function decodePublClientAccessTokenIdentity(accessToken) {
 
 function createIdentityKey(identity) {
   return `${identity.consumerId}:${identity.sessionId}:${identity.userId}`;
+}
+
+function createCapabilityKey(identity, permissionId) {
+  return `${identity.identityKey ?? createIdentityKey(identity)}:${permissionId}`;
 }
 
 function decodeJwtPayload(token) {
