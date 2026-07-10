@@ -73,19 +73,24 @@ describe('Publ client fresh document session identity', () => {
     );
   });
 
-  it('keeps the Publ session boundary in layout rather than the search-param page', () => {
+  it('keeps the Publ session boundary behind the catch-all route gate', () => {
     const layoutSource = readFileSync(
       new URL('../../app/publ-client/layout.jsx', import.meta.url),
       'utf8'
     );
     const pageSource = readFileSync(
-      new URL('../../app/publ-client/page.jsx', import.meta.url),
+      new URL('../../app/publ-client/[[...path]]/page.jsx', import.meta.url),
+      'utf8'
+    );
+    const routeEntrySource = readFileSync(
+      new URL('../../features/publClient/PublClientRouteEntry.jsx', import.meta.url),
       'utf8'
     );
 
-    expect(layoutSource).toContain('PublClientBootstrap');
-    expect(pageSource).toContain('PublClientConsole');
-    expect(pageSource).not.toContain('resolvePublPappClientConfigResult');
+    expect(layoutSource).not.toContain('PublClientBootstrap');
+    expect(pageSource).toContain('PublClientRouteEntry');
+    expect(routeEntrySource).toContain('PublClientBootstrap');
+    expect(routeEntrySource).toContain('PublClientConsole');
   });
 });
 

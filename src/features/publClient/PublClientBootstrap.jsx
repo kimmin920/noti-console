@@ -7,11 +7,10 @@ import { Button } from '../../components/ui/index.js';
 import { MessagingConsole } from '../console/MessagingConsole.jsx';
 import {
   DEFAULT_CONSOLE_PAGE_ID,
-  normalizeConsolePageId,
+  buildPublClientPath,
 } from '../console/routing.js';
 import {
   bootstrapPublClientSession,
-  getPublClientPageHref,
   refreshPublClientSession,
   resolvePublSdkAdapter,
 } from './sdkAdapter.js';
@@ -51,25 +50,20 @@ const SDK_LOAD_FAILED_STATE = {
   title: 'Publ SDK를 불러오지 못했습니다',
 };
 
-const STANDALONE_REDIRECT_STATE = {
-  message: '일반 웹 콘솔로 이동하고 있습니다.',
-  status: 'redirecting',
-  title: '콘솔로 이동 중',
-};
-
 export function PublClientBootstrap({
   children = null,
   clientConfig = null,
   clientConfigError = '',
   pageId = DEFAULT_CONSOLE_PAGE_ID,
+  pageProps = undefined,
+  routeResult = null,
 }) {
   const queryClient = useQueryClient();
   const [attempt, setAttempt] = useState(0);
   const [sessionState, setSessionState] = useState(CONNECTING_STATE);
-  const activePageId = normalizeConsolePageId(pageId);
   const stableClientConfig = clientConfig;
   const getPageHref = useCallback(({ pageId: nextPageId }) => (
-    getPublClientPageHref({ pageId: normalizeConsolePageId(nextPageId) })
+    buildPublClientPath({ pageId: nextPageId })
   ), []);
 
   useEffect(() => {
@@ -80,8 +74,11 @@ export function PublClientBootstrap({
       setSessionState(CONNECTING_STATE);
 
       if (!isPublIframeContext()) {
-        setSessionState(STANDALONE_REDIRECT_STATE);
-        window.location.replace('/message-send');
+        setSessionState({
+          message: 'Publ client는 iframe 안에서만 열 수 있습니다.',
+          status: 'invalid-context',
+          title: 'Publ client 경로를 확인해 주세요',
+        });
         return;
       }
 
@@ -155,6 +152,7 @@ export function PublClientBootstrap({
       }
 
       setSessionState({ ...result, adapter });
+      canonicalizePublClientPath(routeResult);
     }
 
     startPublSession();
@@ -164,7 +162,7 @@ export function PublClientBootstrap({
       unregisterRefreshHandler?.();
       resetPublClientRuntime();
     };
-  }, [attempt, stableClientConfig, clientConfigError, queryClient]);
+  }, [attempt, stableClientConfig, clientConfigError, queryClient, routeResult]);
 
   if (sessionState.status === 'ready') {
     return (
@@ -174,7 +172,8 @@ export function PublClientBootstrap({
             getPageHref={getPageHref}
             hideAccountControl
             mode="embed"
-            pageId={activePageId}
+            pageId={routeResult?.pageId ?? pageId}
+            pageProps={routeResult?.pageProps ?? pageProps}
           />
         )}
       </PublClientProvider>
@@ -187,6 +186,20 @@ export function PublClientBootstrap({
       state={sessionState}
     />
   );
+}
+
+function canonicalizePublClientPath(routeResult) {
+  if (
+    routeResult?.ok &&
+    routeResult.canonicalPathname === '/message-send' &&
+    window.location.pathname === '/publ-client'
+  ) {
+    window.history.replaceState(
+      window.history.state,
+      '',
+      buildPublClientPath({ pageId: DEFAULT_CONSOLE_PAGE_ID, queryString: routeResult.queryString })
+    );
+  }
 }
 
 export function PublClientStatusView({ onRetry, state }) {

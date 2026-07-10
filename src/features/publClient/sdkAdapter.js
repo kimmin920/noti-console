@@ -101,17 +101,6 @@ export async function refreshPublClientSession({
   }
 }
 
-export function getPublClientPageHref({ pageId }) {
-  const normalizedPageId = String(pageId ?? '').trim();
-
-  if (!normalizedPageId || normalizedPageId === 'emails' || normalizedPageId === 'message-send') {
-    return '/publ-client';
-  }
-
-  const params = new URLSearchParams({ page: normalizedPageId });
-  return `/publ-client?${params.toString()}`;
-}
-
 function createPublSdkAdapter(sdk) {
   if (!sdk || typeof sdk !== 'object') {
     return null;

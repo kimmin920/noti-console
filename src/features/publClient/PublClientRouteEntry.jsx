@@ -1,0 +1,83 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ShieldAlert } from 'lucide-react';
+import { getPublStandaloneHref } from '../console/routing.js';
+import { clearPublClientTokens } from './authToken.js';
+import { isPublIframeContext } from './frameContext.js';
+import { PublClientBootstrap } from './PublClientBootstrap.jsx';
+import { PublClientConsole } from './PublClientConsole.jsx';
+import { resetPublClientRuntime } from './runtimeSession.js';
+
+export function PublClientRouteEntry({
+  clientConfig = null,
+  clientConfigError = '',
+  routeResult,
+}) {
+  const queryClient = useQueryClient();
+  const [isIframe] = useState(() => isPublIframeContext());
+  const standaloneHref = useMemo(() => getPublStandaloneHref(routeResult), [routeResult]);
+
+  useEffect(() => {
+    if (!routeResult?.ok || isIframe) {
+      return;
+    }
+
+    resetPublClientRuntime();
+    clearPublClientTokens();
+    queryClient.cancelQueries();
+    queryClient.clear();
+    window.location.replace(standaloneHref);
+  }, [isIframe, queryClient, routeResult, standaloneHref]);
+
+  if (!routeResult?.ok) {
+    return <PublClientInvalidRouteView />;
+  }
+
+  if (!isIframe) {
+    return (
+      <main className="publ-client-boot" aria-labelledby="publ-client-redirect-title">
+        <section className="publ-client-boot-panel" role="status">
+          <div className="publ-client-boot-copy">
+            <p className="publ-client-boot-kicker">Publ client</p>
+            <h1 id="publ-client-redirect-title">콘솔로 이동 중</h1>
+            <p>일반 웹 콘솔로 이동하고 있습니다.</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <PublClientBootstrap
+      clientConfig={clientConfig}
+      clientConfigError={clientConfigError}
+      routeResult={routeResult}
+    >
+      <PublClientConsole
+        pageId={routeResult.pageId}
+        pageProps={routeResult.pageProps}
+      />
+    </PublClientBootstrap>
+  );
+}
+
+export function PublClientInvalidRouteView() {
+  return (
+    <main className="publ-client-boot" aria-labelledby="publ-client-invalid-route-title">
+      <section className="publ-client-boot-panel" role="alert">
+        <span className="publ-client-boot-icon" aria-hidden="true">
+          <ShieldAlert size={18} />
+        </span>
+        <div className="publ-client-boot-copy">
+          <p className="publ-client-boot-kicker">Publ client</p>
+          <h1 id="publ-client-invalid-route-title">열 수 없는 경로입니다</h1>
+          <p>요청한 Publ client 경로가 등록된 콘솔 화면과 일치하지 않습니다.</p>
+        </div>
+        <Link className="button secondary" href="/publ-client/message-send">메시지 발송으로 이동</Link>
+      </section>
+    </main>
+  );
+}

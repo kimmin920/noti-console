@@ -4,14 +4,15 @@ import { useCallback } from 'react';
 import { MessagingConsole } from '../console/MessagingConsole.jsx';
 import {
   DEFAULT_CONSOLE_PAGE_ID,
-  normalizeConsolePageId,
+  buildPublClientPath,
 } from '../console/routing.js';
-import { getPublClientPageHref } from './sdkAdapter.js';
 
-export function PublClientConsole({ pageId = DEFAULT_CONSOLE_PAGE_ID }) {
-  const activePageId = normalizeConsolePageId(pageId);
+export function PublClientConsole({
+  pageId = DEFAULT_CONSOLE_PAGE_ID,
+  pageProps = undefined,
+}) {
   const getPageHref = useCallback(({ pageId: nextPageId }) => (
-    getPublClientPageHref({ pageId: normalizeConsolePageId(nextPageId) })
+    buildPublClientPath({ pageId: nextPageId })
   ), []);
 
   return (
@@ -19,7 +20,8 @@ export function PublClientConsole({ pageId = DEFAULT_CONSOLE_PAGE_ID }) {
       getPageHref={getPageHref}
       hideAccountControl
       mode="embed"
-      pageId={activePageId}
+      pageId={pageId}
+      pageProps={pageProps}
     />
   );
 }

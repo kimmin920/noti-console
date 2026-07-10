@@ -235,13 +235,15 @@ describe('Publ iframe client SDK adapter', () => {
   });
 
   it('keeps /publ-client on the iframe entry and standalone routes on ConsoleRoute', () => {
-    const publRouteSource = readSource('../../app/publ-client/page.jsx');
+    const publRouteSource = readSource('../../app/publ-client/[[...path]]/page.jsx');
+    const publRouteEntrySource = readSource('../../features/publClient/PublClientRouteEntry.jsx');
     const publClientSource = readSource('../../features/publClient/PublClientBootstrap.jsx');
     const sdkAdapterSource = readSource('../../features/publClient/sdkAdapter.js');
     const messageSendRouteSource = readSource('../../app/message-send/page.jsx');
 
-    expect(publRouteSource).toContain('PublClientConsole');
-    expect(readSource('../../app/publ-client/layout.jsx')).toContain('PublClientBootstrap');
+    expect(publRouteSource).toContain('PublClientRouteEntry');
+    expect(publRouteEntrySource).toContain('PublClientBootstrap');
+    expect(readSource('../../app/publ-client/layout.jsx')).not.toContain('PublClientBootstrap');
     expect(publRouteSource).not.toContain('LandingAuthControls');
     expect(publClientSource).toContain('mode="embed"');
     expect(publClientSource).toContain('hideAccountControl');
