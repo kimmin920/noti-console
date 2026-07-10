@@ -173,6 +173,43 @@ export function getPublStandaloneHref(routeMatchResult) {
   return appendQueryString(routeMatchResult.canonicalPathname, routeMatchResult.queryString);
 }
 
+export function transformConsoleHref(href, { mode } = {}) {
+  if (!shouldTransformConsoleHref(href)) {
+    return href;
+  }
+
+  const shellMode = normalizeShellMode(mode);
+  const routeResult = href.startsWith(`${PUBL_CLIENT_PREFIX}/`)
+    ? matchPublClientPath(href)
+    : matchConsolePath(href);
+
+  if (!routeResult.ok) {
+    return href;
+  }
+
+  const standaloneHref = getPublStandaloneHref(routeResult);
+  return shellMode === 'embed' ? `${PUBL_CLIENT_PREFIX}${standaloneHref}` : standaloneHref;
+}
+
+export function shouldTransformConsoleHref(href) {
+  if (typeof href !== 'string' || !href.startsWith('/')) {
+    return false;
+  }
+
+  if (
+    href.startsWith('//') ||
+    href.startsWith('/api/') ||
+    href.startsWith('/_next/') ||
+    href.startsWith('/blob:') ||
+    href.startsWith('/data:') ||
+    href.startsWith('#')
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 function route(pageId, pattern, { props = () => ({}) } = {}) {
   const parts = pattern.split('/').filter(Boolean);
 

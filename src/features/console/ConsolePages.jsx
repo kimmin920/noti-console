@@ -168,6 +168,7 @@ import { usePublClient } from '../publClient/PublClientContext.jsx';
 import { TemplateDetailPage } from './templates/TemplateDetailPage.jsx';
 import { TemplatePage } from './templates/TemplatePage.jsx';
 import { BrandTemplateCreatePage } from './templates/BrandTemplateCreatePage.jsx';
+import { ConsoleLink, useConsoleNavigation } from './ConsoleNavigationContext.jsx';
 import { SmsTemplateCreatePage } from './templates/SmsTemplateCreatePage.jsx';
 import {
   formatMessageLogGroupCounts,
@@ -365,7 +366,7 @@ function getPublAudienceEmptyMessage(state, searchValue) {
 }
 
 function SmsBulkSendRunWatcher() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const statusPollingRunRef = useRef(0);
   const toastRef = useRef(null);
@@ -377,19 +378,20 @@ function SmsBulkSendRunWatcher() {
 
   useEffect(() => {
     showSmsBulkSendRunToast({
-      router,
+      navigation,
       run: activeSmsBulkRun,
       showToast,
       statusPollingRunRef,
       toastRef,
     });
-  }, [activeSmsBulkRun, router, showToast]);
+  }, [activeSmsBulkRun, navigation, showToast]);
 
   return null;
 }
 
 function MessageSendPage({ meta, onDocs }) {
   const router = useRouter();
+  const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchParamText = searchParams.toString();
@@ -637,21 +639,21 @@ function MessageSendPage({ meta, onDocs }) {
   }
 
   function openAudiencePage() {
-    router.push('/audience');
+    navigation.push('/audience');
   }
 
   function openSenderResourcePage(type) {
     if (type === 'sms') {
-      router.push('/settings/sender-resources/sms/new');
+      navigation.push('/settings/sender-resources/sms/new');
       return;
     }
 
     if (type === 'kakao') {
-      router.push('/settings/sender-resources/kakao/new');
+      navigation.push('/settings/sender-resources/kakao/new');
       return;
     }
 
-    router.push('/settings?tab=sender-resources');
+    navigation.push('/settings?tab=sender-resources');
   }
 
   function beginStatusPollingRun(channelLabel) {
@@ -706,7 +708,7 @@ function MessageSendPage({ meta, onDocs }) {
         if (shouldShowSmsReservationAcceptedToast(payload, result)) {
           showMessageReservationAcceptedToast({
             channelLabel: 'SMS',
-            onViewReservations: () => router.push(getReservationsHrefForChannel(payload.channel)),
+            onViewReservations: () => navigation.push(getReservationsHrefForChannel(payload.channel)),
             result,
             showToast,
           });
@@ -1169,7 +1171,7 @@ function isActiveSmsBulkSendRun(run) {
   return run?.status === 'queued' || run?.status === 'running' || run?.state === 'queued' || run?.state === 'running';
 }
 
-function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, toastRef }) {
+function showSmsBulkSendRunToast({ navigation, run, showToast, statusPollingRunRef, toastRef }) {
   const view = getSmsBulkSendRunToastView(run, { formatNumber });
 
   if (!view) {
@@ -1199,7 +1201,7 @@ function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, 
         label: view.actionLabel,
         onClick: () => {
           statusPollingRunRef.current += 1;
-          router.push(view.resultHref);
+          navigation.push(view.resultHref);
         },
       },
       description: view.description,
@@ -1215,7 +1217,7 @@ function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, 
       label: view.actionLabel,
       onClick: () => {
         statusPollingRunRef.current += 1;
-        router.push(view.resultHref);
+        navigation.push(view.resultHref);
       },
     },
     description: view.description,
@@ -1327,7 +1329,7 @@ function MessageSendApiStatus({
 }
 
 function MessageLogsPage() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const searchParamText = searchParams.toString();
@@ -1357,7 +1359,7 @@ function MessageLogsPage() {
       messageType: nextChannel === 'sms' ? (nextFilters.messageType ?? filters.messageType) : 'all',
     }, mode);
 
-    router.replace(`/logs?${nextParams.toString()}`);
+    navigation.replace(`/logs?${nextParams.toString()}`);
   }
 
   async function exportLogs() {
@@ -1522,14 +1524,14 @@ function MessageLogsPage() {
         )}
         rowActions={({ row }) => (
           <div className="resend-email-actions">
-            <Link
+            <ConsoleLink
               aria-label="발송 묶음 상세 보기"
               className="message-logs-action-trigger"
               href={getMessageLogGroupDetailHref({ filters, group: row, mode })}
               title="상세 보기"
             >
               <FileText aria-hidden="true" size={15} />
-            </Link>
+            </ConsoleLink>
           </div>
         )}
         shellClassName="message-logs-table-shell"
@@ -3244,6 +3246,7 @@ function RowActionMenu({ label, onAction }) {
 }
 
 function DocsPage({ meta }) {
+  const navigation = useConsoleNavigation();
   const snippets = [
     {
       code: `curl -X POST https://api.resend.com/emails \\
@@ -3307,10 +3310,10 @@ function DocsPage({ meta }) {
 
           <DocsSection id="next-steps" title="Next steps">
             <DocsCardGrid>
-              <DocsCard href="/message-send" meta="Console" title="메시지 발송">
+              <DocsCard href={navigation.href('/message-send')} meta="Console" title="메시지 발송">
                 문자와 카카오 메시지 발송 화면으로 이동합니다.
               </DocsCard>
-              <DocsCard href="/logs" meta="Dashboard" title="발송기록">
+              <DocsCard href={navigation.href('/logs')} meta="Dashboard" title="발송기록">
                 발송 요청과 전달 결과를 확인합니다.
               </DocsCard>
             </DocsCardGrid>
@@ -4261,7 +4264,7 @@ function SettingsPage() {
 }
 
 function SenderResourceSettings() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const senderResourcesQuery = useSenderResourcesQuery();
   const smsResources = getSettingsSenderResourceRows(senderResourcesQuery.data, SMS_SENDER_RESOURCE_TYPE);
@@ -4282,9 +4285,9 @@ function SenderResourceSettings() {
         emptyLabel="등록된 발신번호가 없습니다"
         limitLabel="번호별 한도"
         loading={senderResourcesQuery.isPending}
-        onAction={() => router.push('/settings/sender-resources/sms/new')}
+        onAction={() => navigation.push('/settings/sender-resources/sms/new')}
         onDefaultSelect={() => showPendingToast('기본 발신번호')}
-        onResubmit={(item) => router.push(`/settings/sender-resources/sms/new?applicationId=${encodeURIComponent(item.applicationId)}`)}
+        onResubmit={(item) => navigation.push(`/settings/sender-resources/sms/new?applicationId=${encodeURIComponent(item.applicationId)}`)}
         resources={smsResources}
         title="발신번호"
       />
@@ -4295,7 +4298,7 @@ function SenderResourceSettings() {
         emptyLabel="연결된 카카오 채널이 없습니다"
         limitLabel="채널별 한도"
         loading={senderResourcesQuery.isPending}
-        onAction={() => router.push('/settings/sender-resources/kakao/new')}
+        onAction={() => navigation.push('/settings/sender-resources/kakao/new')}
         onDefaultSelect={() => showPendingToast('기본 카카오 채널')}
         onResubmit={() => showPendingToast('카카오 채널 재신청')}
         resources={kakaoResources}
@@ -4412,11 +4415,11 @@ function SettingsPlaceholder({ title }) {
 }
 
 function SenderResourceApplicationPage({ type }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const isSms = type === 'sms';
 
   function goBackToSenderResources() {
-    router.push(`/settings?tab=${SETTINGS_SENDER_RESOURCE_QUERY}&type=${type}`);
+    navigation.push(`/settings?tab=${SETTINGS_SENDER_RESOURCE_QUERY}&type=${type}`);
   }
 
   if (isSms) {

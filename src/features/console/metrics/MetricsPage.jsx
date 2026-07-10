@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
 import { Button, DataTableV2, SelectPill } from '../../../components/ui/index.js';
+import { ConsoleLink } from '../ConsoleNavigationContext.jsx';
 import { MetricsTrendChart } from './MetricsTrendChart.jsx';
 import {
   formatMetricDate,
@@ -160,7 +161,7 @@ function MetricsBasisStrip({ loading, quota }) {
       <span>결과 대기는 성공으로 계산하지 않음</span>
       <span>{getSmsQuotaLabel(quota?.sms, loading)}</span>
       <span>카카오 채널별 일 1,000건 기준</span>
-      <a href="/settings?tab=usage">사용량 설정</a>
+      <ConsoleLink href="/settings?tab=usage">사용량 설정</ConsoleLink>
     </div>
   );
 }
@@ -210,10 +211,10 @@ function MetricsAlerts({ alerts, loading }) {
   return (
     <div className="metrics-alert-list">
       {alerts.map((alert) => (
-        <a className="metrics-alert-row" href={alert.href} key={alert.code}>
+        <ConsoleLink className="metrics-alert-row" href={alert.href} key={alert.code}>
           <AlertTriangle aria-hidden="true" size={16} />
           <span>{alert.message}</span>
-        </a>
+        </ConsoleLink>
       ))}
     </div>
   );

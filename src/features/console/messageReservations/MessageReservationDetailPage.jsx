@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { ChevronLeft, Circle, Copy, RefreshCcw, Trash2 } from 'lucide-react';
 import { Button, ConfirmationDialog, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { useMessageReservationCancelMutation } from './mutations.js';
 import { BatchTable, DetailPagination, RecipientTable } from './MessageReservationDetailTables.jsx';
 import {
@@ -29,7 +30,7 @@ import {
 const BATCH_RECIPIENT_PAGE_SIZE = 50;
 
 export function MessageReservationDetailPage({ groupId = '' }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const searchParamText = searchParams.toString();
@@ -89,7 +90,7 @@ export function MessageReservationDetailPage({ groupId = '' }) {
 
   return (
     <section className="page-frame message-reservation-detail-page">
-      <button className="message-reservation-detail-back" onClick={() => router.push(backHref)} type="button">
+      <button className="message-reservation-detail-back" onClick={() => navigation.push(backHref)} type="button">
         <ChevronLeft aria-hidden="true" size={15} />
         예약 목록
       </button>

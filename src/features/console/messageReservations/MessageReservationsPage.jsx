@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Circle, Copy, Ellipsis, Eye, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
 import {
@@ -25,6 +25,7 @@ import {
   useToast,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { useMessageReservationCancelMutation } from './mutations.js';
 import {
   useMessageReservationGroupDetailQuery,
@@ -60,7 +61,7 @@ import {
 const EMPTY_RESERVATION_GROUPS = [];
 
 export function MessageReservationsPage() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const searchParamText = searchParams.toString();
@@ -99,14 +100,14 @@ export function MessageReservationsPage() {
     closeGroupDetail();
     setPendingCancelGroup(null);
     setOpenMenuGroupId(null);
-    router.replace(`/reservations?${nextParams.toString()}`);
+    navigation.replace(`/reservations?${nextParams.toString()}`);
   }
 
   function openGroupDetail(group) {
     if (group?.isPreview) return;
 
     setOpenMenuGroupId(null);
-    router.push(`/reservations/${encodeURIComponent(group.id)}?${toMessageReservationUrlParams(filters, mode).toString()}`);
+    navigation.push(`/reservations/${encodeURIComponent(group.id)}?${toMessageReservationUrlParams(filters, mode).toString()}`);
   }
 
   function closeGroupDetail() {
