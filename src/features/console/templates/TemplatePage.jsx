@@ -1,7 +1,7 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { PageHeader } from '../../../components/layout/index.js';
 import {
   Button,
@@ -16,6 +16,7 @@ import {
   getSmsSenderOptions,
 } from '../messageSend/mappers.js';
 import { useSenderResourcesQuery } from '../messageSend/queries.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { buildTabQueryHref, getTemplateTabFromQuery, getTemplateTabQueryValue } from '../tabQuery.js';
 import { TemplateCardList } from './TemplateCardList.jsx';
 import { TemplateListToolbar } from './TemplateListToolbar.jsx';
@@ -31,7 +32,7 @@ const pageSizeOptions = [20, 50, 100];
 const KAKAO_TEMPLATE_TABS = new Set(['알림톡', '브랜드 메시지']);
 
 export function TemplatePage({ meta }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => getTemplateTabFromQuery(searchParams, meta.tabs));
@@ -95,14 +96,14 @@ export function TemplatePage({ meta }) {
   const createAction = getTemplateCreateAction({
     activeTab,
     meta,
-    router,
+    navigation,
     selectedSenderResourceId,
   });
 
   function handleActiveTabChange(nextTab) {
     setActiveTab(nextTab);
     setPage(1);
-    router.replace(
+    navigation.replace(
       buildTabQueryHref({
         pathname,
         searchParams,
@@ -204,13 +205,13 @@ export function TemplatePage({ meta }) {
 function getTemplateCreateAction({
   activeTab,
   meta,
-  router,
+  navigation,
   selectedSenderResourceId,
 }) {
   if (activeTab === 'SMS') {
     return {
       label: meta.action,
-      onClick: () => router.push('/templates/sms/new'),
+      onClick: () => navigation.push('/templates/sms/new'),
     };
   }
 
@@ -225,14 +226,14 @@ function getTemplateCreateAction({
 
     return {
       label: meta.action,
-      onClick: () => router.push(query ? `/templates/alimtalk/new?${query}` : '/templates/alimtalk/new'),
+      onClick: () => navigation.push(query ? `/templates/alimtalk/new?${query}` : '/templates/alimtalk/new'),
     };
   }
 
   if (activeTab === '브랜드 메시지') {
     return {
       label: meta.action,
-      onClick: () => router.push('/templates/brand/new'),
+      onClick: () => navigation.push('/templates/brand/new'),
     };
   }
 

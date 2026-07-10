@@ -30,6 +30,7 @@ import {
 } from '../../../components/ui/brandMessageTemplateCardPreviewData.js';
 import { KakaoTemplateCardPreview } from '../../../components/ui/KakaoTemplateCardPreview.jsx';
 import { SmsTemplateCardPreview } from '../../../components/ui/SmsTemplateCardPreview.jsx';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { buildTemplateDetailHref } from './templateDetailModel.js';
 
 const skeletonCards = Array.from({ length: 6 }, (_, index) => index);
@@ -112,6 +113,7 @@ function TemplateCardSkeleton() {
 }
 
 function TemplateCard({ activeTab, eager, senderResourceId, template }) {
+  const navigation = useConsoleNavigation();
   const isSmsPreview = isSmsTemplatePreview(activeTab, template);
   const isBrandPreview = isBrandMessageTemplatePreview(activeTab, template);
   const brandTypeLabel = getBrandTemplateCardTypeLabel(activeTab, template);
@@ -129,7 +131,7 @@ function TemplateCard({ activeTab, eager, senderResourceId, template }) {
           <a
             className="template-card-preview-link template-card-preview-link--sms"
             draggable="false"
-            href={detailHref || '#'}
+            href={detailHref ? navigation.href(detailHref) : '#'}
             onClick={(event) => {
               if (!detailHref) event.preventDefault();
             }}
@@ -140,7 +142,7 @@ function TemplateCard({ activeTab, eager, senderResourceId, template }) {
           <a
             className="template-card-preview-link"
             draggable="false"
-            href={detailHref || '#'}
+            href={detailHref ? navigation.href(detailHref) : '#'}
             onClick={(event) => {
               if (!detailHref) event.preventDefault();
             }}
@@ -238,6 +240,7 @@ function getBrandTemplateCardTypeLabel(activeTab, template) {
 }
 
 function TemplateCardMenu({ detailHref, template }) {
+  const navigation = useConsoleNavigation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   return (
@@ -256,7 +259,7 @@ function TemplateCardMenu({ detailHref, template }) {
             disabled={!detailHref}
             leadingVisual={<Eye size={16} />}
             onSelect={() => {
-              navigateToTemplateDetail(detailHref);
+              if (detailHref) navigation.push(detailHref);
             }}
           >
             상세 보기
@@ -287,12 +290,6 @@ function TemplateCardMenu({ detailHref, template }) {
       />
     </>
   );
-}
-
-function navigateToTemplateDetail(detailHref) {
-  if (!detailHref || typeof window === 'undefined') return;
-
-  window.location.assign(detailHref);
 }
 
 function TemplateDeleteDialog({ onOpenChange, open, template }) {

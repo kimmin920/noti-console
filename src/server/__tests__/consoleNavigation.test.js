@@ -35,6 +35,24 @@ describe('console navigation href transformation', () => {
     expect(transformConsoleHref('/docs', { mode: 'embed' })).toBe('/publ-client/docs');
   });
 
+  it('preserves authoring and admin route queries in Publ embed mode', () => {
+    expect(transformConsoleHref('/templates/alimtalk/new?senderResourceId=sender-1', { mode: 'embed' })).toBe(
+      '/publ-client/templates/alimtalk/new?senderResourceId=sender-1'
+    );
+    expect(transformConsoleHref('/templates/brand/BM001?senderResourceId=kakao-1&source=SENDER_PROFILE', { mode: 'embed' })).toBe(
+      '/publ-client/templates/brand/BM001?senderResourceId=kakao-1&source=SENDER_PROFILE'
+    );
+    expect(transformConsoleHref('/automations/new?eventKey=ORDER_READY', { mode: 'embed' })).toBe(
+      '/publ-client/automations/new?eventKey=ORDER_READY'
+    );
+    expect(transformConsoleHref('/automations/publ-events/ORDER_READY?editor=edit', { mode: 'embed' })).toBe(
+      '/publ-client/automations/publ-events/ORDER_READY?editor=edit'
+    );
+    expect(transformConsoleHref('/admin/sender-resource-applications', { mode: 'embed' })).toBe(
+      '/publ-client/admin/sender-resource-applications'
+    );
+  });
+
   it('does not rewrite external, API, blob, hash-only, or malformed route hrefs', () => {
     for (const href of [
       'https://example.com/logs',

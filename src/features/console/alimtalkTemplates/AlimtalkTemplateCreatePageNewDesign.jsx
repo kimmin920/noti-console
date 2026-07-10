@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   ChevronLeft,
@@ -25,6 +24,7 @@ import {
   useToast,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { getAlimtalkSenderProfiles } from '../messageSend/mappers.js';
 import { useSenderResourcesQuery } from '../messageSend/queries.js';
 import {
@@ -239,7 +239,7 @@ const SUMMARY_OPTIONS = [
 ];
 
 export function AlimtalkTemplateCreatePageNewDesign({ onBack }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const senderResourcesQuery = useSenderResourcesQuery();
   const imageUploadMutation = useAlimtalkTemplateImageUploadMutation();
@@ -366,7 +366,7 @@ export function AlimtalkTemplateCreatePageNewDesign({ onBack }) {
         title: '알림톡 템플릿을 등록했습니다.',
         variant: 'success',
       });
-      router.push('/templates?tab=alimtalk');
+      navigation.push('/templates?tab=alimtalk');
     } catch (error) {
       setLocalSubmitResult({
         error,
@@ -386,7 +386,7 @@ export function AlimtalkTemplateCreatePageNewDesign({ onBack }) {
       return;
     }
 
-    router.push('/templates');
+    navigation.push('/templates');
   }
 
   return (

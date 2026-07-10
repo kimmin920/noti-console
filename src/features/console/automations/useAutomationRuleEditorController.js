@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useReducer } from 'react';
-import { useRouter } from 'next/navigation';
-
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import {
   getPersistedSendChannel,
   getTemplateCode,
@@ -42,7 +41,7 @@ const EMPTY_INLINE_ERRORS = {
 };
 
 export function useAutomationRuleEditorController({ editing, initialDraft, returnHref = '/automations', ruleId }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const [state, dispatch] = useReducer(automationRuleEditorReducer, initialDraft, createAutomationRuleEditorState);
   const createMutation = useAutomationRuleCreateMutation();
@@ -93,7 +92,7 @@ export function useAutomationRuleEditorController({ editing, initialDraft, retur
   ]);
 
   function returnToList() {
-    router.push(returnHref);
+    navigation.push(returnHref);
   }
 
   function changeField(field) {
@@ -160,7 +159,7 @@ export function useAutomationRuleEditorController({ editing, initialDraft, retur
         variant: 'success',
       });
 
-      if (nextRule?.id) router.push(`/automations/${encodeURIComponent(nextRule.id)}`);
+      if (nextRule?.id) navigation.push(`/automations/${encodeURIComponent(nextRule.id)}`);
     } catch (error) {
       const message = getRelayErrorMessage(error, '자동화 규칙을 저장하지 못했습니다.');
 

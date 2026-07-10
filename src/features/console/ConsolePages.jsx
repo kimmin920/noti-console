@@ -1610,7 +1610,7 @@ function getMessageLogV2StatusTone(state) {
 }
 
 function ConsolePage({ meta, onDocs }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const [activeTab, setActiveTab] = useState(() => getConsolePageTabValue(meta.tabs?.[0]));
   const isAutomationsPage = meta.variant === 'automations';
   const activeView = {
@@ -1629,13 +1629,13 @@ function ConsolePage({ meta, onDocs }) {
   const opensAutomationCreate = activeView.action === '자동화 생성';
   const opensPublEventCreate = activeView.action === '이벤트 생성';
   const openTemplateCreatePage = opensTemplateCreate
-    ? () => router.push('/templates/alimtalk/new')
+    ? () => navigation.push('/templates/alimtalk/new')
     : undefined;
   const openAutomationCreatePage = opensAutomationCreate
-    ? () => router.push('/automations/new')
+    ? () => navigation.push('/automations/new')
     : undefined;
   const openPublEventCreatePage = opensPublEventCreate
-    ? () => router.push('/automations/publ-events/new')
+    ? () => navigation.push('/automations/publ-events/new')
     : undefined;
   const openActionPage = openTemplateCreatePage ?? openAutomationCreatePage ?? openPublEventCreatePage;
 
@@ -1752,7 +1752,7 @@ const AUTOMATION_UNSENT_REASON_LABELS = {
 };
 
 function PublEventsDataTable({ table: tableConfig }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const publEventsQuery = usePublEventsQuery();
   const automationQueryFilters = useMemo(() => ({ limit: AUTOMATION_RULE_QUERY_LIMIT }), []);
   const automationRulesQuery = useAutomationRulesQuery(automationQueryFilters);
@@ -1836,7 +1836,7 @@ function PublEventsDataTable({ table: tableConfig }) {
         <Button
           aria-label={`${row.displayName || row.eventKey} 상세 보기`}
           className="publ-event-detail-action"
-          onClick={() => router.push(buildPublEventDetailHref(row.eventKey))}
+          onClick={() => navigation.push(buildPublEventDetailHref(row.eventKey))}
         >
           상세
         </Button>
@@ -2656,7 +2656,7 @@ function formatPublEventNumber(value) {
 }
 
 function AutomationDataTable({ table: tableConfig }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -2718,11 +2718,11 @@ function AutomationDataTable({ table: tableConfig }) {
     : '아직 자동화 규칙이 없습니다.';
 
   function openAutomationDetail(row) {
-    router.push(`/automations/${encodeURIComponent(row.id)}`);
+    navigation.push(`/automations/${encodeURIComponent(row.id)}`);
   }
 
   function openAutomationEdit(row) {
-    router.push(`/automations/${encodeURIComponent(row.id)}/edit`);
+    navigation.push(`/automations/${encodeURIComponent(row.id)}/edit`);
   }
 
   async function enableRule(row) {
@@ -3418,6 +3418,10 @@ function GoogleIcon() {
 const SETTINGS_TABS = ['사용량', '발신 수단 관리', '청구', '연동', '프로필'];
 const SETTINGS_SENDER_RESOURCE_TAB = '발신 수단 관리';
 const SETTINGS_SENDER_RESOURCE_QUERY = 'sender-resources';
+
+function getVisibleSettingsTabs(isPublEmbed) {
+  return isPublEmbed ? SETTINGS_TABS.filter((tab) => tab !== '프로필') : SETTINGS_TABS;
+}
 const SMS_SENDER_RESOURCE_TYPE = 'sms_send_no';
 const KAKAO_SENDER_RESOURCE_TYPE = 'kakao_sender_key';
 const PERSONAL_SENDER_EVIDENCE_FILES = [
@@ -4228,14 +4232,16 @@ function formatFileSize(value) {
 }
 
 function SettingsPage() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => getSettingsTabFromQuery(searchParams, SETTINGS_TABS));
+  const isPublEmbed = navigation.mode === 'embed';
+  const visibleSettingsTabs = getVisibleSettingsTabs(isPublEmbed);
+  const [activeTab, setActiveTab] = useState(() => getSettingsTabFromQuery(searchParams, visibleSettingsTabs));
 
   function handleActiveTabChange(nextTab) {
     setActiveTab(nextTab);
-    router.replace(
+    navigation.replace(
       buildTabQueryHref({
         pathname,
         searchParams,
@@ -4249,14 +4255,14 @@ function SettingsPage() {
     <section className="page-frame settings-page">
       <PageHeader title="설정" />
       <SegmentedControl
-        items={SETTINGS_TABS}
+        items={visibleSettingsTabs}
         onValueChange={handleActiveTabChange}
         value={activeTab}
       />
       {activeTab === '사용량' ? <UsageSettingsContent /> : null}
       {activeTab === SETTINGS_SENDER_RESOURCE_TAB ? <SenderResourceSettings /> : null}
-      {activeTab === '프로필' ? <ProfileSettingsContent /> : null}
-      {activeTab !== '사용량' && activeTab !== SETTINGS_SENDER_RESOURCE_TAB && activeTab !== '프로필' ? (
+      {activeTab === '프로필' && !isPublEmbed ? <ProfileSettingsContent /> : null}
+      {activeTab !== '사용량' && activeTab !== SETTINGS_SENDER_RESOURCE_TAB && (activeTab !== '프로필' || isPublEmbed) ? (
         <SettingsPlaceholder title={activeTab} />
       ) : null}
     </section>

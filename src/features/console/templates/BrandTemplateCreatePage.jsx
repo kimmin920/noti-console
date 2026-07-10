@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import {
   BrandMessageSendForm,
@@ -15,6 +14,7 @@ import {
   useToast,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import {
   getAlimtalkSenderProfiles,
   getResolvedSenderOptionValue,
@@ -41,7 +41,7 @@ import { getBrandImageUploadFailureMessage } from '../messageSend/uploadErrors.j
 const BRAND_TEMPLATE_REGISTRATION_NAME_MAX_LENGTH = 200;
 
 export function BrandTemplateCreatePage({ onBack }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const senderResourcesQuery = useSenderResourcesQuery();
   const brandImageUploadMutation = useBrandImageUploadMutation();
@@ -175,7 +175,7 @@ export function BrandTemplateCreatePage({ onBack }) {
         title: '템플릿 등록 완료',
         variant: 'success',
       });
-      router.push('/templates?tab=brand');
+      navigation.push('/templates?tab=brand');
     } catch (error) {
       const message = getBrandTemplateCreateErrorMessage(error, '브랜드 메시지 템플릿을 등록하지 못했습니다.');
 
@@ -204,7 +204,7 @@ export function BrandTemplateCreatePage({ onBack }) {
       return;
     }
 
-    router.push('/templates?tab=brand');
+    navigation.push('/templates?tab=brand');
   }
 
   function goToSenderSetup() {
@@ -212,7 +212,7 @@ export function BrandTemplateCreatePage({ onBack }) {
       return;
     }
 
-    router.push('/settings/sender-resources/kakao/new');
+    navigation.push('/settings/sender-resources/kakao/new');
   }
 
   const visibleNameError = submitAttempted ? templateNameError || getBrandTemplateRegistrationNameIssue(templateName) : '';
@@ -333,7 +333,7 @@ export function BrandTemplateCreatePage({ onBack }) {
                 fallbackSenderNumbers={smsSenderOptions}
                 onChange={setBrandMessage}
                 onCarouselPreviewTargetChange={setBrandCarouselPreviewTarget}
-                onFallbackSenderNumberCreate={() => router.push('/settings/sender-resources/sms/new')}
+                onFallbackSenderNumberCreate={() => navigation.push('/settings/sender-resources/sms/new')}
                 onSenderProfileCreate={goToSenderSetup}
                 ref={formRef}
                 recipientContacts={[]}

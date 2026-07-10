@@ -38,6 +38,8 @@
     "test:settings-profile-tab-contract": "node scripts/check_settings_profile_tab_contract.mjs",
     "test:metrics-console-contract": "node scripts/check_metrics_console_contract.mjs",
     "test:publ-iframe-recipient-contract": "node scripts/check_publ_iframe_recipient_contract.mjs",
+    "audit:console-navigation-literals": "node scripts/audit_console_navigation_literals.mjs",
+    "test:console-embed-navigation-contract": "vitest run --config vitest.config.mjs src/server/__tests__/consoleNavigation.test.js src/server/__tests__/publClientRouting.test.js src/server/__tests__/publClientActorUi.test.js src/server/__tests__/consoleNavigationAudit.test.js && npm run audit:console-navigation-literals",
     "build": "next build",
     "db:migration:generate": "drizzle-kit generate --config=drizzle.config.js",
     "db:migration:check": "drizzle-kit check --config=drizzle.config.js",

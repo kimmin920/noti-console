@@ -34,7 +34,7 @@ export function ConsoleNavigationProvider({ children, mode = 'app' }) {
 
 export function useConsoleNavigation() {
   const context = useContext(ConsoleNavigationContext);
-  const router = useRouter();
+  const router = useOptionalRouter();
 
   if (context) {
     return context;
@@ -43,9 +43,31 @@ export function useConsoleNavigation() {
   return {
     href: (value) => transformConsoleHref(value, { mode: 'app' }),
     mode: 'app',
-    push: (value, options) => router.push(transformConsoleHref(value, { mode: 'app' }), options),
-    replace: (value, options) => router.replace(transformConsoleHref(value, { mode: 'app' }), options),
+    push: (value, options) => {
+      const nextHref = transformConsoleHref(value, { mode: 'app' });
+      if (router) {
+        router.push(nextHref, options);
+      } else if (typeof window !== 'undefined') {
+        window.location.assign(nextHref);
+      }
+    },
+    replace: (value, options) => {
+      const nextHref = transformConsoleHref(value, { mode: 'app' });
+      if (router) {
+        router.replace(nextHref, options);
+      } else if (typeof window !== 'undefined') {
+        window.location.replace(nextHref);
+      }
+    },
   };
+}
+
+function useOptionalRouter() {
+  try {
+    return useRouter();
+  } catch {
+    return null;
+  }
 }
 
 export function ConsoleLink({ href, ...props }) {

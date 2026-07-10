@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Plus, Workflow } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 
@@ -20,6 +18,7 @@ import {
   useToast,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { ConsoleLink, useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { useCurrentActorQuery } from '../messageSend/queries.js';
 import { getParserFormatLabel } from './publEventDetailModel.js';
 import { usePublEventCreateMutation } from './queries.js';
@@ -139,7 +138,7 @@ const EVENT_KEY_PATTERN = /^[A-Za-z0-9_.:-]+$/;
 const VARIABLE_ALIAS_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
 
 export function PublEventCreatePage() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const actorQuery = useCurrentActorQuery();
   const createMutation = usePublEventCreateMutation();
@@ -318,7 +317,7 @@ export function PublEventCreatePage() {
         title: 'PUBL 이벤트를 생성했습니다.',
         variant: 'success',
       });
-      router.push(`/automations/publ-events/${encodeURIComponent(createdEventKey)}?editor=edit`);
+      navigation.push(`/automations/publ-events/${encodeURIComponent(createdEventKey)}?editor=edit`);
     } catch {
       // The inline status below reads the mutation error from TanStack Query.
     }
@@ -337,10 +336,10 @@ export function PublEventCreatePage() {
             <code translate="no">{form.eventKey.trim() || 'eventKey'}</code>
           </div>
           <div className="publ-event-detail-actions">
-            <Link className="publ-event-secondary-button publ-event-detail-link-button" href="/automations">
+            <ConsoleLink className="publ-event-secondary-button publ-event-detail-link-button" href="/automations">
               <ArrowLeft aria-hidden="true" size={15} />
               목록
-            </Link>
+            </ConsoleLink>
           </div>
         </header>
 
@@ -708,9 +707,9 @@ export function PublEventCreatePage() {
           ) : null}
 
           <div className="publ-event-create-actions">
-            <Link className="publ-event-secondary-button publ-event-detail-link-button" href="/automations">
+            <ConsoleLink className="publ-event-secondary-button publ-event-detail-link-button" href="/automations">
               취소
-            </Link>
+            </ConsoleLink>
             <Button
               className="publ-event-primary-button"
               disabled={!canCreate || createMutation.isPending}

@@ -1,11 +1,11 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import {
   Button,
   SectionPanel,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { AutomationRuleEditorForm } from './AutomationRuleEditorForm.jsx';
 import {
   useAutomationRuleQuery,
@@ -81,7 +81,7 @@ function AutomationRuleEditorLoading() {
 }
 
 function AutomationRuleEditorError({ message, onRetry }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
 
   return (
     <section className="page-frame automation-rule-editor-page">
@@ -91,7 +91,7 @@ function AutomationRuleEditorError({ message, onRetry }) {
           <span>{message}</span>
         </div>
         {onRetry ? <Button onClick={onRetry}>다시 시도</Button> : null}
-        <Button onClick={() => router.push('/automations')} variant="secondary">목록</Button>
+        <Button onClick={() => navigation.push('/automations')} variant="secondary">목록</Button>
       </div>
     </section>
   );

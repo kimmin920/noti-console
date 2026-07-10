@@ -445,9 +445,9 @@ describe('automation unsent tab UI contract', () => {
     expect(consoleSource).toContain('<AutomationRuleDetailPage ruleId={automationDetail.ruleId}');
     expect(consoleSource).toContain('<AutomationRuleEditorPage mode="create" />');
     expect(consoleSource).toContain('<AutomationRuleEditorPage mode="edit" ruleId={automationDetail.ruleId}');
-    expect(consoleSource).toContain("router.push('/automations/new')");
-    expect(consoleSource).toContain('router.push(`/automations/${encodeURIComponent(row.id)}`)');
-    expect(consoleSource).toContain('router.push(`/automations/${encodeURIComponent(row.id)}/edit`)');
+    expect(consoleSource).toContain("navigation.push('/automations/new')");
+    expect(consoleSource).toContain('navigation.push(`/automations/${encodeURIComponent(row.id)}`)');
+    expect(consoleSource).toContain('navigation.push(`/automations/${encodeURIComponent(row.id)}/edit`)');
   });
 
   it('keeps the automation editor shell reducer-backed and wired to create/update APIs', () => {

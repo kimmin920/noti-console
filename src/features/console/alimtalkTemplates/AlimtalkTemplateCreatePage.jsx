@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { AlertTriangle, ChevronLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { Button, Checkbox, KakaoTemplatePreview } from '../../../components/ui/index.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { AlimtalkTemplateAdvancedSections } from './AlimtalkTemplateAdvancedSections.jsx';
 import {
   getAlimtalkTemplateMaxContentLength,
@@ -88,7 +88,7 @@ function getContentSizeLabel(template) {
 }
 
 export function AlimtalkTemplateCreatePage({ onBack }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const [template, setTemplate] = useState(INITIAL_TEMPLATE);
   const [confirmed, setConfirmed] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -125,7 +125,7 @@ export function AlimtalkTemplateCreatePage({ onBack }) {
       return;
     }
 
-    router.push('/templates');
+    navigation.push('/templates');
   }
 
   return (

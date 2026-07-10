@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   ChevronLeft,
@@ -21,6 +20,7 @@ import {
   useToast,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { getSmsSenderOptions } from '../messageSend/mappers.js';
 import { useSenderResourcesQuery } from '../messageSend/queries.js';
 import {
@@ -56,7 +56,7 @@ const INITIAL_DRAFT = {
 };
 
 export function SmsTemplateCreatePage({ onBack }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const senderResourcesQuery = useSenderResourcesQuery();
   const attachmentUploadMutation = useSmsTemplateAttachmentUploadMutation();
@@ -238,7 +238,7 @@ export function SmsTemplateCreatePage({ onBack }) {
         title: 'SMS 템플릿을 등록했습니다.',
         variant: 'success',
       });
-      router.push('/templates?tab=sms');
+      navigation.push('/templates?tab=sms');
     } catch (error) {
       setLocalSubmitResult({
         error,
@@ -259,7 +259,7 @@ export function SmsTemplateCreatePage({ onBack }) {
       return;
     }
 
-    router.push('/templates?tab=sms');
+    navigation.push('/templates?tab=sms');
   }
 
   function goToSenderSetup() {
@@ -267,7 +267,7 @@ export function SmsTemplateCreatePage({ onBack }) {
       return;
     }
 
-    router.push('/settings/sender-resources/sms/new');
+    navigation.push('/settings/sender-resources/sms/new');
   }
 
   const previewValue = {
