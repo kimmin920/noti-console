@@ -5,6 +5,7 @@ import {
   getPublClientCapabilityState,
   setPublClientCapabilityState,
 } from './runtimeSession.js';
+import { isPublAuthorizationGranted } from './sdkAdapter.js';
 
 export class PublTapCapabilityError extends Error {
   constructor(message = 'Publ 수신자 조회 권한이 없습니다') {
@@ -108,8 +109,7 @@ async function authorizePublMemberContactsCapability({ adapter, identity, permis
 
   try {
     const response = await adapter.authorize([permissionId]);
-    const status = response?.status ?? response?.payload?.status;
-    if (status && status !== 'OK') {
+    if (!isPublAuthorizationGranted(response)) {
       setPublClientCapabilityState({ identity, permissionId, state: 'denied' });
       throw new PublTapCapabilityError();
     }

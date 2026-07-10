@@ -74,7 +74,7 @@ function installSdkFixture({ denyContacts }) {
         }
         return {
           data: {
-            members: [
+            memberContacts: [
               {
                 distinctId: 'member-one',
                 nickname: 'Publ recipient',

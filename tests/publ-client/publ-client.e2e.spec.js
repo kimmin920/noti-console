@@ -80,6 +80,42 @@ test('manual phone recipient submits through the provider-neutral SMS request pa
   });
 });
 
+test('Publ contact recipient loads from the SDK and submits through the SMS request path', async ({ page }, testInfo) => {
+  const evidence = createEvidenceRecorder(page, testInfo);
+  const apiState = createApiFixtureState();
+  await installPublSdk(page);
+  await installApiFixtures(page, apiState);
+
+  await page.goto(getParentFrameUrl(APPROVED_PARENT, '/publ-client/message-send'));
+  const frame = await getPublFrame(page);
+  const recipientField = frame.getByRole('combobox', { name: '수신자 선택' });
+
+  await recipientField.locator('input').click();
+  await frame.getByRole('option', { name: 'Publ recipient 선택' }).click();
+  await expect(recipientField.getByText('Publ recipient')).toBeVisible();
+  await frame.getByRole('textbox', { name: '문자 메시지 본문' }).fill('Phase 54 Publ contact browser send');
+  await frame.getByRole('button', { name: '발송하기' }).click();
+
+  await expect.poll(() => getSmsSendRequest(apiState)).toMatchObject({
+    body: {
+      recipients: [{ recipientNo: '01000000000' }],
+    },
+    method: 'POST',
+    pathname: '/api/messages/sms/send',
+  });
+  evidence.assertNoPublAuthBoundaryTraffic();
+  await redactLocatorText(recipientField, '01000000000', '<redacted-phone>');
+  await evidence.capture({
+    apiState,
+    extra: {
+      recipientSource: 'publ-contact',
+      recipientValue: '<redacted-phone>',
+    },
+    frame,
+    label: 'publ-contact-send',
+  });
+});
+
 test('unapproved parent cannot frame the Publ client', async ({ page }, testInfo) => {
   const evidence = createEvidenceRecorder(page, testInfo);
   await installApiFixtures(page, createApiFixtureState());

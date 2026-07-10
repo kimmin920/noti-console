@@ -234,7 +234,7 @@ async function assertMandatoryAuthorization(adapter, permissionIds) {
   }
 }
 
-function isPublAuthorizationGranted(response) {
+export function isPublAuthorizationGranted(response) {
   if (typeof response === 'boolean') return response;
 
   const data = getResponseData(response);

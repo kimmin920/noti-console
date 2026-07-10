@@ -97,6 +97,25 @@ describe('Publ common/catalog tap request helpers', () => {
     expect(adapter.request).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    false,
+    { authorized: false },
+    { payload: { authorized: false } },
+    undefined,
+  ])('fails closed when contact authorization is not explicitly granted: %j', async (authorizationResult) => {
+    const adapter = {
+      authorize: vi.fn(async () => authorizationResult),
+      request: vi.fn(),
+    };
+
+    await expect(requestPublMemberContacts({
+      adapter,
+      clientConfig: createClientConfig({ memberContacts: 'PM_CONTACTS' }),
+      identity: { identityKey: `denied:${JSON.stringify(authorizationResult)}` },
+    })).rejects.toBeInstanceOf(PublTapCapabilityError);
+    expect(adapter.request).not.toHaveBeenCalled();
+  });
+
   it('repeats contact capability authorization for a fresh runtime identity', async () => {
     const adapter = {
       authorize: vi.fn(async () => ({ status: 'OK' })),
