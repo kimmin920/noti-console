@@ -218,8 +218,10 @@ function getStatusTone(cell) {
 export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
   const publClient = usePublClient();
   let page = <ConsolePage key={activePage} meta={meta} onDocs={onDocs} />;
+  const automationDetail = pageProps?.automationDetail;
   const templateDetail = pageProps?.templateDetail;
   const publEventDetail = pageProps?.publEventDetail;
+  const reservationDetail = pageProps?.reservationDetail;
   const logDetail = pageProps?.logDetail;
 
   if (activePage === DEFAULT_CONSOLE_PAGE_ID) {
@@ -234,10 +236,10 @@ export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
     page = <SenderResourceApplicationPage type="kakao" />;
   } else if (activePage === 'automations-new') {
     page = <AutomationRuleEditorPage mode="create" />;
-  } else if (activePage === 'automations-detail') {
-    page = <AutomationRuleDetailPage />;
-  } else if (activePage === 'automations-edit') {
-    page = <AutomationRuleEditorPage mode="edit" />;
+  } else if (activePage === 'automations-detail' && automationDetail) {
+    page = <AutomationRuleDetailPage ruleId={automationDetail.ruleId} />;
+  } else if (activePage === 'automations-edit' && automationDetail) {
+    page = <AutomationRuleEditorPage mode="edit" ruleId={automationDetail.ruleId} />;
   } else if (activePage === 'publ-event-detail' && publEventDetail) {
     page = <PublEventDetailPage eventKey={publEventDetail.eventKey} />;
   } else if (activePage === 'publ-event-new') {
@@ -256,8 +258,8 @@ export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
     page = <MetricsPage meta={meta} />;
   } else if (activePage === 'reservations') {
     page = <MessageReservationsPage />;
-  } else if (activePage === 'reservation-detail') {
-    page = <MessageReservationDetailPage />;
+  } else if (activePage === 'reservation-detail' && reservationDetail) {
+    page = <MessageReservationDetailPage groupId={reservationDetail.groupId} />;
   } else if (activePage === 'logs') {
     page = <MessageLogsPage />;
   } else if (activePage === 'log-detail' && logDetail) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Button,
   SectionPanel,
@@ -15,11 +15,17 @@ import {
   createDraftFromAutomationRule,
 } from './ruleEditorReducer.js';
 
-export function AutomationRuleEditorPage({ mode = 'create' }) {
-  const params = useParams();
-  const ruleId = typeof params?.ruleId === 'string' ? params.ruleId : '';
+export function AutomationRuleEditorPage({ mode = 'create', ruleId = '' }) {
   const editing = mode === 'edit';
   const detailQuery = useAutomationRuleQuery(ruleId, { enabled: editing && Boolean(ruleId) });
+
+  if (editing && !ruleId) {
+    return (
+      <AutomationRuleEditorError
+        message="자동화 규칙 ID가 없어 편집 화면을 열 수 없습니다."
+      />
+    );
+  }
 
   if (editing && detailQuery.isLoading) {
     return <AutomationRuleEditorLoading />;
@@ -84,7 +90,7 @@ function AutomationRuleEditorError({ message, onRetry }) {
           <strong>자동화 규칙 로드 실패</strong>
           <span>{message}</span>
         </div>
-        <Button onClick={onRetry}>다시 시도</Button>
+        {onRetry ? <Button onClick={onRetry}>다시 시도</Button> : null}
         <Button onClick={() => router.push('/automations')} variant="secondary">목록</Button>
       </div>
     </section>

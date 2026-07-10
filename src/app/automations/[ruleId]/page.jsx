@@ -1,5 +1,13 @@
 import { ConsoleRoute } from '@/features/console/ConsoleRoute.jsx';
 
-export default function AutomationRuleDetailPage({ searchParams }) {
-  return <ConsoleRoute pageId="automations-detail" searchParams={searchParams} />;
+export default async function AutomationRuleDetailPage({ params, searchParams }) {
+  const { ruleId } = await params;
+
+  return (
+    <ConsoleRoute
+      pageId="automations-detail"
+      pageProps={{ automationDetail: { ruleId } }}
+      searchParams={searchParams}
+    />
+  );
 }
