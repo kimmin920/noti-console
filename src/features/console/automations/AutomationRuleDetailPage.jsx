@@ -1,6 +1,5 @@
 'use client';
 
-import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import { getRelayErrorMessage } from '../messageSend/api.js';
@@ -14,15 +13,24 @@ import {
 import { PublOpenApiExampleDrawer } from './PublOpenApiExampleDrawer.jsx';
 import { useAutomationRuleQuery } from './queries.js';
 
-export function AutomationRuleDetailPage() {
-  const params = useParams();
-  const ruleId = typeof params?.ruleId === 'string' ? params.ruleId : '';
+export function AutomationRuleDetailPage({ ruleId = '' }) {
   const [openApiOpen, setOpenApiOpen] = useState(false);
   const ruleQuery = useAutomationRuleQuery(ruleId, { enabled: Boolean(ruleId) });
   const rule = ruleQuery.data?.rule ?? null;
   const eventKey = rule?.eventDefinition?.eventKey ?? '';
   const eventQuery = usePublEventDetailQuery(eventKey, { enabled: Boolean(eventKey) });
   const openApiEvent = useMemo(() => eventQuery.data ?? rule?.eventDefinition ?? null, [eventQuery.data, rule]);
+
+  if (!ruleId) {
+    return (
+      <AutomationRuleDetailStatus
+        actionHref="/automations"
+        actionLabel="자동화 목록"
+        message="자동화 규칙 ID가 없어 상세를 열 수 없습니다."
+        title="자동화 경로가 올바르지 않습니다"
+      />
+    );
+  }
 
   if (ruleQuery.isLoading) {
     return <AutomationRuleDetailSkeleton />;

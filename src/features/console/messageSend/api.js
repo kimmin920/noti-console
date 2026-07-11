@@ -4,10 +4,18 @@ import {
   hasPublClientRefreshTokenHandler,
   refreshPublClientAccessToken,
 } from '../../publClient/authToken.js';
+import {
+  createPublClientRuntimeStorage,
+  getIdentity,
+  isActiveForPath,
+  isPublClientRuntimeGenerationActive,
+} from '../../publClient/runtimeSession.js';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
 };
+
+let publRefreshInFlight = null;
 
 export class RelayClientError extends Error {
   constructor({
@@ -84,16 +92,23 @@ export function withQuery(path, params) {
   return query ? `${path}?${query}` : path;
 }
 
+if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+  window.__VIZUO_E2E_RELAY_GET__ = relayGet;
+}
+
 async function relayFetch(path, init) {
   return relayFetchWithPublRefresh(path, init, { retried: false });
 }
 
 async function relayFetchWithPublRefresh(path, init, { retried }) {
+  const requestIdentity = snapshotPublRequestIdentity(path);
   const response = await fetch(path, {
     cache: 'no-store',
     ...withPublBearerAuthorization(path, init),
   });
+  assertPublRuntimeStillActive(requestIdentity);
   const envelope = await readRelayEnvelope(response);
+  assertPublRuntimeStillActive(requestIdentity);
 
   if (response.ok && envelope?.ok === true) {
     return envelope.data;
@@ -102,7 +117,10 @@ async function relayFetchWithPublRefresh(path, init, { retried }) {
   const error = toRelayClientError({ envelope, status: response.status });
 
   if (!retried && shouldAttemptPublTokenRefresh(path, error)) {
-    const refreshed = await refreshPublAccessTokenSafely();
+    const currentToken = getPublClientAccessToken();
+    const refreshed = currentToken && requestIdentity?.accessToken !== currentToken
+      ? currentToken
+      : await refreshPublAccessTokenSafely();
 
     if (refreshed) {
       return relayFetchWithPublRefresh(path, init, { retried: true });
@@ -112,20 +130,30 @@ async function relayFetchWithPublRefresh(path, init, { retried }) {
   throw error;
 }
 
+function snapshotPublRequestIdentity(path) {
+  if (!isLocalApiPath(path) || !isActiveForPath()) {
+    return null;
+  }
+
+  const identity = getIdentity();
+  return identity ? { ...identity } : null;
+}
+
 function withPublBearerAuthorization(path, init) {
-  if (!isLocalApiPath(path)) {
+  if (!isLocalApiPath(path) || !isActiveForPath()) {
     return init;
   }
 
-  const accessToken = getPublClientAccessToken();
-  if (!accessToken) {
+  const identity = getIdentity();
+  if (!identity?.accessToken) {
     return init;
   }
 
   const headers = new Headers(init?.headers);
   if (!headers.has('authorization')) {
-    headers.set('authorization', `Bearer ${accessToken}`);
+    headers.set('authorization', `Bearer ${identity.accessToken}`);
   }
+  headers.set('x-noti-auth-context', 'publ-client');
 
   return {
     ...init,
@@ -139,6 +167,7 @@ function isLocalApiPath(path) {
 
 function shouldAttemptPublTokenRefresh(path, error) {
   return isLocalApiPath(path)
+    && isActiveForPath()
     && error?.status === 401
     && Boolean(getPublClientAccessToken())
     && Boolean(getPublClientRefreshToken())
@@ -146,10 +175,54 @@ function shouldAttemptPublTokenRefresh(path, error) {
 }
 
 async function refreshPublAccessTokenSafely() {
+  const identity = getIdentity();
+  if (!identity) return null;
+
+  if (
+    publRefreshInFlight?.generation === identity.generation
+    && publRefreshInFlight.identityKey === identity.identityKey
+  ) {
+    return publRefreshInFlight.promise;
+  }
+
+  const runtimeStorage = createPublClientRuntimeStorage({ identity });
+  const promise = refreshPublClientAccessToken({
+    storage: runtimeStorage,
+  })
+    .then((accessToken) => (
+      runtimeStorage.isActive() ? accessToken : null
+    ))
+    .finally(() => {
+      setTimeout(() => {
+        if (publRefreshInFlight?.promise === promise) {
+          publRefreshInFlight = null;
+        }
+      }, 100);
+    });
+  publRefreshInFlight = {
+    generation: identity.generation,
+    identityKey: identity.identityKey,
+    promise,
+  };
+
   try {
-    return await refreshPublClientAccessToken();
+    return await promise;
   } catch {
     return null;
+  }
+}
+
+function assertPublRuntimeStillActive(requestIdentity) {
+  if (!requestIdentity) return;
+
+  if (!isPublClientRuntimeGenerationActive(requestIdentity.generation)) {
+    throw new RelayClientError({
+      code: 'STALE_PUBL_RUNTIME',
+      message: 'Publ client session changed before the request completed.',
+      retryable: false,
+      source: 'client',
+      status: 0,
+    });
   }
 }
 

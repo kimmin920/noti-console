@@ -47,6 +47,8 @@ are client-visible, so do not place Publ secret keys here.
 ```bash
 PUBL_PAPP_CLIENT_STAGE=test
 PUBL_PAPP_SDK_SRC=/vendor/publ-p-app-client-sdk.testflight.js
+PUBL_PAPP_TEST_PARENT_ORIGINS=https://console.dev.publ.biz
+PUBL_PAPP_RELEASE_PARENT_ORIGINS=https://console.publ.biz
 PUBL_PAPP_TEST_CLIENT_HASH=
 PUBL_PAPP_RELEASE_CLIENT_HASH=
 PUBL_PAPP_TEST_SELLER_INFO_PERMISSION_ID=
@@ -60,9 +62,18 @@ otherwise it defaults to `test`. `PUBL_PAPP_SDK_SRC` defaults to the bundled
 testflight SDK only in the test stage. Release must set the Publ-hosted or
 release-approved SDK URL explicitly.
 
+`PUBL_PAPP_TEST_PARENT_ORIGINS` and `PUBL_PAPP_RELEASE_PARENT_ORIGINS` are
+server-only comma-separated iframe parent origins used for `/publ-client`
+`frame-ancestors` CSP and iframe runtime activation. Do not configure them as
+`NEXT_PUBLIC_*`. Values must be origins only, without paths, credentials, or
+wildcards. HTTPS is required in production; local HTTP loopback origins are
+accepted only outside production for development testing.
+
 Exchange and refresh permission IDs default to Publ's fixed values:
 `PM_00000_EXCHANGE_TOKEN` and `PM_00000_REFRESH_TOKEN`. Seller-info and member
-contacts permission IDs are optional until Publ grants them for the same stage.
+contacts permission IDs can be overridden per stage. The bundled testflight SDK
+defaults member contacts to `PM_19177_READ_MEMBER_CONTACTS`; release still
+requires the granted release permission ID to be configured explicitly.
 
 ## Token Exchange
 
@@ -151,18 +162,62 @@ await client.pipeline.request('PM_00000_REFRESH_TOKEN');
 
 When exchange succeeds it stores VIZUO access/refresh tokens in iframe
 `sessionStorage`, attaches `Authorization: Bearer {accessToken}` to same-origin
-`/api/*` relay calls, and renders the existing messaging console in embed mode.
+`/api/*` relay calls only while running in an iframe, and renders the existing
+messaging console in embed mode. A top-level `/publ-client` load does not call
+the SDK and redirects to the standalone `/message-send` route. Same-document
+navigation under `/publ-client` reuses the active in-memory runtime, but a fresh
+JavaScript document clears stale stored tokens and exchanges again instead of
+treating `sessionStorage` as proof of a resumable session.
 When the local access token expires, the client asks the SDK for
 `PM_00000_REFRESH_TOKEN`; the SDK includes the previous access/refresh token from
 its session, and VIZUO returns only the next access token.
 
 The SDK adapter also exposes generic tap requests for granted Publ permissions.
-Current helpers cover seller business information
-`PM_00002_READ_SELLER_BUSINESS_INFORMATION` and member contacts
-`PM_00002_READ_MEMBER_CONTACTS` once Publ confirms those permission IDs.
+The bundled testflight SDK currently grants seller business information through
+`PM_24439_READ_SELLER_BUSINESS_INFORMATION` and member contacts through
+`PM_19177_READ_MEMBER_CONTACTS`. Release permission IDs remain deployment
+configuration because Publ may grant different release values.
 
 If the Publ SDK is unavailable locally, `/publ-client` renders a safe connection
 unavailable state instead of attempting a raw `postMessage` protocol.
+
+### Path Mirroring And Browser Release Gate
+
+The iframe route mirrors registered console paths under the `/publ-client`
+prefix. For example, `/publ-client/logs?channel=sms` renders the same console
+surface as `/logs?channel=sms`, but all in-app navigation remains prefixed while
+the document is in Publ embed mode. A top-level browser visit to a registered
+`/publ-client/...` path strips the prefix and redirects to the standalone
+console path; malformed or unregistered Publ paths stay on `/publ-client` and
+render the invalid-route state.
+
+Every fresh JavaScript document must exchange through the SDK before activating
+local API authorization. Same-document navigation inside `/publ-client` reuses
+the active runtime and must not exchange again. A reload is a fresh document and
+must exchange again so merchant identity, runtime generation, and contact cache
+ownership are deterministic.
+
+`PUBL_PAPP_TEST_PARENT_ORIGINS` and `PUBL_PAPP_RELEASE_PARENT_ORIGINS` are exact
+server-only origin allowlists for iframe `frame-ancestors`. Local deterministic
+browser QA uses only `http://127.0.0.1:3411` as an approved parent fixture and
+`http://127.0.0.1:3412` as a denied parent fixture. Do not add the denied origin
+or any loopback origin to release configuration.
+
+The repo-owned Playwright gate is:
+
+```bash
+npm run test:publ-client-e2e
+```
+
+It runs desktop and mobile Chromium projects against local app and parent
+fixtures. It does not require Clerk, Postgres, real Publ credentials, or locally
+signed access tokens. Evidence is written to
+`.omo/evidence/task-8-publ-client-boundary-routing-hardening/` with screenshots,
+final URLs, redacted request headers, SDK exchange/refresh counters, browser
+console errors, and failed network requests.
+
+Real `https://console.dev.publ.biz` iframe validation remains a post-deploy
+smoke gate. Do not mark that gate passed from the local parent fixture.
 
 ## Publ Automation Webhook
 
@@ -206,6 +261,7 @@ export PUBL_PAPP_REFRESH_TOKEN_HASH_SECRET=test-only-refresh-hash-secret
 export PUBL_PAPP_CLIENT_STAGE=test
 export PUBL_PAPP_TEST_CLIENT_HASH=test-only-client-hash
 export PUBL_PAPP_SDK_SRC=/vendor/publ-p-app-client-sdk.testflight.js
+export PUBL_PAPP_TEST_PARENT_ORIGINS=http://localhost:3000
 
 npm run dev
 ```

@@ -70,7 +70,7 @@ describe('relay actor resolver', () => {
     expect(actor.user.id).toBe('user_1');
   });
 
-  it('resolves a valid Publ bearer token to the mapped local user', async () => {
+  it('resolves a valid explicit Publ bearer token to the mapped local user', async () => {
     const publUser = createUser({
       id: 'publ_user_1',
       email: 'publ-user@example.invalid',
@@ -104,7 +104,10 @@ describe('relay actor resolver', () => {
       user: publUser,
     });
 
-    const actor = await resolver.resolve(createRequest({ authorization: `Bearer ${accessToken}` }));
+    const actor = await resolver.resolve(createRequest({
+      authContext: 'publ-client',
+      authorization: `Bearer ${accessToken}`,
+    }));
 
     expect(actor).toMatchObject({
       authProvider: AUTH_PROVIDERS.PUBL,
@@ -123,7 +126,10 @@ describe('relay actor resolver', () => {
     });
 
     await expect(
-      resolver.resolve(createRequest({ authorization: 'Bearer not-a-jwt' }))
+      resolver.resolve(createRequest({
+        authContext: 'publ-client',
+        authorization: 'Bearer not-a-jwt',
+      }))
     ).rejects.toMatchObject({
       code: RELAY_ERROR_CODES.UNAUTHORIZED,
       status: 401,
@@ -158,7 +164,10 @@ describe('relay actor resolver', () => {
     });
 
     await expect(
-      resolver.resolve(createRequest({ authorization: `Bearer ${accessToken}` }))
+      resolver.resolve(createRequest({
+        authContext: 'publ-client',
+        authorization: `Bearer ${accessToken}`,
+      }))
     ).rejects.toMatchObject({
       code: RELAY_ERROR_CODES.UNAUTHORIZED,
       status: 401,
@@ -194,7 +203,10 @@ describe('relay actor resolver', () => {
     });
 
     await expect(
-      resolver.resolve(createRequest({ authorization: `Bearer ${accessToken}` }))
+      resolver.resolve(createRequest({
+        authContext: 'publ-client',
+        authorization: `Bearer ${accessToken}`,
+      }))
     ).rejects.toMatchObject({
       code: RELAY_ERROR_CODES.UNAUTHORIZED,
       status: 401,
@@ -234,14 +246,17 @@ describe('relay actor resolver', () => {
     });
 
     await expect(
-      resolver.resolve(createRequest({ authorization: `Bearer ${accessToken}` }))
+      resolver.resolve(createRequest({
+        authContext: 'publ-client',
+        authorization: `Bearer ${accessToken}`,
+      }))
     ).rejects.toMatchObject({
       code: RELAY_ERROR_CODES.UNAUTHORIZED,
       status: 401,
     });
   });
 
-  it('lets a real Clerk session win over a spoofed Publ bearer token', async () => {
+  it('lets a real Clerk session win over a Publ bearer token without explicit context', async () => {
     const repository = createMemoryAuthRepository({
       users: [
         createUser({ id: 'user_1', email: 'user1@example.com' }),
@@ -266,6 +281,97 @@ describe('relay actor resolver', () => {
     expect(actor).toMatchObject({
       authProvider: AUTH_PROVIDERS.CLERK,
       userId: 'user_1',
+    });
+  });
+
+  it('uses Publ over Clerk when exact Publ auth context and bearer are valid', async () => {
+    const clerkUser = createUser({ id: 'user_1', email: 'user1@example.com' });
+    const publUser = createUser({ id: 'publ_user_1', email: 'publ@example.invalid' });
+    const publSession = createPublPappSession({
+      userId: publUser.id,
+      accessTokenExpiresAt: new Date(TEST_NOW.getTime() + 60_000),
+    });
+    const repository = createMemoryAuthRepository({
+      users: [clerkUser, publUser],
+      externalAuthAccounts: [
+        createExternalAuthAccount({
+          userId: clerkUser.id,
+          provider: AUTH_PROVIDERS.CLERK,
+          providerAccountId: 'clerk_user_1',
+        }),
+        createExternalAuthAccount({
+          userId: publUser.id,
+          provider: AUTH_PROVIDERS.PUBL,
+          providerAccountId: publSession.consumerId,
+        }),
+      ],
+      publPappSessions: [publSession],
+    });
+    const resolver = createTestResolver({
+      repository,
+      env: createPublAuthEnv(),
+      clerkAuth: async () => ({ isAuthenticated: true, userId: 'clerk_user_1' }),
+      now: () => TEST_NOW,
+    });
+    const accessToken = createPublAccessToken({ session: publSession, user: publUser });
+
+    const actor = await resolver.resolve(createRequest({
+      authContext: 'publ-client',
+      authorization: `Bearer ${accessToken}`,
+    }));
+
+    expect(actor).toMatchObject({
+      authProvider: AUTH_PROVIDERS.PUBL,
+      userId: publUser.id,
+    });
+  });
+
+  it('does not fall back to Clerk when explicit Publ auth is invalid', async () => {
+    const resolver = createTestResolver({
+      env: createPublAuthEnv(),
+      clerkAuth: async () => ({ isAuthenticated: true, userId: 'clerk_user_1' }),
+      now: () => TEST_NOW,
+    });
+
+    await expect(resolver.resolve(createRequest({
+      authContext: 'publ-client',
+      authorization: 'Bearer not-a-jwt',
+    }))).rejects.toMatchObject({
+      code: RELAY_ERROR_CODES.UNAUTHORIZED,
+      status: 401,
+    });
+  });
+
+  it('does not activate Publ for unknown auth context values', async () => {
+    const publUser = createUser({ id: 'publ_user_1' });
+    const publSession = createPublPappSession({
+      userId: publUser.id,
+      accessTokenExpiresAt: new Date(TEST_NOW.getTime() + 60_000),
+    });
+    const repository = createMemoryAuthRepository({
+      users: [publUser],
+      externalAuthAccounts: [
+        createExternalAuthAccount({
+          userId: publUser.id,
+          provider: AUTH_PROVIDERS.PUBL,
+          providerAccountId: publSession.consumerId,
+        }),
+      ],
+      publPappSessions: [publSession],
+    });
+    const resolver = createTestResolver({
+      repository,
+      env: createPublAuthEnv(),
+      now: () => TEST_NOW,
+    });
+    const accessToken = createPublAccessToken({ session: publSession, user: publUser });
+
+    await expect(resolver.resolve(createRequest({
+      authContext: 'publ',
+      authorization: `Bearer ${accessToken}`,
+    }))).rejects.toMatchObject({
+      code: RELAY_ERROR_CODES.UNAUTHORIZED,
+      status: 401,
     });
   });
 
@@ -532,11 +638,15 @@ function createTestResolver({
   });
 }
 
-function createRequest({ authorization, devActorUserId, devBrowserAuthUserId } = {}) {
+function createRequest({ authContext, authorization, devActorUserId, devBrowserAuthUserId } = {}) {
   const headers = new Headers();
 
   if (authorization) {
     headers.set('authorization', authorization);
+  }
+
+  if (authContext) {
+    headers.set('x-noti-auth-context', authContext);
   }
 
   if (devActorUserId) {

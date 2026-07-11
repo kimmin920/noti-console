@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { ConsoleNavigationProvider } from './ConsoleNavigationContext.jsx';
 import { ConsolePages } from './ConsolePages.jsx';
 import { pageMeta } from './consoleConfig.js';
 import {
@@ -24,11 +25,13 @@ export function ConsolePageOutlet({ mode, pageId, pageProps }) {
   const activeMeta = pageMeta[activePage] ?? pageMeta[DEFAULT_CONSOLE_PAGE_ID];
 
   return (
+    <ConsoleNavigationProvider mode={shellMode}>
     <ConsolePages
       activePage={activePage}
       meta={activeMeta}
       onDocs={openDocs}
       pageProps={pageProps}
     />
+    </ConsoleNavigationProvider>
   );
 }

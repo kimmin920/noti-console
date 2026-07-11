@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   Button,
   Dialog,
@@ -16,6 +16,7 @@ import {
   useToast,
 } from '../../../components/ui/index.js';
 import { PublOpenApiExampleDrawer } from '../automations/PublOpenApiExampleDrawer.jsx';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { useCurrentActorQuery } from '../messageSend/queries.js';
 import {
@@ -53,7 +54,7 @@ import {
 } from './publEventEditorModel.js';
 
 export function PublEventDetailPage({ eventKey }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [searchValue, setSearchValue] = useState('');
@@ -141,7 +142,7 @@ export function PublEventDetailPage({ eventKey }) {
   }
 
   function createAutomation() {
-    router.push(`/automations/new?eventKey=${encodeURIComponent(String(eventKey ?? ''))}`);
+    navigation.push(`/automations/new?eventKey=${encodeURIComponent(String(eventKey ?? ''))}`);
   }
 
   function requestDeleteEvent() {
@@ -181,7 +182,7 @@ export function PublEventDetailPage({ eventKey }) {
         title: 'PUBL 이벤트를 삭제했습니다.',
         variant: 'success',
       });
-      router.push('/automations');
+      navigation.push('/automations');
     } catch {
       // The dialog renders the mutation error inline.
     }
@@ -189,12 +190,7 @@ export function PublEventDetailPage({ eventKey }) {
 
   function getDetailHref(nextOptions = {}) {
     const params = new URLSearchParams();
-    const shellMode = searchParams.get('mode');
     const encodedEventKey = encodeURIComponent(String(eventKey ?? ''));
-
-    if (shellMode === 'embed') {
-      params.set('mode', 'embed');
-    }
 
     if (nextOptions.editor === 'edit') {
       params.set('editor', 'edit');
@@ -212,7 +208,7 @@ export function PublEventDetailPage({ eventKey }) {
     setSelectedAlias('');
     setPendingAddVariable(null);
     setVariableDrawer(null);
-    router.push(getDetailHref({ editor: 'edit' }));
+    navigation.push(getDetailHref({ editor: 'edit' }));
   }
 
   function requestVariableEdit(variable) {
@@ -229,7 +225,7 @@ export function PublEventDetailPage({ eventKey }) {
       setSelectedAlias('');
       setDeleteTarget(null);
       setPendingAddVariable(null);
-      router.push(getDetailHref({ editor: 'edit' }));
+      navigation.push(getDetailHref({ editor: 'edit' }));
     }
 
     setPendingAddVariable(null);
@@ -244,7 +240,7 @@ export function PublEventDetailPage({ eventKey }) {
     setPendingAddVariable(null);
     setSelectedAlias('');
     setVariableDrawer(null);
-    router.replace(getDetailHref());
+    navigation.replace(getDetailHref());
   }
 
   function requestCancelEditMode() {
@@ -297,7 +293,7 @@ export function PublEventDetailPage({ eventKey }) {
         title: 'PUBL 이벤트 변경사항을 저장했습니다.',
         variant: 'success',
       });
-      router.replace(getDetailHref({ editor: 'edit' }));
+      navigation.replace(getDetailHref({ editor: 'edit' }));
     } catch (error) {
       dispatchEditor({
         error: normalizePublEventEditorMutationError(error),
@@ -352,7 +348,7 @@ export function PublEventDetailPage({ eventKey }) {
     setSelectedAlias('');
     setPendingAddVariable(null);
     setVariableDrawer(null);
-    router.push(getDetailHref({ editor: 'edit' }));
+    navigation.push(getDetailHref({ editor: 'edit' }));
 
     if (action === 'toggle') {
       dispatchEditor({

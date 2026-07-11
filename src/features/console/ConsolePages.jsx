@@ -157,15 +157,19 @@ import { useMessageLogsExportMutation } from './messageLogs/mutations.js';
 import { useMessageLogGroupsQuery } from './messageLogs/queries.js';
 import { messageLogQueryKeys } from './messageLogs/queryKeys.js';
 import { MessageLogGroupDetailPage } from './messageLogs/MessageLogGroupDetailPage.jsx';
+import { MessageLogsExportAction } from './messageLogs/MessageLogsExportAction.jsx';
 import { MessageReservationsPage } from './messageReservations/MessageReservationsPage.jsx';
 import { MessageReservationDetailPage } from './messageReservations/MessageReservationDetailPage.jsx';
 import { MetricsPage } from './metrics/MetricsPage.jsx';
 import { usePublEventsQuery } from './publEvents/queries.js';
 import { PublEventCreatePage } from './publEvents/PublEventCreatePage.jsx';
 import { PublEventDetailPage } from './publEvents/PublEventDetailPage.jsx';
+import { usePublMessageRecipients } from '../publClient/usePublMessageRecipients.js';
+import { usePublClient } from '../publClient/PublClientContext.jsx';
 import { TemplateDetailPage } from './templates/TemplateDetailPage.jsx';
 import { TemplatePage } from './templates/TemplatePage.jsx';
 import { BrandTemplateCreatePage } from './templates/BrandTemplateCreatePage.jsx';
+import { ConsoleLink, useConsoleNavigation } from './ConsoleNavigationContext.jsx';
 import { SmsTemplateCreatePage } from './templates/SmsTemplateCreatePage.jsx';
 import {
   formatMessageLogGroupCounts,
@@ -214,13 +218,18 @@ function getStatusTone(cell) {
 }
 
 export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
+  const publClient = usePublClient();
   let page = <ConsolePage key={activePage} meta={meta} onDocs={onDocs} />;
+  const automationDetail = pageProps?.automationDetail;
   const templateDetail = pageProps?.templateDetail;
   const publEventDetail = pageProps?.publEventDetail;
+  const reservationDetail = pageProps?.reservationDetail;
   const logDetail = pageProps?.logDetail;
 
   if (activePage === DEFAULT_CONSOLE_PAGE_ID) {
     page = <MessageSendPage meta={meta} onDocs={onDocs} />;
+  } else if (activePage === 'audience' && publClient.isPublEmbed) {
+    page = <PublAudiencePage />;
   } else if (activePage === 'settings') {
     page = <SettingsPage />;
   } else if (activePage === 'settings-sender-sms-new') {
@@ -229,10 +238,10 @@ export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
     page = <SenderResourceApplicationPage type="kakao" />;
   } else if (activePage === 'automations-new') {
     page = <AutomationRuleEditorPage mode="create" />;
-  } else if (activePage === 'automations-detail') {
-    page = <AutomationRuleDetailPage />;
-  } else if (activePage === 'automations-edit') {
-    page = <AutomationRuleEditorPage mode="edit" />;
+  } else if (activePage === 'automations-detail' && automationDetail) {
+    page = <AutomationRuleDetailPage ruleId={automationDetail.ruleId} />;
+  } else if (activePage === 'automations-edit' && automationDetail) {
+    page = <AutomationRuleEditorPage mode="edit" ruleId={automationDetail.ruleId} />;
   } else if (activePage === 'publ-event-detail' && publEventDetail) {
     page = <PublEventDetailPage eventKey={publEventDetail.eventKey} />;
   } else if (activePage === 'publ-event-new') {
@@ -251,8 +260,8 @@ export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
     page = <MetricsPage meta={meta} />;
   } else if (activePage === 'reservations') {
     page = <MessageReservationsPage />;
-  } else if (activePage === 'reservation-detail') {
-    page = <MessageReservationDetailPage />;
+  } else if (activePage === 'reservation-detail' && reservationDetail) {
+    page = <MessageReservationDetailPage groupId={reservationDetail.groupId} />;
   } else if (activePage === 'logs') {
     page = <MessageLogsPage />;
   } else if (activePage === 'log-detail' && logDetail) {
@@ -277,8 +286,90 @@ export function ConsolePages({ activePage, meta, onDocs, pageProps }) {
   );
 }
 
+function PublAudiencePage() {
+  const [activeTab, setActiveTab] = useState('contacts');
+  const [searchValue, setSearchValue] = useState('');
+  const publRecipients = usePublMessageRecipients();
+  const contactsSourceState = publRecipients.contactsSourceState;
+  const normalizedSearch = searchValue.trim().toLocaleLowerCase('ko-KR');
+  const rows = publRecipients.contacts.filter((contact) => (
+    !normalizedSearch
+    || [contact.label, contact.detail, contact.externalId]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('ko-KR')
+      .includes(normalizedSearch)
+  ));
+
+  return (
+    <section className="page-frame publ-audience-page">
+      <PageHeader title="수신자" />
+      <SegmentedControl
+        items={[
+          { label: 'Publ 수신자', value: 'contacts' },
+          { label: 'Publ 세그먼트', value: 'segments' },
+        ]}
+        onValueChange={setActiveTab}
+        value={activeTab}
+      />
+
+      {activeTab === 'contacts' ? (
+        <>
+          <div className="publ-audience-toolbar">
+            <SearchField
+              aria-label="Publ 수신자 검색"
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="이름, 전화번호, Publ ID 검색"
+              value={searchValue}
+            />
+          </div>
+          <DataTableV2
+            columns={[
+              { accessor: 'label', header: '수신자' },
+              {
+                accessor: 'value',
+                cell: ({ value }) => <code>{value}</code>,
+                header: '휴대폰',
+              },
+              {
+                accessor: (row) => row.externalId || '-',
+                cell: ({ value }) => <code>{value}</code>,
+                header: 'Publ ID',
+              },
+            ]}
+            data={rows}
+            empty={(
+              <span className="admin-empty-row">
+                {getPublAudienceEmptyMessage(contactsSourceState, normalizedSearch)}
+              </span>
+            )}
+            getRowId={(row) => row.externalId || row.value}
+            loading={contactsSourceState === 'loading'}
+            loadingSlot={<span className="admin-state-row">Publ 수신자를 불러오는 중입니다.</span>}
+            pagination
+            tableClassName="console-data-table-v2 publ-audience-data-table"
+          />
+        </>
+      ) : (
+        <EmptyState
+          copy="Publ 세그먼트 SDK 권한이 추가되면 이 화면에서 조회하고 발송 대상으로 선택할 수 있습니다."
+          icon={Sparkles}
+          title="Publ 세그먼트 연동 준비 중"
+        />
+      )}
+    </section>
+  );
+}
+
+function getPublAudienceEmptyMessage(state, searchValue) {
+  if (state === 'permission-denied') return 'Publ 수신자 조회 권한이 없습니다';
+  if (state === 'error') return 'Publ 수신자를 불러오지 못했습니다.';
+  if (searchValue) return '검색 조건에 맞는 Publ 수신자가 없습니다.';
+  return '전화번호가 등록된 Publ 수신자가 없습니다.';
+}
+
 function SmsBulkSendRunWatcher() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const statusPollingRunRef = useRef(0);
   const toastRef = useRef(null);
@@ -290,24 +381,26 @@ function SmsBulkSendRunWatcher() {
 
   useEffect(() => {
     showSmsBulkSendRunToast({
-      router,
+      navigation,
       run: activeSmsBulkRun,
       showToast,
       statusPollingRunRef,
       toastRef,
     });
-  }, [activeSmsBulkRun, router, showToast]);
+  }, [activeSmsBulkRun, navigation, showToast]);
 
   return null;
 }
 
 function MessageSendPage({ meta, onDocs }) {
   const router = useRouter();
+  const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchParamText = searchParams.toString();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const publRecipients = usePublMessageRecipients();
   const [activeTab, setActiveTab] = useState(() => getMessageSendTabFromQuery(searchParams, meta.tabs));
   const [alimtalkMessage, setAlimtalkMessage] = useState(() => ({
     ...defaultAlimtalkSendFormValue,
@@ -549,21 +642,21 @@ function MessageSendPage({ meta, onDocs }) {
   }
 
   function openAudiencePage() {
-    router.push('/audience');
+    navigation.push('/audience');
   }
 
   function openSenderResourcePage(type) {
     if (type === 'sms') {
-      router.push('/settings/sender-resources/sms/new');
+      navigation.push('/settings/sender-resources/sms/new');
       return;
     }
 
     if (type === 'kakao') {
-      router.push('/settings/sender-resources/kakao/new');
+      navigation.push('/settings/sender-resources/kakao/new');
       return;
     }
 
-    router.push('/settings?tab=sender-resources');
+    navigation.push('/settings?tab=sender-resources');
   }
 
   function beginStatusPollingRun(channelLabel) {
@@ -618,7 +711,7 @@ function MessageSendPage({ meta, onDocs }) {
         if (shouldShowSmsReservationAcceptedToast(payload, result)) {
           showMessageReservationAcceptedToast({
             channelLabel: 'SMS',
-            onViewReservations: () => router.push(getReservationsHrefForChannel(payload.channel)),
+            onViewReservations: () => navigation.push(getReservationsHrefForChannel(payload.channel)),
             result,
             showToast,
           });
@@ -919,11 +1012,12 @@ function MessageSendPage({ meta, onDocs }) {
           <div className="message-send-compose-layout message-send-sms-layout">
             <SmsSendForm
               onChange={setSmsMessage}
-              onRecipientCreate={openAudiencePage}
+              onRecipientCreate={publRecipients.isPublEmbed ? undefined : openAudiencePage}
               onSenderNumberCreate={() => openSenderResourcePage('sms')}
-              recipientContacts={[]}
-              recipientCreateLabel="수신자 추가하기"
-              recipients={[]}
+              recipientContacts={publRecipients.contacts}
+              recipientCreateLabel={publRecipients.isPublEmbed ? undefined : '수신자 추가하기'}
+              recipientSelectProps={publRecipients.selectProps}
+              recipients={publRecipients.options}
               senderNumberCreateLabel="발신번호 추가하기"
               senderNumbers={smsSenderOptionsForForm}
               templates={smsTemplates}
@@ -941,11 +1035,12 @@ function MessageSendPage({ meta, onDocs }) {
               fallbackSenderNumbers={smsSenderOptions}
               onChange={setAlimtalkMessage}
               onFallbackSenderNumberCreate={() => openSenderResourcePage('sms')}
-              onRecipientCreate={openAudiencePage}
+              onRecipientCreate={publRecipients.isPublEmbed ? undefined : openAudiencePage}
               onSenderProfileCreate={() => openSenderResourcePage('kakao')}
-              recipientContacts={[]}
-              recipientCreateLabel="수신자 추가하기"
-              recipients={[]}
+              recipientContacts={publRecipients.contacts}
+              recipientCreateLabel={publRecipients.isPublEmbed ? undefined : '수신자 추가하기'}
+              recipientSelectProps={publRecipients.selectProps}
+              recipients={publRecipients.options}
               senderProfileCreateLabel="발신채널 추가하기"
               senderProfiles={alimtalkSenderProfiles}
               templates={alimtalkTemplates}
@@ -971,8 +1066,9 @@ function MessageSendPage({ meta, onDocs }) {
                 onFallbackSenderNumberCreate={() => openSenderResourcePage('sms')}
                 onSenderProfileCreate={() => openSenderResourcePage('kakao')}
                 ref={brandFormRef}
-                recipientContacts={[]}
-                recipients={[]}
+                recipientContacts={publRecipients.contacts}
+                recipientSelectProps={publRecipients.selectProps}
+                recipients={publRecipients.options}
                 senderProfileCreateLabel="발신채널 추가하기"
                 senderProfiles={alimtalkSenderProfiles}
                 templates={brandTemplates}
@@ -1078,7 +1174,7 @@ function isActiveSmsBulkSendRun(run) {
   return run?.status === 'queued' || run?.status === 'running' || run?.state === 'queued' || run?.state === 'running';
 }
 
-function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, toastRef }) {
+function showSmsBulkSendRunToast({ navigation, run, showToast, statusPollingRunRef, toastRef }) {
   const view = getSmsBulkSendRunToastView(run, { formatNumber });
 
   if (!view) {
@@ -1108,7 +1204,7 @@ function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, 
         label: view.actionLabel,
         onClick: () => {
           statusPollingRunRef.current += 1;
-          router.push(view.resultHref);
+          navigation.push(view.resultHref);
         },
       },
       description: view.description,
@@ -1124,7 +1220,7 @@ function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, 
       label: view.actionLabel,
       onClick: () => {
         statusPollingRunRef.current += 1;
-        router.push(view.resultHref);
+        navigation.push(view.resultHref);
       },
     },
     description: view.description,
@@ -1236,7 +1332,7 @@ function MessageSendApiStatus({
 }
 
 function MessageLogsPage() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const searchParamText = searchParams.toString();
@@ -1247,6 +1343,7 @@ function MessageLogsPage() {
   const queryFilters = useMemo(() => toMessageLogQueryParams(filters), [filters]);
   const groupsQuery = useMessageLogGroupsQuery(queryFilters);
   const exportMutation = useMessageLogsExportMutation();
+  const publClient = usePublClient();
   const groups = groupsQuery.data?.groups ?? [];
   const total = getMessageLogGroupPageTotal(groupsQuery.data);
   const mode = searchParams.get('mode') === 'embed' ? 'embed' : null;
@@ -1266,7 +1363,7 @@ function MessageLogsPage() {
       messageType: nextChannel === 'sms' ? (nextFilters.messageType ?? filters.messageType) : 'all',
     }, mode);
 
-    router.replace(`/logs?${nextParams.toString()}`);
+    navigation.replace(`/logs?${nextParams.toString()}`);
   }
 
   async function exportLogs() {
@@ -1343,14 +1440,12 @@ function MessageLogsPage() {
           <RefreshCcw aria-hidden="true" size={15} />
           새로고침
         </Button>
-        <Button
-          disabled={filters.demoCases || exportMutation.isPending}
-          onClick={exportLogs}
-          variant="secondary"
-        >
-          <Download aria-hidden="true" size={15} />
-          {exportMutation.isPending ? '내보내는 중…' : 'CSV 내보내기'}
-        </Button>
+        <MessageLogsExportAction
+          disabled={filters.demoCases}
+          isPending={exportMutation.isPending}
+          isPublEmbed={publClient.isPublEmbed}
+          onExport={exportLogs}
+        />
       </div>
 
       {groupsQuery.isError ? (
@@ -1431,14 +1526,14 @@ function MessageLogsPage() {
         )}
         rowActions={({ row }) => (
           <div className="resend-email-actions">
-            <Link
+            <ConsoleLink
               aria-label="발송 묶음 상세 보기"
               className="message-logs-action-trigger"
               href={getMessageLogGroupDetailHref({ filters, group: row, mode })}
               title="상세 보기"
             >
               <FileText aria-hidden="true" size={15} />
-            </Link>
+            </ConsoleLink>
           </div>
         )}
         shellClassName="message-logs-table-shell"
@@ -1517,7 +1612,7 @@ function getMessageLogV2StatusTone(state) {
 }
 
 function ConsolePage({ meta, onDocs }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const [activeTab, setActiveTab] = useState(() => getConsolePageTabValue(meta.tabs?.[0]));
   const isAutomationsPage = meta.variant === 'automations';
   const activeView = {
@@ -1536,13 +1631,13 @@ function ConsolePage({ meta, onDocs }) {
   const opensAutomationCreate = activeView.action === '자동화 생성';
   const opensPublEventCreate = activeView.action === '이벤트 생성';
   const openTemplateCreatePage = opensTemplateCreate
-    ? () => router.push('/templates/alimtalk/new')
+    ? () => navigation.push('/templates/alimtalk/new')
     : undefined;
   const openAutomationCreatePage = opensAutomationCreate
-    ? () => router.push('/automations/new')
+    ? () => navigation.push('/automations/new')
     : undefined;
   const openPublEventCreatePage = opensPublEventCreate
-    ? () => router.push('/automations/publ-events/new')
+    ? () => navigation.push('/automations/publ-events/new')
     : undefined;
   const openActionPage = openTemplateCreatePage ?? openAutomationCreatePage ?? openPublEventCreatePage;
 
@@ -1659,7 +1754,7 @@ const AUTOMATION_UNSENT_REASON_LABELS = {
 };
 
 function PublEventsDataTable({ table: tableConfig }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const publEventsQuery = usePublEventsQuery();
   const automationQueryFilters = useMemo(() => ({ limit: AUTOMATION_RULE_QUERY_LIMIT }), []);
   const automationRulesQuery = useAutomationRulesQuery(automationQueryFilters);
@@ -1743,7 +1838,7 @@ function PublEventsDataTable({ table: tableConfig }) {
         <Button
           aria-label={`${row.displayName || row.eventKey} 상세 보기`}
           className="publ-event-detail-action"
-          onClick={() => router.push(buildPublEventDetailHref(row.eventKey))}
+          onClick={() => navigation.push(buildPublEventDetailHref(row.eventKey))}
         >
           상세
         </Button>
@@ -2563,7 +2658,7 @@ function formatPublEventNumber(value) {
 }
 
 function AutomationDataTable({ table: tableConfig }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -2625,11 +2720,11 @@ function AutomationDataTable({ table: tableConfig }) {
     : '아직 자동화 규칙이 없습니다.';
 
   function openAutomationDetail(row) {
-    router.push(`/automations/${encodeURIComponent(row.id)}`);
+    navigation.push(`/automations/${encodeURIComponent(row.id)}`);
   }
 
   function openAutomationEdit(row) {
-    router.push(`/automations/${encodeURIComponent(row.id)}/edit`);
+    navigation.push(`/automations/${encodeURIComponent(row.id)}/edit`);
   }
 
   async function enableRule(row) {
@@ -3153,6 +3248,7 @@ function RowActionMenu({ label, onAction }) {
 }
 
 function DocsPage({ meta }) {
+  const navigation = useConsoleNavigation();
   const snippets = [
     {
       code: `curl -X POST https://api.resend.com/emails \\
@@ -3216,10 +3312,10 @@ function DocsPage({ meta }) {
 
           <DocsSection id="next-steps" title="Next steps">
             <DocsCardGrid>
-              <DocsCard href="/message-send" meta="Console" title="메시지 발송">
+              <DocsCard href={navigation.href('/message-send')} meta="Console" title="메시지 발송">
                 문자와 카카오 메시지 발송 화면으로 이동합니다.
               </DocsCard>
-              <DocsCard href="/logs" meta="Dashboard" title="발송기록">
+              <DocsCard href={navigation.href('/logs')} meta="Dashboard" title="발송기록">
                 발송 요청과 전달 결과를 확인합니다.
               </DocsCard>
             </DocsCardGrid>
@@ -3324,6 +3420,10 @@ function GoogleIcon() {
 const SETTINGS_TABS = ['사용량', '발신 수단 관리', '청구', '연동', '프로필'];
 const SETTINGS_SENDER_RESOURCE_TAB = '발신 수단 관리';
 const SETTINGS_SENDER_RESOURCE_QUERY = 'sender-resources';
+
+function getVisibleSettingsTabs(isPublEmbed) {
+  return isPublEmbed ? SETTINGS_TABS.filter((tab) => tab !== '프로필') : SETTINGS_TABS;
+}
 const SMS_SENDER_RESOURCE_TYPE = 'sms_send_no';
 const KAKAO_SENDER_RESOURCE_TYPE = 'kakao_sender_key';
 const PERSONAL_SENDER_EVIDENCE_FILES = [
@@ -4134,14 +4234,16 @@ function formatFileSize(value) {
 }
 
 function SettingsPage() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => getSettingsTabFromQuery(searchParams, SETTINGS_TABS));
+  const isPublEmbed = navigation.mode === 'embed';
+  const visibleSettingsTabs = getVisibleSettingsTabs(isPublEmbed);
+  const [activeTab, setActiveTab] = useState(() => getSettingsTabFromQuery(searchParams, visibleSettingsTabs));
 
   function handleActiveTabChange(nextTab) {
     setActiveTab(nextTab);
-    router.replace(
+    navigation.replace(
       buildTabQueryHref({
         pathname,
         searchParams,
@@ -4155,14 +4257,14 @@ function SettingsPage() {
     <section className="page-frame settings-page">
       <PageHeader title="설정" />
       <SegmentedControl
-        items={SETTINGS_TABS}
+        items={visibleSettingsTabs}
         onValueChange={handleActiveTabChange}
         value={activeTab}
       />
       {activeTab === '사용량' ? <UsageSettingsContent /> : null}
       {activeTab === SETTINGS_SENDER_RESOURCE_TAB ? <SenderResourceSettings /> : null}
-      {activeTab === '프로필' ? <ProfileSettingsContent /> : null}
-      {activeTab !== '사용량' && activeTab !== SETTINGS_SENDER_RESOURCE_TAB && activeTab !== '프로필' ? (
+      {activeTab === '프로필' && !isPublEmbed ? <ProfileSettingsContent /> : null}
+      {activeTab !== '사용량' && activeTab !== SETTINGS_SENDER_RESOURCE_TAB && (activeTab !== '프로필' || isPublEmbed) ? (
         <SettingsPlaceholder title={activeTab} />
       ) : null}
     </section>
@@ -4170,7 +4272,7 @@ function SettingsPage() {
 }
 
 function SenderResourceSettings() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const senderResourcesQuery = useSenderResourcesQuery();
   const smsResources = getSettingsSenderResourceRows(senderResourcesQuery.data, SMS_SENDER_RESOURCE_TYPE);
@@ -4191,9 +4293,9 @@ function SenderResourceSettings() {
         emptyLabel="등록된 발신번호가 없습니다"
         limitLabel="번호별 한도"
         loading={senderResourcesQuery.isPending}
-        onAction={() => router.push('/settings/sender-resources/sms/new')}
+        onAction={() => navigation.push('/settings/sender-resources/sms/new')}
         onDefaultSelect={() => showPendingToast('기본 발신번호')}
-        onResubmit={(item) => router.push(`/settings/sender-resources/sms/new?applicationId=${encodeURIComponent(item.applicationId)}`)}
+        onResubmit={(item) => navigation.push(`/settings/sender-resources/sms/new?applicationId=${encodeURIComponent(item.applicationId)}`)}
         resources={smsResources}
         title="발신번호"
       />
@@ -4204,7 +4306,7 @@ function SenderResourceSettings() {
         emptyLabel="연결된 카카오 채널이 없습니다"
         limitLabel="채널별 한도"
         loading={senderResourcesQuery.isPending}
-        onAction={() => router.push('/settings/sender-resources/kakao/new')}
+        onAction={() => navigation.push('/settings/sender-resources/kakao/new')}
         onDefaultSelect={() => showPendingToast('기본 카카오 채널')}
         onResubmit={() => showPendingToast('카카오 채널 재신청')}
         resources={kakaoResources}
@@ -4321,11 +4423,11 @@ function SettingsPlaceholder({ title }) {
 }
 
 function SenderResourceApplicationPage({ type }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const isSms = type === 'sms';
 
   function goBackToSenderResources() {
-    router.push(`/settings?tab=${SETTINGS_SENDER_RESOURCE_QUERY}&type=${type}`);
+    navigation.push(`/settings?tab=${SETTINGS_SENDER_RESOURCE_QUERY}&type=${type}`);
   }
 
   if (isSms) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   useMessageLogGroupDetailQuery,
   useMessageLogGroupRequestFailuresQuery,
@@ -22,11 +22,12 @@ import {
   MessageLogResultSection,
 } from './MessageLogGroupDetailSections.jsx';
 import { useToast } from '../../../components/ui/index.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 
 const EMPTY_ROWS = [];
 
 export function MessageLogGroupDetailPage({ groupId }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const searchParams = useSearchParams();
   const searchParamText = searchParams.toString();
   const { showToast } = useToast();
@@ -100,10 +101,10 @@ export function MessageLogGroupDetailPage({ groupId }) {
     }
 
     const query = params.toString();
-    router.replace(`/logs/${encodeURIComponent(groupId)}${query ? `?${query}` : ''}`, {
+    navigation.replace(`/logs/${encodeURIComponent(groupId)}${query ? `?${query}` : ''}`, {
       scroll: options.scroll ?? false,
     });
-  }, [groupId, router, searchParamText]);
+  }, [groupId, navigation, searchParamText]);
 
   useEffect(() => {
     if (!activeRequest || requestedRequestLocalId === activeRequest.id) return;

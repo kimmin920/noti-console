@@ -1,5 +1,13 @@
 import { ConsoleRoute } from '@/features/console/ConsoleRoute.jsx';
 
-export default function ReservationDetailRoute({ searchParams }) {
-  return <ConsoleRoute pageId="reservation-detail" searchParams={searchParams} />;
+export default async function ReservationDetailRoute({ params, searchParams }) {
+  const { groupId } = await params;
+
+  return (
+    <ConsoleRoute
+      pageId="reservation-detail"
+      pageProps={{ reservationDetail: { groupId } }}
+      searchParams={searchParams}
+    />
+  );
 }

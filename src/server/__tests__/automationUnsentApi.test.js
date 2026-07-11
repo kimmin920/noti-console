@@ -427,6 +427,7 @@ describe('automation unsent tab UI contract', () => {
     const newRouteSource = readSource('../../app/automations/new/page.jsx');
     const detailRouteSource = readSource('../../app/automations/[ruleId]/page.jsx');
     const editRouteSource = readSource('../../app/automations/[ruleId]/edit/page.jsx');
+    const routeDescriptorSource = readSource('../../features/console/routeDescriptors.js');
     const routingSource = readSource('../../features/console/routing.js');
     const configSource = readSource('../../features/console/consoleConfig.js');
     const consoleSource = readSource('../../features/console/ConsolePages.jsx');
@@ -434,19 +435,20 @@ describe('automation unsent tab UI contract', () => {
     expect(newRouteSource).toContain('pageId="automations-new"');
     expect(detailRouteSource).toContain('pageId="automations-detail"');
     expect(editRouteSource).toContain('pageId="automations-edit"');
-    expect(routingSource).toContain("'automations-new': '/automations/new'");
-    expect(routingSource).toContain("'automations-detail': '/automations'");
-    expect(routingSource).toContain("'automations-edit': '/automations'");
+    expect(routeDescriptorSource).toContain("route('automations-new', '/automations/new')");
+    expect(routeDescriptorSource).toContain("route('automations-detail', '/automations/:ruleId'");
+    expect(routeDescriptorSource).toContain("route('automations-edit', '/automations/:ruleId/edit'");
+    expect(routeDescriptorSource).toContain('automationDetail: { ruleId }');
     expect(routingSource).toContain("normalizedPageId.startsWith('automations-')");
     expect(configSource).toContain("'automations-new': { title: '자동화 생성' }");
     expect(configSource).toContain("'automations-detail': { title: '자동화 상세' }");
     expect(configSource).toContain("'automations-edit': { title: '자동화 편집' }");
-    expect(consoleSource).toContain('<AutomationRuleDetailPage />');
+    expect(consoleSource).toContain('<AutomationRuleDetailPage ruleId={automationDetail.ruleId}');
     expect(consoleSource).toContain('<AutomationRuleEditorPage mode="create" />');
-    expect(consoleSource).toContain('<AutomationRuleEditorPage mode="edit" />');
-    expect(consoleSource).toContain("router.push('/automations/new')");
-    expect(consoleSource).toContain('router.push(`/automations/${encodeURIComponent(row.id)}`)');
-    expect(consoleSource).toContain('router.push(`/automations/${encodeURIComponent(row.id)}/edit`)');
+    expect(consoleSource).toContain('<AutomationRuleEditorPage mode="edit" ruleId={automationDetail.ruleId}');
+    expect(consoleSource).toContain("navigation.push('/automations/new')");
+    expect(consoleSource).toContain('navigation.push(`/automations/${encodeURIComponent(row.id)}`)');
+    expect(consoleSource).toContain('navigation.push(`/automations/${encodeURIComponent(row.id)}/edit`)');
   });
 
   it('keeps the automation editor shell reducer-backed and wired to create/update APIs', () => {

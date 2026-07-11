@@ -57,6 +57,21 @@ describe('message send payload builders', () => {
     expect(payload).not.toHaveProperty('managementTitle');
   });
 
+  it('expands a concrete Publ contact into the existing SMS recipient payload', () => {
+    const payload = buildSmsSendPayload({
+      ...baseSmsMessage,
+      recipient: [{
+        externalId: 'publ-member-1',
+        label: 'Publ 고객',
+        recipientSource: 'publ',
+        type: 'publ-contact',
+        value: '010-9999-8888',
+      }],
+    });
+
+    expect(payload.recipients).toEqual([{ recipientNo: '01099998888' }]);
+  });
+
   it('rejects SMS management titles over 120 characters', () => {
     expect(() => buildSmsSendPayload({
       ...baseSmsMessage,

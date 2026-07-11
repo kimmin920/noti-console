@@ -581,7 +581,7 @@ function getManualRecipientItems(value) {
   recipients.forEach((recipient) => {
     const normalized = normalizeRecipientItem(recipient);
 
-    if (normalized.type === 'manual' && isPlausiblePhoneNumber(normalized.value)) {
+    if (isConcreteRecipientType(normalized.type) && isPlausiblePhoneNumber(normalized.value)) {
       manualRecipients.push({
         recipientNo: normalized.value.replace(/[\s-]/g, ''),
         source: recipient && typeof recipient === 'object' && !Array.isArray(recipient) ? recipient : {},
@@ -615,6 +615,10 @@ function getManualRecipientItems(value) {
       ), new Map())
       .values()
   );
+}
+
+function isConcreteRecipientType(type) {
+  return type === 'manual' || type === 'publ-contact';
 }
 
 function normalizeRecipientItem(recipient) {
