@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { relayGet } from '../../features/console/messageSend/api.js';
 import {
+  activatePublClientRuntime,
+  getIdentity,
+  getPublClientRuntimeGeneration,
+  resetPublClientRuntime,
+} from '../../features/publClient/runtimeSession.js';
+import {
   clearPublClientRefreshTokenHandler,
+  getPublClientTokens,
   PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY,
   PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY,
   registerPublClientRefreshTokenHandler,
@@ -12,21 +19,27 @@ import {
 describe('Publ client relay fetch auth header', () => {
   afterEach(() => {
     clearPublClientRefreshTokenHandler();
+    resetPublClientRuntime();
     vi.unstubAllGlobals();
   });
 
-  it('attaches the Publ bearer token to local API calls when session storage has one', async () => {
+  it('attaches Publ auth headers only when the Publ runtime is active for the current path', async () => {
     const fetchMock = stubRelayFetch();
+    stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
-      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: ' local-access-token ',
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: ` ${createAccessToken()} `,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
     }));
+    registerPublClientRefreshTokenHandler(async () => 'new-token');
+    activatePublClientRuntime({ originPolicyConfigured: true });
 
     await relayGet('/api/me');
 
     const [, init] = fetchMock.mock.calls[0];
     expect(init.cache).toBe('no-store');
     expect(init.headers).toBeInstanceOf(Headers);
-    expect(init.headers.get('authorization')).toBe('Bearer local-access-token');
+    expect(init.headers.get('authorization')).toBe(`Bearer ${createAccessToken()}`);
+    expect(init.headers.get('x-noti-auth-context')).toBe('publ-client');
   });
 
   it('does not attach Authorization when no Publ token is available', async () => {
@@ -41,6 +54,7 @@ describe('Publ client relay fetch auth header', () => {
 
   it('does not attach Publ Authorization to non-API requests', async () => {
     const fetchMock = stubRelayFetch();
+    stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
       [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'local-access-token',
     }));
@@ -72,24 +86,293 @@ describe('Publ client relay fetch auth header', () => {
         status: 200,
       }));
     vi.stubGlobal('fetch', fetchMock);
+    stubPublIframeWindow('/publ-client');
     vi.stubGlobal('sessionStorage', createSessionStorage({
-      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'old-access-token',
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: createAccessToken({ jti: 'old-token' }),
       [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
     }));
+    const oldAccessToken = createAccessToken({ jti: 'old-token' });
+    const newAccessToken = createAccessToken({ jti: 'new-token' });
     registerPublClientRefreshTokenHandler(async ({ previousAccessToken, refreshToken }) => {
-      expect(previousAccessToken).toBe('old-access-token');
+      expect(previousAccessToken).toBe(oldAccessToken);
       expect(refreshToken).toBe('refresh-token');
-      setPublClientTokens({ accessToken: 'new-access-token' });
-      return 'new-access-token';
+      setPublClientTokens({ accessToken: newAccessToken });
+      return newAccessToken;
     });
+    activatePublClientRuntime({ originPolicyConfigured: true });
 
     await expect(relayGet('/api/me')).resolves.toEqual({ user: { id: 'user_1' } });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][1].headers.get('authorization')).toBe('Bearer old-access-token');
-    expect(fetchMock.mock.calls[1][1].headers.get('authorization')).toBe('Bearer new-access-token');
+    expect(fetchMock.mock.calls[0][1].headers.get('authorization')).toBe(`Bearer ${oldAccessToken}`);
+    expect(fetchMock.mock.calls[1][1].headers.get('authorization')).toBe(`Bearer ${newAccessToken}`);
+    expect(fetchMock.mock.calls[1][1].headers.get('x-noti-auth-context')).toBe('publ-client');
+  });
+
+  it('coalesces simultaneous 401 refreshes for one active runtime generation', async () => {
+    const oldAccessToken = createAccessToken({ jti: 'old-token' });
+    const newAccessToken = createAccessToken({ jti: 'new-token' });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(createUnauthorizedResponse())
+      .mockResolvedValueOnce(createUnauthorizedResponse())
+      .mockImplementation(() => Promise.resolve(new Response(JSON.stringify({
+        ok: true,
+        data: { ok: true },
+      }), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      })));
+    vi.stubGlobal('fetch', fetchMock);
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: oldAccessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+    }));
+    const refreshHandler = vi.fn(async () => {
+      setPublClientTokens({ accessToken: newAccessToken });
+      return newAccessToken;
+    });
+    registerPublClientRefreshTokenHandler(refreshHandler);
+    activatePublClientRuntime({ originPolicyConfigured: true });
+
+    await expect(Promise.all([
+      relayGet('/api/me'),
+      relayGet('/api/sender-resources'),
+    ])).resolves.toEqual([{ ok: true }, { ok: true }]);
+
+    expect(refreshHandler).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[2][1].headers.get('authorization')).toBe(`Bearer ${newAccessToken}`);
+    expect(fetchMock.mock.calls[3][1].headers.get('authorization')).toBe(`Bearer ${newAccessToken}`);
+  });
+
+  it('discards a delayed success when an older Publ runtime generation is no longer active', async () => {
+    const delayed = createDeferred();
+    vi.stubGlobal('fetch', vi.fn(() => delayed.promise));
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: createAccessToken({ consumerId: 'merchant_a' }),
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token-a',
+    }));
+    registerPublClientRefreshTokenHandler(async () => createAccessToken({ consumerId: 'merchant_a', jti: 'new' }));
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const request = relayGet('/api/me');
+
+    setPublClientTokens({
+      accessToken: createAccessToken({ consumerId: 'merchant_b', sessionId: 'session_b', userId: 'user_b' }),
+      refreshToken: 'refresh-token-b',
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    delayed.resolve(new Response(JSON.stringify({
+      ok: true,
+      data: { user: { id: 'user_a' } },
+    }), {
+      headers: { 'content-type': 'application/json' },
+      status: 200,
+    }));
+
+    await expect(request).rejects.toMatchObject({ code: 'STALE_PUBL_RUNTIME' });
+  });
+
+  it('does not apply a stale refresh success after the active identity changes', async () => {
+    const refreshStarted = createDeferred();
+    const refreshResult = createDeferred();
+    const fetchMock = vi.fn(async () => createUnauthorizedResponse());
+    const merchantAAccessToken = createAccessToken({ consumerId: 'merchant_a' });
+    const merchantBAccessToken = createAccessToken({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: merchantAAccessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token-a',
+    }));
+    registerPublClientRefreshTokenHandler(async () => {
+      refreshStarted.resolve();
+      return refreshResult.promise;
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const request = relayGet('/api/me');
+    await refreshStarted.promise;
+
+    setPublClientTokens({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const merchantBGeneration = getPublClientRuntimeGeneration();
+    refreshResult.resolve(createAccessToken({ consumerId: 'merchant_a', jti: 'refreshed-a' }));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getPublClientTokens()).toEqual({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    expect(getIdentity()).toMatchObject({
+      consumerId: 'merchant_b',
+      generation: merchantBGeneration,
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+  });
+
+  it('does not overwrite a newer token pair staged before its runtime activation', async () => {
+    const refreshStarted = createDeferred();
+    const refreshResult = createDeferred();
+    const fetchMock = vi.fn(async () => createUnauthorizedResponse());
+    const merchantAAccessToken = createAccessToken({ consumerId: 'merchant_a' });
+    const merchantBAccessToken = createAccessToken({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: merchantAAccessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token-a',
+    }));
+    registerPublClientRefreshTokenHandler(async () => {
+      refreshStarted.resolve();
+      return refreshResult.promise;
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const request = relayGet('/api/me');
+    await refreshStarted.promise;
+
+    setPublClientTokens({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    refreshResult.resolve(createAccessToken({ consumerId: 'merchant_a', jti: 'refreshed-a' }));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getPublClientTokens()).toEqual({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    expect(activatePublClientRuntime({ originPolicyConfigured: true })).toBe(true);
+    expect(getIdentity()).toMatchObject({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+  });
+
+  it('does not apply stale refresh failure cleanup after the active identity changes', async () => {
+    const refreshStarted = createDeferred();
+    const refreshResult = createDeferred();
+    const merchantAAccessToken = createAccessToken({ consumerId: 'merchant_a' });
+    const merchantBAccessToken = createAccessToken({
+      consumerId: 'merchant_b',
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => createUnauthorizedResponse()));
+    stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: merchantAAccessToken,
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token-a',
+    }));
+    registerPublClientRefreshTokenHandler(async () => {
+      refreshStarted.resolve();
+      return refreshResult.promise;
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const request = relayGet('/api/me');
+    await refreshStarted.promise;
+
+    setPublClientTokens({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    const merchantBGeneration = getPublClientRuntimeGeneration();
+    refreshResult.reject(new Error('merchant A refresh failed'));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(getPublClientTokens()).toEqual({
+      accessToken: merchantBAccessToken,
+      refreshToken: 'refresh-token-b',
+    });
+    expect(getIdentity()).toMatchObject({
+      consumerId: 'merchant_b',
+      generation: merchantBGeneration,
+      sessionId: 'session_b',
+      userId: 'user_b',
+    });
+  });
+
+  it('does not attach stale Publ tokens from a framed standalone route', async () => {
+    const fetchMock = stubRelayFetch();
+    stubPublIframeWindow('/message-send');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'stale-publ-token',
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'stale-refresh-token',
+    }));
+
+    await relayGet('/api/me');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init).toEqual({ cache: 'no-store' });
+  });
+
+  it('stops attaching and refreshing when an active document leaves the Publ path', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      ok: false,
+      error: { code: 'UNAUTHORIZED', message: 'Unauthorized.', source: 'relay' },
+    }), {
+      headers: { 'content-type': 'application/json' },
+      status: 401,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const iframeWindow = stubPublIframeWindow('/publ-client');
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: createAccessToken(),
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+    }));
+    const refreshHandler = vi.fn(async () => 'new-access-token');
+    registerPublClientRefreshTokenHandler(refreshHandler);
+    activatePublClientRuntime({ originPolicyConfigured: true });
+    iframeWindow.location.pathname = '/message-send';
+
+    await expect(relayGet('/api/me')).rejects.toMatchObject({ status: 401 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1]).toEqual({ cache: 'no-store' });
+    expect(refreshHandler).not.toHaveBeenCalled();
+  });
+
+  it('does not attach a stored Publ token from a top-level standalone window', async () => {
+    const fetchMock = stubRelayFetch();
+    const topLevelWindow = {};
+    topLevelWindow.self = topLevelWindow;
+    topLevelWindow.top = topLevelWindow;
+    vi.stubGlobal('window', topLevelWindow);
+    vi.stubGlobal('sessionStorage', createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'stale-publ-token',
+    }));
+
+    await relayGet('/api/me');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init).toEqual({ cache: 'no-store' });
   });
 });
+
+function stubPublIframeWindow(pathname = '/publ-client') {
+  const iframeWindow = {};
+  iframeWindow.self = iframeWindow;
+  iframeWindow.top = {};
+  iframeWindow.location = { pathname };
+  vi.stubGlobal('window', iframeWindow);
+  return iframeWindow;
+}
 
 function stubRelayFetch() {
   const fetchMock = vi.fn(async () => new Response(JSON.stringify({
@@ -101,6 +384,50 @@ function stubRelayFetch() {
   }));
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
+}
+
+function createUnauthorizedResponse() {
+  return new Response(JSON.stringify({
+    ok: false,
+    error: { code: 'UNAUTHORIZED', message: 'Unauthorized.', source: 'relay' },
+  }), {
+    headers: { 'content-type': 'application/json' },
+    status: 401,
+  });
+}
+
+function createAccessToken({
+  consumerId = 'consumer_1',
+  jti = 'access_jti_1',
+  sessionId = 'session_1',
+  userId = 'user_1',
+} = {}) {
+  const payload = {
+    consumerId,
+    jti,
+    sessionId,
+    userId,
+  };
+  return [
+    encodeBase64Url({ alg: 'none', typ: 'JWT' }),
+    encodeBase64Url(payload),
+    'signature',
+  ].join('.');
+}
+
+function encodeBase64Url(value) {
+  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+}
+
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, reject, resolve };
 }
 
 function createSessionStorage(initialValues = {}) {

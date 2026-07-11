@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import {
   Code2,
   ChevronLeft,
@@ -15,6 +14,7 @@ import {
 import {
   Button,
 } from '../../../components/ui/index.js';
+import { ConsoleLink } from '../ConsoleNavigationContext.jsx';
 import {
   buildPublEventSummaryItems,
 } from './publEventDetailModel.js';
@@ -48,10 +48,10 @@ export function PublEventDetailHeader({
         <code title={eventKey} translate="no">{eventKey}</code>
       </div>
       <div className="publ-event-detail-actions">
-        <Link className="publ-event-secondary-button publ-event-detail-link-button" href="/automations">
+        <ConsoleLink className="publ-event-secondary-button publ-event-detail-link-button" href="/automations">
           <ChevronLeft aria-hidden="true" size={15} />
           목록
-        </Link>
+        </ConsoleLink>
         <Button className="publ-event-secondary-button" onClick={onCopyEventKey}>
           <Copy aria-hidden="true" size={14} />
           키 복사
@@ -95,10 +95,10 @@ export function PublEventDetailHeader({
                 </Button>
               </>
             ) : null}
-            <Link className="publ-event-primary-button publ-event-detail-link-button" href={automationHref}>
+            <ConsoleLink className="publ-event-primary-button publ-event-detail-link-button" href={automationHref}>
               <Workflow aria-hidden="true" size={15} />
               자동화 생성
-            </Link>
+            </ConsoleLink>
           </>
         )}
       </div>
@@ -146,9 +146,9 @@ export function PublEventDetailStatus({ actionHref, actionLabel, copy, onRetry, 
         <p>{copy}</p>
       </div>
       {actionHref && actionLabel ? (
-        <Link className="publ-event-secondary-button publ-event-detail-link-button" href={actionHref}>
+        <ConsoleLink className="publ-event-secondary-button publ-event-detail-link-button" href={actionHref}>
           {actionLabel}
-        </Link>
+        </ConsoleLink>
       ) : null}
       {onRetry ? (
         <Button className="publ-event-secondary-button" onClick={onRetry}>

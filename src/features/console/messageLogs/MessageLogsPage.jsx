@@ -1,18 +1,21 @@
 'use client';
 
 import { useMemo } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Circle, Download, FileText, RefreshCcw } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Circle, FileText, RefreshCcw } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
 import { Button, DataTableV2, DatePickerPresets, FilterSelect, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { useMessageLogsExportMutation } from './mutations.js';
 import { useMessageLogGroupsQuery } from './queries.js';
 import { formatMessageLogGroupCounts, formatMessageLogDate, getChannelLabel, getDefaultMessageLogRange, getMessageLogGroupPageTotal, getMessageLogGroupDisplayPreview, getMessageLogGroupKindLabel, getMessageLogGroupResultSummary, getMessageLogGroupSentAt, getMessageLogGroupRowId, getMessageLogGroupSourceLabel, getMessageLogGroupStatus, getMessageLogFiltersFromSearchParams, MESSAGE_LOG_CHANNEL_OPTIONS, SMS_MESSAGE_TYPE_OPTIONS, toMessageLogQueryParams, toMessageLogUrlParams } from './selectors.js';
+import { ConsoleLink, useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
+import { usePublClient } from '../../publClient/PublClientContext.jsx';
+import { MessageLogsExportAction } from './MessageLogsExportAction.jsx';
 
 export function MessageLogsPage() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
+  const publClient = usePublClient();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const searchParamText = searchParams.toString();
@@ -42,7 +45,7 @@ export function MessageLogsPage() {
       messageType: nextChannel === 'sms' ? (nextFilters.messageType ?? filters.messageType) : 'all',
     }, mode);
 
-    router.replace(`/logs?${nextParams.toString()}`);
+    navigation.replace(`/logs?${nextParams.toString()}`);
   }
 
   async function exportLogs() {
@@ -119,14 +122,12 @@ export function MessageLogsPage() {
           <RefreshCcw aria-hidden="true" size={15} />
           새로고침
         </Button>
-        <Button
+        <MessageLogsExportAction
           disabled={filters.demoCases || exportMutation.isPending}
-          onClick={exportLogs}
-          variant="secondary"
-        >
-          <Download aria-hidden="true" size={15} />
-          {exportMutation.isPending ? '내보내는 중…' : 'CSV 내보내기'}
-        </Button>
+          isPending={exportMutation.isPending}
+          isPublEmbed={publClient.isPublEmbed}
+          onExport={exportLogs}
+        />
       </div>
 
       {groupsQuery.isError ? (
@@ -207,14 +208,14 @@ export function MessageLogsPage() {
         )}
         rowActions={({ row }) => (
           <div className="resend-email-actions">
-            <Link
+            <ConsoleLink
               aria-label="발송 묶음 상세 보기"
               className="message-logs-action-trigger"
               href={getMessageLogGroupDetailHref({ filters, group: row, mode })}
               title="상세 보기"
             >
               <FileText aria-hidden="true" size={15} />
-            </Link>
+            </ConsoleLink>
           </div>
         )}
         shellClassName="message-logs-table-shell"

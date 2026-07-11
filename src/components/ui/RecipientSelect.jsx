@@ -252,7 +252,9 @@ function serializeRecipient(option) {
   return {
     ...(option.count !== undefined ? { count: option.count } : {}),
     ...(option.detail ? { detail: option.detail } : {}),
+    ...(option.externalId ? { externalId: option.externalId } : {}),
     label: option.label,
+    ...(option.recipientSource ? { recipientSource: option.recipientSource } : {}),
     type: option.type,
     value: option.value,
   };
@@ -281,11 +283,13 @@ export function RecipientSelect({
   placeholder = '수신자 추가...',
   searchPromptEmpty = '이름 또는 번호로 연락처를 검색하세요.',
   searchPromptShort = '2글자 이상 입력하면 연락처를 검색합니다.',
+  sourceTabs = [],
   value,
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [sourceTabId, setSourceTabId] = useState(() => sourceTabs[0]?.id ?? '');
   const [menuStyle, setMenuStyle] = useState(null);
   const inputRef = useRef(null);
   const rootRef = useRef(null);
@@ -293,6 +297,9 @@ export function RecipientSelect({
   const menuId = useId();
   const contactOptions = useMemo(() => contacts.map((option) => normalizeOption(option, 'contact')), [contacts]);
   const recipientOptions = useMemo(() => options.map((option) => normalizeOption(option, 'segment')), [options]);
+  const resolvedSourceTabs = Array.isArray(sourceTabs) ? sourceTabs.filter((tab) => tab?.id) : [];
+  const activeSourceTab = resolvedSourceTabs.find((tab) => tab.id === sourceTabId) ?? resolvedSourceTabs[0] ?? null;
+  const activeSourceTypes = activeSourceTab?.types ?? null;
   const resolvedGroupLabels = useMemo(() => ({
     ...recipientGroupLabels,
     ...groupLabels,
@@ -309,9 +316,13 @@ export function RecipientSelect({
   const selectedKeySet = useMemo(() => new Set(selectedRecipients.map((item) => item.key)), [selectedRecipients]);
   const trimmedQuery = query.trim();
   const contactSearchReady = trimmedQuery.length >= contactSearchMinLength;
-  const visibleOptions = useMemo(() => {
+  const visibleOptions = (() => {
     const normalizedQuery = trimmedQuery.toLowerCase();
     const matchedRecipientOptions = recipientOptions.filter((option) => {
+      if (activeSourceTypes && !activeSourceTypes.includes(option.type)) {
+        return false;
+      }
+
       if (selectedKeySet.has(option.key) && getRecipientGroupId(option) !== 'all') {
         return false;
       }
@@ -323,9 +334,14 @@ export function RecipientSelect({
       return getRecipientSearchValue(option).includes(normalizedQuery);
     });
     const contactMatches = contactSearchReady
-      ? getLimitedRecipientMatches(contactOptions, normalizedQuery, selectedKeySet, contactResultLimit)
+      ? getLimitedRecipientMatches(
+        activeSourceTypes ? contactOptions.filter((option) => activeSourceTypes.includes(option.type)) : contactOptions,
+        normalizedQuery,
+        selectedKeySet,
+        contactResultLimit
+      )
       : [];
-    const rawManualOption = manualOptionFactory?.(query) ?? null;
+    const rawManualOption = activeSourceTab?.allowManual === false ? null : manualOptionFactory?.(query) ?? null;
     const manualOption = rawManualOption ? normalizeOption(rawManualOption, 'manual') : null;
     const nextOptions = [...matchedRecipientOptions, ...contactMatches];
 
@@ -337,8 +353,8 @@ export function RecipientSelect({
       manualOption,
       ...nextOptions,
     ];
-  }, [contactOptions, contactResultLimit, contactSearchReady, manualOptionFactory, query, recipientOptions, selectedKeySet, trimmedQuery]);
-  const groups = useMemo(() => getRecipientGroups(visibleOptions, groupOrder), [groupOrder, visibleOptions]);
+  })();
+  const groups = getRecipientGroups(visibleOptions, groupOrder);
   const hasSelection = selectedRecipients.length > 0;
   const hasSavedRecipients = recipientOptions.length > 0 || contactOptions.length > 0;
   const showEmptyRecipientAction = !hasSavedRecipients && !trimmedQuery && !hasSelection && emptyActionLabel;
@@ -511,6 +527,33 @@ export function RecipientSelect({
         width: `${menuStyle.width}px`,
       } : undefined}
     >
+      {resolvedSourceTabs.length ? (
+        <div aria-label="수신자 소스" className="email-send-form-recipient-tabs" role="tablist">
+          {resolvedSourceTabs.map((tab) => {
+            const active = tab.id === activeSourceTab?.id;
+
+            return (
+              <button
+                aria-selected={active}
+                className={active ? 'is-active' : undefined}
+                key={tab.id}
+                onClick={() => {
+                  setSourceTabId(tab.id);
+                  setQuery('');
+                  setActiveIndex(0);
+                  focusInput();
+                }}
+                onMouseDown={(event) => event.preventDefault()}
+                role="tab"
+                type="button"
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       {visibleOptions.length ? (
         <>
           {groups.map((group, groupIndex) => (
@@ -556,6 +599,11 @@ export function RecipientSelect({
             <div className="email-send-form-recipient-search-note">{searchPrompt}</div>
           ) : null}
         </>
+      ) : activeSourceTab ? (
+        <div className="email-send-form-recipient-empty">
+          <strong>{activeSourceTab.emptyTitle ?? '표시할 수신자가 없습니다'}</strong>
+          <span>{activeSourceTab.emptyDescription ?? ''}</span>
+        </div>
       ) : showEmptyRecipientAction ? (
         <>
           {emptyDescription ? <p className="sms-fallback-help">{emptyDescription}</p> : null}

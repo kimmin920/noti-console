@@ -1,11 +1,11 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
 import {
   Button,
   SectionPanel,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { AutomationRuleEditorForm } from './AutomationRuleEditorForm.jsx';
 import {
   useAutomationRuleQuery,
@@ -15,11 +15,17 @@ import {
   createDraftFromAutomationRule,
 } from './ruleEditorReducer.js';
 
-export function AutomationRuleEditorPage({ mode = 'create' }) {
-  const params = useParams();
-  const ruleId = typeof params?.ruleId === 'string' ? params.ruleId : '';
+export function AutomationRuleEditorPage({ mode = 'create', ruleId = '' }) {
   const editing = mode === 'edit';
   const detailQuery = useAutomationRuleQuery(ruleId, { enabled: editing && Boolean(ruleId) });
+
+  if (editing && !ruleId) {
+    return (
+      <AutomationRuleEditorError
+        message="자동화 규칙 ID가 없어 편집 화면을 열 수 없습니다."
+      />
+    );
+  }
 
   if (editing && detailQuery.isLoading) {
     return <AutomationRuleEditorLoading />;
@@ -75,7 +81,7 @@ function AutomationRuleEditorLoading() {
 }
 
 function AutomationRuleEditorError({ message, onRetry }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
 
   return (
     <section className="page-frame automation-rule-editor-page">
@@ -84,8 +90,8 @@ function AutomationRuleEditorError({ message, onRetry }) {
           <strong>자동화 규칙 로드 실패</strong>
           <span>{message}</span>
         </div>
-        <Button onClick={onRetry}>다시 시도</Button>
-        <Button onClick={() => router.push('/automations')} variant="secondary">목록</Button>
+        {onRetry ? <Button onClick={onRetry}>다시 시도</Button> : null}
+        <Button onClick={() => navigation.push('/automations')} variant="secondary">목록</Button>
       </div>
     </section>
   );

@@ -3,6 +3,7 @@
 import { AutomationRuleDetailPage } from './automations/AutomationRuleDetailPage.jsx';
 import { AutomationRuleEditorPage } from './automations/AutomationRuleEditorPage.jsx';
 import { AdminSenderResourceApplicationsPage } from './admin/SenderResourceApplicationsPage.jsx';
+import { PublAudiencePage } from './audience/AudienceTable.jsx';
 import { ConfiguredConsolePage } from './ConfiguredConsolePage.jsx';
 import { DocsPage } from './docs/DocsPage.jsx';
 import { MessageLogGroupDetailPage } from './messageLogs/MessageLogGroupDetailPage.jsx';
@@ -14,6 +15,7 @@ import { MetricsPage } from './metrics/MetricsPage.jsx';
 import { PublEventCreatePage } from './publEvents/PublEventCreatePage.jsx';
 import { PublEventDetailPage } from './publEvents/PublEventDetailPage.jsx';
 import { DEFAULT_CONSOLE_PAGE_ID } from './routing.js';
+import { usePublClient } from '../publClient/PublClientContext.jsx';
 import {
   SenderResourceApplicationPage,
   SettingsPage,
@@ -25,13 +27,18 @@ import { TemplateDetailPage } from './templates/TemplateDetailPage.jsx';
 import { TemplatePage } from './templates/TemplatePage.jsx';
 
 export function ConsoleScreenOutlet({ activePage, meta, onDocs, pageProps }) {
+  const publClient = usePublClient();
   let page = <ConfiguredConsolePage key={activePage} meta={meta} onDocs={onDocs} />;
+  const automationDetail = pageProps?.automationDetail;
   const templateDetail = pageProps?.templateDetail;
   const publEventDetail = pageProps?.publEventDetail;
   const logDetail = pageProps?.logDetail;
+  const reservationDetail = pageProps?.reservationDetail;
 
   if (activePage === DEFAULT_CONSOLE_PAGE_ID) {
     page = <MessageSendPage meta={meta} onDocs={onDocs} />;
+  } else if (activePage === 'audience' && publClient.isPublEmbed) {
+    page = <PublAudiencePage />;
   } else if (activePage === 'settings') {
     page = <SettingsPage />;
   } else if (activePage === 'settings-sender-sms-new') {
@@ -40,10 +47,10 @@ export function ConsoleScreenOutlet({ activePage, meta, onDocs, pageProps }) {
     page = <SenderResourceApplicationPage type="kakao" />;
   } else if (activePage === 'automations-new') {
     page = <AutomationRuleEditorPage mode="create" />;
-  } else if (activePage === 'automations-detail') {
-    page = <AutomationRuleDetailPage />;
-  } else if (activePage === 'automations-edit') {
-    page = <AutomationRuleEditorPage mode="edit" />;
+  } else if (activePage === 'automations-detail' && automationDetail) {
+    page = <AutomationRuleDetailPage ruleId={automationDetail.ruleId} />;
+  } else if (activePage === 'automations-edit' && automationDetail) {
+    page = <AutomationRuleEditorPage mode="edit" ruleId={automationDetail.ruleId} />;
   } else if (activePage === 'publ-event-detail' && publEventDetail) {
     page = <PublEventDetailPage eventKey={publEventDetail.eventKey} />;
   } else if (activePage === 'publ-event-new') {
@@ -62,8 +69,8 @@ export function ConsoleScreenOutlet({ activePage, meta, onDocs, pageProps }) {
     page = <MetricsPage meta={meta} />;
   } else if (activePage === 'reservations') {
     page = <MessageReservationsPage />;
-  } else if (activePage === 'reservation-detail') {
-    page = <MessageReservationDetailPage />;
+  } else if (activePage === 'reservation-detail' && reservationDetail) {
+    page = <MessageReservationDetailPage groupId={reservationDetail.groupId} />;
   } else if (activePage === 'logs') {
     page = <MessageLogsPage />;
   } else if (activePage === 'log-detail' && logDetail) {

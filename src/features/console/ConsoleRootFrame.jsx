@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppShell, EmbedShell } from './ConsoleShells.jsx';
+import { ConsoleNavigationProvider } from './ConsoleNavigationContext.jsx';
 import {
   getConsolePageHref,
   getConsolePageIdFromPathname,
@@ -35,10 +36,14 @@ export function ConsoleRootFrame({ children }) {
     hideAccountControl: false,
   };
 
-  return shellMode === 'embed' ? (
-    <EmbedShell {...shellProps}>{children}</EmbedShell>
-  ) : (
-    <AppShell {...shellProps}>{children}</AppShell>
+  return (
+    <ConsoleNavigationProvider mode={shellMode}>
+      {shellMode === 'embed' ? (
+        <EmbedShell {...shellProps}>{children}</EmbedShell>
+      ) : (
+        <AppShell {...shellProps}>{children}</AppShell>
+      )}
+    </ConsoleNavigationProvider>
   );
 }
 

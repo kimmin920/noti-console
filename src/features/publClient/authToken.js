@@ -13,6 +13,18 @@ export function getPublClientRefreshToken({ storage = getPublClientSessionStorag
   return normalizeToken(storage?.getItem?.(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY));
 }
 
+export function getPublClientTokens({ storage = getPublClientSessionStorage() } = {}) {
+  return {
+    accessToken: getPublClientAccessToken({ storage }),
+    refreshToken: getPublClientRefreshToken({ storage }),
+  };
+}
+
+export function hasPublClientSession({ storage = getPublClientSessionStorage() } = {}) {
+  const tokens = getPublClientTokens({ storage });
+  return Boolean(tokens.accessToken && tokens.refreshToken);
+}
+
 export function setPublClientTokens({ accessToken, refreshToken }, { storage = getPublClientSessionStorage() } = {}) {
   const normalizedAccessToken = normalizeToken(accessToken);
   const normalizedRefreshToken = normalizeToken(refreshToken);

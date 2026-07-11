@@ -30,9 +30,12 @@ vi.mock('@clerk/nextjs/server', () => ({
 
 vi.mock('next/server', () => ({
   NextResponse: {
-    next: vi.fn(() => {
+    next: vi.fn((init) => {
       proxyMocks.nextCalls.push('next');
-      return { type: 'next' };
+      return {
+        headers: new Headers(init?.headers),
+        type: 'next',
+      };
     }),
   },
 }));
@@ -50,7 +53,7 @@ describe('proxy auth context contract', () => {
     const proxy = await loadProxy();
     const response = await proxy(new Request(`http://localhost:3000${path}`), {});
 
-    expect(response).toEqual({ type: 'next' });
+    expect(response.type).toBe('next');
     expect(proxyMocks.clerkInvocations).toEqual([path]);
     expect(proxyMocks.protectCalls).toEqual([]);
   });
@@ -64,7 +67,7 @@ describe('proxy auth context contract', () => {
     const proxy = await loadProxy();
     const response = await proxy(new Request(`http://localhost:3000${path}?apiKey=publ-key`), {});
 
-    expect(response).toEqual({ type: 'next' });
+    expect(response.type).toBe('next');
     expect(proxyMocks.clerkInvocations).toEqual([]);
     expect(proxyMocks.protectCalls).toEqual([]);
   });
@@ -73,7 +76,7 @@ describe('proxy auth context contract', () => {
     const proxy = await loadProxy();
     const response = await proxy(new Request('http://localhost:3000/api/sender-resources'), {});
 
-    expect(response).toEqual({ type: 'next' });
+    expect(response.type).toBe('next');
     expect(proxyMocks.clerkInvocations).toEqual(['/api/sender-resources']);
     expect(proxyMocks.protectCalls).toEqual([]);
   });
@@ -92,7 +95,7 @@ describe('proxy auth context contract', () => {
     const proxy = await loadProxy();
     const response = await proxy(createRequestWithDevAuthCookie('http://localhost:3000/message-send'), {});
 
-    expect(response).toEqual({ type: 'next' });
+    expect(response.type).toBe('next');
     expect(proxyMocks.clerkInvocations).toEqual([]);
     expect(proxyMocks.protectCalls).toEqual([]);
   });
@@ -106,6 +109,39 @@ describe('proxy auth context contract', () => {
     expect(response).toEqual({ type: 'clerk-next' });
     expect(proxyMocks.clerkInvocations).toEqual(['/message-send']);
     expect(proxyMocks.protectCalls).toEqual(['/message-send']);
+  });
+
+  it.each([
+    '/publ-client',
+    '/publ-client/embed/settings',
+    '/publ-client/foo.csv',
+    '/publ-client/foo.js',
+  ])('sets the selected Publ frame-ancestors CSP on %s', async (path) => {
+    vi.stubEnv('PUBL_PAPP_CLIENT_STAGE', 'test');
+    vi.stubEnv('PUBL_PAPP_TEST_PARENT_ORIGINS', 'https://console.dev.publ.biz');
+    const proxy = await loadProxy();
+    const response = await proxy(new Request(`http://localhost:3000${path}`), {});
+
+    expect(response.type).toBe('next');
+    expect(response.headers.get('content-security-policy')).toBe(
+      'frame-ancestors https://console.dev.publ.biz'
+    );
+    expect(proxyMocks.clerkInvocations).toEqual([]);
+  });
+
+  it('sets frame-ancestors none when Publ origin policy is missing', async () => {
+    const proxy = await loadProxy();
+    const response = await proxy(new Request('http://localhost:3000/publ-client'), {});
+
+    expect(response.headers.get('content-security-policy')).toBe("frame-ancestors 'none'");
+  });
+
+  it('keeps static assets outside Publ client excluded from the proxy matcher', async () => {
+    const { config } = await import('../../proxy.js');
+
+    expect(matchesAnyMatcher(config.matcher, '/publ-client/foo.csv')).toBe(true);
+    expect(matchesAnyMatcher(config.matcher, '/logo.svg')).toBe(false);
+    expect(matchesAnyMatcher(config.matcher, '/_next/static/app.js')).toBe(false);
   });
 });
 
@@ -128,4 +164,14 @@ function matchesRoutePattern(pattern, pathname) {
   }
 
   return pathname === pattern;
+}
+
+function matchesAnyMatcher(matchers, pathname) {
+  return matchers.some((matcher) => {
+    if (matcher === '/publ-client/:path*') {
+      return pathname === '/publ-client' || pathname.startsWith('/publ-client/');
+    }
+
+    return new RegExp(`^${matcher}$`).test(pathname);
+  });
 }

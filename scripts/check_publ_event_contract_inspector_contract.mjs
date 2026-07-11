@@ -158,7 +158,7 @@ const QUERY_ROUTE_CHECKS = [
     path: APP_DETAIL_ROUTE_PATH,
     name: 'PUBL event console route page',
     patterns: [
-      /ConsoleRoute/,
+      /StandaloneConsoleRoute/,
       /publ-event-detail|publEventDetail|publ-event/,
       /eventKey/,
     ],

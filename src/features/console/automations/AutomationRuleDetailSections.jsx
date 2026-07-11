@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import {
   BadgeCheck,
   BellRing,
@@ -20,6 +19,7 @@ import {
   SectionPanel,
   TextField,
 } from '../../../components/ui/index.js';
+import { ConsoleLink } from '../ConsoleNavigationContext.jsx';
 import {
   AUTOMATION_STATUS_LABELS,
   formatAutomationRuleDateTime,
@@ -59,18 +59,18 @@ export function AutomationRuleDetailHeader({ eventKey, onOpenApi, rule }) {
         <code title={rule.id} translate="no">{rule.id}</code>
       </div>
       <div className="automation-rule-detail-header-actions">
-        <Link className="button secondary automation-rule-detail-link-button" href="/automations">
+        <ConsoleLink className="button secondary automation-rule-detail-link-button" href="/automations">
           <ChevronLeft aria-hidden="true" size={15} />
           목록
-        </Link>
+        </ConsoleLink>
         <Button disabled={!eventKey} onClick={onOpenApi} variant="secondary">
           <Code2 aria-hidden="true" size={14} />
           Open API
         </Button>
-        <Link className="button primary automation-rule-detail-link-button" href={`/automations/${encodedRuleId}/edit`}>
+        <ConsoleLink className="button primary automation-rule-detail-link-button" href={`/automations/${encodedRuleId}/edit`}>
           <Pencil aria-hidden="true" size={14} />
           편집
-        </Link>
+        </ConsoleLink>
       </div>
     </header>
   );
@@ -99,7 +99,7 @@ export function AutomationRuleDetailStatus({ actionHref, actionLabel, message, o
           <span>{message}</span>
         </div>
         {onRetry ? <Button onClick={onRetry}>다시 시도</Button> : null}
-        <Link className="button secondary automation-rule-detail-link-button" href={actionHref}>{actionLabel}</Link>
+        <ConsoleLink className="button secondary automation-rule-detail-link-button" href={actionHref}>{actionLabel}</ConsoleLink>
       </div>
     </section>
   );

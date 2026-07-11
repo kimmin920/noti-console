@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { ChevronLeft, Circle, Copy, RefreshCcw, Trash2 } from 'lucide-react';
 import { Button, ConfirmationDialog, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { useMessageReservationCancelMutation } from './mutations.js';
 import { BatchTable, DetailPagination, RecipientTable } from './MessageReservationDetailTables.jsx';
 import {
@@ -28,13 +29,11 @@ import {
 
 const BATCH_RECIPIENT_PAGE_SIZE = 50;
 
-export function MessageReservationDetailPage() {
-  const params = useParams();
-  const router = useRouter();
+export function MessageReservationDetailPage({ groupId = '' }) {
+  const navigation = useConsoleNavigation();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
   const searchParamText = searchParams.toString();
-  const groupId = typeof params?.groupId === 'string' ? params.groupId : '';
   const mode = searchParams.get('mode') === 'embed' ? 'embed' : null;
   const filters = useMemo(
     () => getMessageReservationFiltersFromSearchParams(new URLSearchParams(searchParamText)),
@@ -42,7 +41,9 @@ export function MessageReservationDetailPage() {
   );
   const queryFilters = useMemo(() => toMessageReservationQueryParams(filters), [filters]);
   const detailSelection = useMemo(() => ({ ...queryFilters, groupId }), [groupId, queryFilters]);
-  const detailQuery = useMessageReservationGroupDetailQuery(detailSelection);
+  const detailQuery = useMessageReservationGroupDetailQuery(detailSelection, {
+    enabled: Boolean(groupId),
+  });
   const cancelMutation = useMessageReservationCancelMutation();
   const [selectedProviderRequestId, setSelectedProviderRequestId] = useState(null);
   const [batchPage, setBatchPage] = useState(1);
@@ -79,9 +80,17 @@ export function MessageReservationDetailPage() {
     batchRecipientsQuery.refetch();
   }
 
+  if (!groupId) {
+    return (
+      <section className="page-frame message-reservation-detail-page">
+        <DetailState text="예약 ID가 없어 상세를 열 수 없습니다." />
+      </section>
+    );
+  }
+
   return (
     <section className="page-frame message-reservation-detail-page">
-      <button className="message-reservation-detail-back" onClick={() => router.push(backHref)} type="button">
+      <button className="message-reservation-detail-back" onClick={() => navigation.push(backHref)} type="button">
         <ChevronLeft aria-hidden="true" size={15} />
         예약 목록
       </button>

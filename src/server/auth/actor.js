@@ -22,6 +22,8 @@ export const AUTH_PROVIDERS = Object.freeze({
   KAKAO: 'kakao',
 });
 
+const RELAY_AUTH_CONTEXT_HEADER = 'x-noti-auth-context';
+const PUBL_CLIENT_AUTH_CONTEXT = 'publ-client';
 const USER_STATUS_ACTIVE = 'active';
 const BILLING_ACCOUNT_STATUS_ACTIVE = 'active';
 
@@ -52,6 +54,21 @@ export function createActorResolver({
         });
       }
 
+      const authContext = readAuthContext(request);
+      if (authContext === PUBL_CLIENT_AUTH_CONTEXT) {
+        const publBearerToken = readBearerToken(request);
+        if (!publBearerToken) {
+          throw unauthorizedError();
+        }
+
+        return resolvePublBearerActor({
+          repository,
+          env,
+          now,
+          token: publBearerToken,
+        });
+      }
+
       const clerkState = await readClerkAuthState(clerkAuth);
 
       if (isAuthenticatedClerkState(clerkState)) {
@@ -61,17 +78,6 @@ export function createActorResolver({
           clerkCurrentUser,
           makeUserRef,
           makeBillingRef,
-        });
-      }
-
-      const publBearerToken = readBearerToken(request);
-
-      if (publBearerToken) {
-        return resolvePublBearerActor({
-          repository,
-          env,
-          now,
-          token: publBearerToken,
         });
       }
 
@@ -86,6 +92,10 @@ export function createActorResolver({
       throw unauthorizedError();
     },
   };
+}
+
+function readAuthContext(request) {
+  return request.headers.get(RELAY_AUTH_CONTEXT_HEADER)?.trim() || null;
 }
 
 async function resolvePublBearerActor({ repository, env, now, token }) {

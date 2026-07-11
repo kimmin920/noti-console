@@ -354,6 +354,7 @@ export function SmsSendForm({
   onTemplateSelect,
   recipientContacts,
   recipientCreateLabel,
+  recipientSelectProps,
   recipients = defaultEmailSendFormSegments,
   scheduleOptions = defaultEmailSendFormSchedules,
   senderNumberCreateLabel = '발신번호 추가하기',
@@ -611,6 +612,7 @@ export function SmsSendForm({
         >
           <EmailSendFormLabel>수신자</EmailSendFormLabel>
           <RecipientSelect
+            {...recipientSelectProps}
             ariaLabel="수신자 선택"
             contacts={recipientContacts}
             emptyActionLabel={recipientCreateLabel}

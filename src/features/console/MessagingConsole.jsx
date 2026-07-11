@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { ConsoleNavigationProvider } from './ConsoleNavigationContext.jsx';
 import { AppShell, EmbedShell } from './ConsoleShells.jsx';
 import { ConsoleScreenOutlet } from './ConsoleScreenOutlet.jsx';
 import { pageMeta } from './consoleConfig.js';
@@ -54,7 +55,11 @@ export function MessagingConsole({
     />
   );
 
-  return shellMode === 'embed'
-    ? <EmbedShell {...shellProps}>{screen}</EmbedShell>
-    : <AppShell {...shellProps}>{screen}</AppShell>;
+  return (
+    <ConsoleNavigationProvider mode={shellMode}>
+      {shellMode === 'embed'
+        ? <EmbedShell {...shellProps}>{screen}</EmbedShell>
+        : <AppShell {...shellProps}>{screen}</AppShell>}
+    </ConsoleNavigationProvider>
+  );
 }

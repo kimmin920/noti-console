@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { Check, CheckCircle2, Send } from 'lucide-react';
+import { ConsoleLink } from '../../features/console/ConsoleNavigationContext.jsx';
 import {
   DomainAddField,
   DomainStep,
@@ -75,10 +75,10 @@ export function KakaoChannelActivationStep({ verifyResult }) {
           <CheckCircle2 aria-hidden="true" size={16} />
           <span>연결된 채널 보기</span>
         </button>
-        <Link className="domain-add-secondary-button" href="/message-send?tab=alimtalk">
+        <ConsoleLink className="domain-add-secondary-button" href="/message-send?tab=alimtalk">
           <Send aria-hidden="true" size={16} />
           <span>메시지 보내기</span>
-        </Link>
+        </ConsoleLink>
       </div>
     </DomainStep>
   );

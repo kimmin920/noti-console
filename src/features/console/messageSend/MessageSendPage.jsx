@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
 import { AlimtalkPreview, AlimtalkSendForm, BrandMessageSendForm, Button, defaultAlimtalkSendFormValue, defaultBrandMessageSendFormValue, defaultSmsSendFormValue, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, EmptyState, FormField, getSmsSendFormMessageType, getBrandMessageTemplateRegistrationIssues, getBrandMessageValidationIssues, NhnBrandMessagePreview, Panel, SegmentedControl, SmsPreview, SmsSendForm, useToast } from '../../../components/ui/index.js';
@@ -18,11 +18,13 @@ import { getReservationsHrefForChannel, shouldShowSmsReservationAcceptedToast } 
 import { getSmsBulkSendRunToastView } from './smsBulkSendRunToast.js';
 import { messageLogQueryKeys } from '../messageLogs/queryKeys.js';
 import { buildTabQueryHref, getMessageSendTabFromQuery, getMessageSendTabQueryValue } from '../tabQuery.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
+import { usePublMessageRecipients } from '../../publClient/usePublMessageRecipients.js';
 
 const BRAND_TEMPLATE_REGISTRATION_NAME_MAX_LENGTH = 200;
 
 export function SmsBulkSendRunWatcher() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const statusPollingRunRef = useRef(0);
   const toastRef = useRef(null);
@@ -34,24 +36,25 @@ export function SmsBulkSendRunWatcher() {
 
   useEffect(() => {
     showSmsBulkSendRunToast({
-      router,
+      navigation,
       run: activeSmsBulkRun,
       showToast,
       statusPollingRunRef,
       toastRef,
     });
-  }, [activeSmsBulkRun, router, showToast]);
+  }, [activeSmsBulkRun, navigation, showToast]);
 
   return null;
 }
 
 export function MessageSendPage({ meta, onDocs }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchParamText = searchParams.toString();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const publRecipients = usePublMessageRecipients();
   const [activeTab, setActiveTab] = useState(() => getMessageSendTabFromQuery(searchParams, meta.tabs));
   const [alimtalkMessage, setAlimtalkMessage] = useState(() => ({
     ...defaultAlimtalkSendFormValue,
@@ -153,7 +156,7 @@ export function MessageSendPage({ meta, onDocs }) {
 
   function handleActiveTabChange(nextTab) {
     setActiveTab(nextTab);
-    router.replace(
+    navigation.replace(
       buildTabQueryHref({
         pathname,
         searchParams,
@@ -293,21 +296,21 @@ export function MessageSendPage({ meta, onDocs }) {
   }
 
   function openAudiencePage() {
-    router.push('/audience');
+    navigation.push('/audience');
   }
 
   function openSenderResourcePage(type) {
     if (type === 'sms') {
-      router.push('/settings/sender-resources/sms/new');
+      navigation.push('/settings/sender-resources/sms/new');
       return;
     }
 
     if (type === 'kakao') {
-      router.push('/settings/sender-resources/kakao/new');
+      navigation.push('/settings/sender-resources/kakao/new');
       return;
     }
 
-    router.push('/settings?tab=sender-resources');
+    navigation.push('/settings?tab=sender-resources');
   }
 
   function beginStatusPollingRun(channelLabel) {
@@ -362,7 +365,7 @@ export function MessageSendPage({ meta, onDocs }) {
         if (shouldShowSmsReservationAcceptedToast(payload, result)) {
           showMessageReservationAcceptedToast({
             channelLabel: 'SMS',
-            onViewReservations: () => router.push(getReservationsHrefForChannel(payload.channel)),
+            onViewReservations: () => navigation.push(getReservationsHrefForChannel(payload.channel)),
             result,
             showToast,
           });
@@ -663,11 +666,12 @@ export function MessageSendPage({ meta, onDocs }) {
           <div className="message-send-compose-layout message-send-sms-layout">
             <SmsSendForm
               onChange={setSmsMessage}
-              onRecipientCreate={openAudiencePage}
+              onRecipientCreate={publRecipients.isPublEmbed ? undefined : openAudiencePage}
               onSenderNumberCreate={() => openSenderResourcePage('sms')}
-              recipientContacts={[]}
-              recipientCreateLabel="수신자 추가하기"
-              recipients={[]}
+              recipientContacts={publRecipients.contacts}
+              recipientCreateLabel={publRecipients.isPublEmbed ? undefined : '수신자 추가하기'}
+              recipientSelectProps={publRecipients.selectProps}
+              recipients={publRecipients.options}
               senderNumberCreateLabel="발신번호 추가하기"
               senderNumbers={smsSenderOptionsForForm}
               templates={smsTemplates}
@@ -685,11 +689,12 @@ export function MessageSendPage({ meta, onDocs }) {
               fallbackSenderNumbers={smsSenderOptions}
               onChange={setAlimtalkMessage}
               onFallbackSenderNumberCreate={() => openSenderResourcePage('sms')}
-              onRecipientCreate={openAudiencePage}
+              onRecipientCreate={publRecipients.isPublEmbed ? undefined : openAudiencePage}
               onSenderProfileCreate={() => openSenderResourcePage('kakao')}
-              recipientContacts={[]}
-              recipientCreateLabel="수신자 추가하기"
-              recipients={[]}
+              recipientContacts={publRecipients.contacts}
+              recipientCreateLabel={publRecipients.isPublEmbed ? undefined : '수신자 추가하기'}
+              recipientSelectProps={publRecipients.selectProps}
+              recipients={publRecipients.options}
               senderProfileCreateLabel="발신채널 추가하기"
               senderProfiles={alimtalkSenderProfiles}
               templates={alimtalkTemplates}
@@ -715,8 +720,9 @@ export function MessageSendPage({ meta, onDocs }) {
                 onFallbackSenderNumberCreate={() => openSenderResourcePage('sms')}
                 onSenderProfileCreate={() => openSenderResourcePage('kakao')}
                 ref={brandFormRef}
-                recipientContacts={[]}
-                recipients={[]}
+                recipientContacts={publRecipients.contacts}
+                recipientSelectProps={publRecipients.selectProps}
+                recipients={publRecipients.options}
                 senderProfileCreateLabel="발신채널 추가하기"
                 senderProfiles={alimtalkSenderProfiles}
                 templates={brandTemplates}
@@ -822,7 +828,7 @@ function isActiveSmsBulkSendRun(run) {
   return run?.status === 'queued' || run?.status === 'running' || run?.state === 'queued' || run?.state === 'running';
 }
 
-function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, toastRef }) {
+function showSmsBulkSendRunToast({ navigation, run, showToast, statusPollingRunRef, toastRef }) {
   const view = getSmsBulkSendRunToastView(run, { formatNumber });
 
   if (!view) {
@@ -852,7 +858,7 @@ function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, 
         label: view.actionLabel,
         onClick: () => {
           statusPollingRunRef.current += 1;
-          router.push(view.resultHref);
+          navigation.push(view.resultHref);
         },
       },
       description: view.description,
@@ -868,7 +874,7 @@ function showSmsBulkSendRunToast({ router, run, showToast, statusPollingRunRef, 
       label: view.actionLabel,
       onClick: () => {
         statusPollingRunRef.current += 1;
-        router.push(view.resultHref);
+        navigation.push(view.resultHref);
       },
     },
     description: view.description,

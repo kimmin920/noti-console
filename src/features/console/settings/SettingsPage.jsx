@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Show, SignOutButton, UserButton, useUser } from '@clerk/nextjs';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Circle, MoreHorizontal, Plus } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
 import { SmsSenderNumberAdd } from '../../../components/sender-resources/index.js';
@@ -23,6 +23,7 @@ import {
   PERSONAL_SENDER_EVIDENCE_FILES,
   SMS_SENDER_RESOURCE_TYPE,
 } from './senderResourceApplicationConfig.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 
 function ProfileSettingsContent() {
   const { isLoaded, user } = useUser();
@@ -111,15 +112,21 @@ function GoogleIcon() {
 const SETTINGS_TABS = ['사용량', '발신 수단 관리', '청구', '연동', '프로필'];
 const SETTINGS_SENDER_RESOURCE_TAB = '발신 수단 관리';
 const SETTINGS_SENDER_RESOURCE_QUERY = 'sender-resources';
+
+function getVisibleSettingsTabs(isPublEmbed) {
+  return isPublEmbed ? SETTINGS_TABS.filter((tab) => tab !== '프로필') : SETTINGS_TABS;
+}
 export function SettingsPage() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => getSettingsTabFromQuery(searchParams, SETTINGS_TABS));
+  const isPublEmbed = navigation.mode === 'embed';
+  const visibleSettingsTabs = getVisibleSettingsTabs(isPublEmbed);
+  const [activeTab, setActiveTab] = useState(() => getSettingsTabFromQuery(searchParams, visibleSettingsTabs));
 
   function handleActiveTabChange(nextTab) {
     setActiveTab(nextTab);
-    router.replace(
+    navigation.replace(
       buildTabQueryHref({
         pathname,
         searchParams,
@@ -133,14 +140,14 @@ export function SettingsPage() {
     <section className="page-frame settings-page">
       <PageHeader title="설정" />
       <SegmentedControl
-        items={SETTINGS_TABS}
+        items={visibleSettingsTabs}
         onValueChange={handleActiveTabChange}
         value={activeTab}
       />
       {activeTab === '사용량' ? <UsageSettingsContent /> : null}
       {activeTab === SETTINGS_SENDER_RESOURCE_TAB ? <SenderResourceSettings /> : null}
-      {activeTab === '프로필' ? <ProfileSettingsContent /> : null}
-      {activeTab !== '사용량' && activeTab !== SETTINGS_SENDER_RESOURCE_TAB && activeTab !== '프로필' ? (
+      {activeTab === '프로필' && !isPublEmbed ? <ProfileSettingsContent /> : null}
+      {activeTab !== '사용량' && activeTab !== SETTINGS_SENDER_RESOURCE_TAB && (activeTab !== '프로필' || isPublEmbed) ? (
         <SettingsPlaceholder title={activeTab} />
       ) : null}
     </section>
@@ -148,7 +155,7 @@ export function SettingsPage() {
 }
 
 function SenderResourceSettings() {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const senderResourcesQuery = useSenderResourcesQuery();
   const smsResources = getSettingsSenderResourceRows(senderResourcesQuery.data, SMS_SENDER_RESOURCE_TYPE);
@@ -169,9 +176,9 @@ function SenderResourceSettings() {
         emptyLabel="등록된 발신번호가 없습니다"
         limitLabel="번호별 한도"
         loading={senderResourcesQuery.isPending}
-        onAction={() => router.push('/settings/sender-resources/sms/new')}
+        onAction={() => navigation.push('/settings/sender-resources/sms/new')}
         onDefaultSelect={() => showPendingToast('기본 발신번호')}
-        onResubmit={(item) => router.push(`/settings/sender-resources/sms/new?applicationId=${encodeURIComponent(item.applicationId)}`)}
+        onResubmit={(item) => navigation.push(`/settings/sender-resources/sms/new?applicationId=${encodeURIComponent(item.applicationId)}`)}
         resources={smsResources}
         title="발신번호"
       />
@@ -182,7 +189,7 @@ function SenderResourceSettings() {
         emptyLabel="연결된 카카오 채널이 없습니다"
         limitLabel="채널별 한도"
         loading={senderResourcesQuery.isPending}
-        onAction={() => router.push('/settings/sender-resources/kakao/new')}
+        onAction={() => navigation.push('/settings/sender-resources/kakao/new')}
         onDefaultSelect={() => showPendingToast('기본 카카오 채널')}
         onResubmit={() => showPendingToast('카카오 채널 재신청')}
         resources={kakaoResources}
@@ -299,11 +306,11 @@ function SettingsPlaceholder({ title }) {
 }
 
 export function SenderResourceApplicationPage({ type }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const isSms = type === 'sms';
 
   function goBackToSenderResources() {
-    router.push(`/settings?tab=${SETTINGS_SENDER_RESOURCE_QUERY}&type=${type}`);
+    navigation.push(`/settings?tab=${SETTINGS_SENDER_RESOURCE_QUERY}&type=${type}`);
   }
 
   if (isSms) {

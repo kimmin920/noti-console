@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Ban, CheckCircle2, ChevronDown, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, Badge, ConfirmationDialog, DataTableV2, FilterSelect, IconButton, SearchField, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { AutomationTableLoadError } from './AutomationTableLoadError.jsx';
 import { useAutomationRuleArchiveMutation, useAutomationRuleDisableMutation, useAutomationRuleEnableMutation, useAutomationRulesQuery } from './queries.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 
 const AUTOMATION_STATUS_LABELS = {
   archived: '보관됨',
@@ -26,7 +26,7 @@ const AUTOMATION_RULE_STATUS_OPTIONS = [
 ];
 
 export function AutomationRulesTable({ table: tableConfig }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const { showToast } = useToast();
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -88,11 +88,11 @@ export function AutomationRulesTable({ table: tableConfig }) {
     : '아직 자동화 규칙이 없습니다.';
 
   function openAutomationDetail(row) {
-    router.push(`/automations/${encodeURIComponent(row.id)}`);
+    navigation.push(`/automations/${encodeURIComponent(row.id)}`);
   }
 
   function openAutomationEdit(row) {
-    router.push(`/automations/${encodeURIComponent(row.id)}/edit`);
+    navigation.push(`/automations/${encodeURIComponent(row.id)}/edit`);
   }
 
   async function enableRule(row) {

@@ -4760,6 +4760,7 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
   onFallbackSenderNumberCreate,
   onSenderProfileCreate,
   recipientContacts,
+  recipientSelectProps,
   recipients = defaultEmailSendFormSegments,
   scheduleOptions = defaultEmailSendFormSchedules,
   senderProfileCreateLabel = '발신채널 추가하기',
@@ -5770,6 +5771,7 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
               수신자
             </EmailSendFormLabel>
             <RecipientSelect
+              {...recipientSelectProps}
               ariaLabel="브랜드 메시지 수신자 선택"
               contacts={recipientContacts}
               onValueChange={(recipient) => updateMessage({ recipient })}

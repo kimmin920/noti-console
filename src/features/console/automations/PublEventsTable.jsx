@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { Button, DataTableV2 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { useAutomationRulesQuery } from './queries.js';
 import { usePublEventsQuery } from '../publEvents/queries.js';
 import { AutomationTableLoadError } from './AutomationTableLoadError.jsx';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 
 const PUBL_EVENT_TABLE_PAGE_SIZE_OPTIONS = [30, 60, 120];
 
@@ -18,7 +18,7 @@ const PUBL_EVENT_VARIABLE_COLLAPSED_ROW_LIMIT = 2;
 const AUTOMATION_RULE_QUERY_LIMIT = 200;
 
 export function PublEventsTable({ table: tableConfig }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const publEventsQuery = usePublEventsQuery();
   const automationQueryFilters = useMemo(() => ({ limit: AUTOMATION_RULE_QUERY_LIMIT }), []);
   const automationRulesQuery = useAutomationRulesQuery(automationQueryFilters);
@@ -102,7 +102,7 @@ export function PublEventsTable({ table: tableConfig }) {
         <Button
           aria-label={`${row.displayName || row.eventKey} 상세 보기`}
           className="publ-event-detail-action"
-          onClick={() => router.push(buildPublEventDetailHref(row.eventKey))}
+          onClick={() => navigation.push(buildPublEventDetailHref(row.eventKey))}
         >
           상세
         </Button>

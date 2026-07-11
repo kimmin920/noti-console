@@ -1,4 +1,9 @@
 import { PUBL_PAPP_DEFAULT_CODES } from './config.js';
+import {
+  PUBL_PAPP_PARENT_ORIGIN_ENV,
+  resolvePublClientFramePolicy,
+  resolvePublClientStage,
+} from './framePolicy.js';
 
 export const PUBL_PAPP_CLIENT_STAGES = Object.freeze({
   RELEASE: 'release',
@@ -10,11 +15,13 @@ export const PUBL_PAPP_CLIENT_ENV = Object.freeze({
   RELEASE_CLIENT_HASH: 'PUBL_PAPP_RELEASE_CLIENT_HASH',
   RELEASE_CODE: 'PUBL_PAPP_RELEASE_CODE',
   RELEASE_MEMBER_CONTACTS_PERMISSION_ID: 'PUBL_PAPP_RELEASE_MEMBER_CONTACTS_PERMISSION_ID',
+  RELEASE_PARENT_ORIGINS: PUBL_PAPP_PARENT_ORIGIN_ENV.RELEASE,
   RELEASE_SELLER_INFO_PERMISSION_ID: 'PUBL_PAPP_RELEASE_SELLER_INFO_PERMISSION_ID',
   SDK_SRC: 'PUBL_PAPP_SDK_SRC',
   TEST_CLIENT_HASH: 'PUBL_PAPP_TEST_CLIENT_HASH',
   TEST_CODE: 'PUBL_PAPP_TEST_CODE',
   TEST_MEMBER_CONTACTS_PERMISSION_ID: 'PUBL_PAPP_TEST_MEMBER_CONTACTS_PERMISSION_ID',
+  TEST_PARENT_ORIGINS: PUBL_PAPP_PARENT_ORIGIN_ENV.TEST,
   TEST_SELLER_INFO_PERMISSION_ID: 'PUBL_PAPP_TEST_SELLER_INFO_PERMISSION_ID',
 });
 
@@ -62,9 +69,14 @@ export function resolvePublPappClientConfig(env = process.env) {
   const stage = resolveClientStage(env);
   const definition = STAGE_DEFINITIONS[stage];
   const clientHash = readOptionalEnv(env, definition.clientHashEnvName);
+  const framePolicy = resolvePublClientFramePolicy(env);
 
   if (!clientHash) {
     throw new Error(`${definition.clientHashEnvName} is required for Publ client bootstrap.`);
+  }
+
+  if (!framePolicy.configured) {
+    throw new Error('Publ client parent origin policy is required for iframe bootstrap.');
   }
 
   const permissions = Object.freeze({
@@ -75,8 +87,15 @@ export function resolvePublPappClientConfig(env = process.env) {
   });
 
   return Object.freeze({
-    authorizationPermissionIds: Object.freeze(getAuthorizationPermissionIds(permissions)),
+    bootstrapPermissionIds: Object.freeze([
+      permissions.exchangeToken,
+      permissions.refreshToken,
+    ]),
     clientHash,
+    framePolicy: Object.freeze({
+      configured: framePolicy.configured,
+      origins: framePolicy.origins,
+    }),
     pAppCode: readOptionalEnv(env, definition.pAppCodeEnvName) ?? definition.defaultPAppCode,
     permissions,
     sdkSrc: resolveSdkSrc(env, stage),
@@ -85,23 +104,7 @@ export function resolvePublPappClientConfig(env = process.env) {
 }
 
 function resolveClientStage(env) {
-  const configuredStage = readOptionalEnv(env, PUBL_PAPP_CLIENT_ENV.CLIENT_STAGE)?.toLowerCase();
-
-  if (configuredStage) {
-    if (configuredStage === 'test' || configuredStage === 'test_flight') {
-      return PUBL_PAPP_CLIENT_STAGES.TEST;
-    }
-
-    if (configuredStage === 'release' || configuredStage === 'production') {
-      return PUBL_PAPP_CLIENT_STAGES.RELEASE;
-    }
-
-    throw new Error(`${PUBL_PAPP_CLIENT_ENV.CLIENT_STAGE} must be test or release.`);
-  }
-
-  return readOptionalEnv(env, 'APP_ENV') === 'production'
-    ? PUBL_PAPP_CLIENT_STAGES.RELEASE
-    : PUBL_PAPP_CLIENT_STAGES.TEST;
+  return resolvePublClientStage(env);
 }
 
 function resolveSdkSrc(env, stage) {
@@ -112,15 +115,6 @@ function resolveSdkSrc(env, stage) {
   }
 
   return stage === PUBL_PAPP_CLIENT_STAGES.TEST ? PUBL_PAPP_CLIENT_DEFAULT_SDK_SRC : null;
-}
-
-function getAuthorizationPermissionIds(permissions) {
-  return [
-    permissions.exchangeToken,
-    permissions.refreshToken,
-    permissions.sellerBusinessInformation,
-    permissions.memberContacts,
-  ].filter(Boolean);
 }
 
 function readOptionalEnv(env, name) {

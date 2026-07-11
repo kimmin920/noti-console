@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -14,6 +13,18 @@ import {
   PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY,
   PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY,
 } from '../../features/publClient/authToken.js';
+import { isPublIframeContext } from '../../features/publClient/frameContext.js';
+import { requestPublMemberContacts } from '../../features/publClient/tapRequests.js';
+
+const MANDATORY_AUTHORIZATION_DENIALS = [
+  ['DENIED response', () => vi.fn(async () => ({
+    data: { authorized: true },
+    status: 'DENIED',
+  }))],
+  ['false response', () => vi.fn(async () => false)],
+  ['missing authorization result', () => vi.fn(async () => undefined)],
+  ['missing authorize method', () => undefined],
+];
 
 describe('Publ iframe client SDK adapter', () => {
   it('adapts the official PAppClientSDK seller-side pipeline', async () => {
@@ -61,8 +72,6 @@ describe('Publ iframe client SDK adapter', () => {
     expect(sdkClient.pipeline.authorize).toHaveBeenCalledWith([
       'PM_00000_EXCHANGE_TOKEN',
       'PM_00000_REFRESH_TOKEN',
-      'PM_SELLER_INFO',
-      'PM_CONTACTS',
     ]);
     expect(sdkClient.pipeline.request).toHaveBeenNthCalledWith(1, 'PM_00000_EXCHANGE_TOKEN');
     expect(sdkClient.pipeline.request).toHaveBeenNthCalledWith(2, 'PM_00000_REFRESH_TOKEN');
@@ -72,7 +81,7 @@ describe('Publ iframe client SDK adapter', () => {
   it('stores exchanged tokens through the iframe session token provider', async () => {
     const storage = createSessionStorage();
     const adapter = {
-      authorize: vi.fn(async () => undefined),
+      authorize: vi.fn(async () => ({ status: 'OK' })),
       exchangeToken: vi.fn(async () => ({
         data: {
           accessToken: ' access-token ',
@@ -93,6 +102,142 @@ describe('Publ iframe client SDK adapter', () => {
     expect(adapter.exchangeToken).toHaveBeenCalledTimes(1);
     expect(storage.getItem(PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY)).toBe('access-token');
     expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBe('refresh-token');
+  });
+
+  it('exchanges again instead of trusting pre-existing sessionStorage tokens in a fresh document', async () => {
+    const storage = createSessionStorage({
+      [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'stale-access-token',
+      [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'stale-refresh-token',
+    });
+    const adapter = {
+      authorize: vi.fn(async () => ({ status: 'OK' })),
+      exchangeToken: vi.fn(async () => ({
+        data: {
+          accessToken: 'fresh-access-token',
+          refreshToken: 'fresh-refresh-token',
+        },
+      })),
+      mount: vi.fn(async () => undefined),
+      refreshToken: vi.fn(),
+    };
+
+    await expect(bootstrapPublClientSession({ adapter, storage })).resolves.toMatchObject({
+      ok: true,
+      status: 'ready',
+    });
+
+    expect(adapter.mount).toHaveBeenCalledTimes(1);
+    expect(adapter.authorize).toHaveBeenCalledTimes(1);
+    expect(adapter.exchangeToken).toHaveBeenCalledTimes(1);
+    expect(storage.getItem(PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY)).toBe('fresh-access-token');
+    expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBe('fresh-refresh-token');
+  });
+
+  it.each(MANDATORY_AUTHORIZATION_DENIALS)(
+    'blocks bootstrap token exchange for a %s',
+    async (_label, createAuthorize) => {
+      const storage = createSessionStorage();
+      const adapter = {
+        authorize: createAuthorize(),
+        exchangeToken: vi.fn(async () => ({
+          data: {
+            accessToken: 'must-not-be-stored',
+            refreshToken: 'must-not-be-stored',
+          },
+        })),
+        mount: vi.fn(async () => undefined),
+        refreshToken: vi.fn(),
+      };
+
+      await expect(bootstrapPublClientSession({
+        adapter,
+        clientConfig: createClientConfig(),
+        storage,
+      })).resolves.toMatchObject({
+        errorCode: 'PUBL_CLIENT_AUTHORIZATION_DENIED',
+        ok: false,
+        status: 'authorization-denied',
+      });
+      expect(adapter.exchangeToken).not.toHaveBeenCalled();
+      expect(storage.getItem(PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY)).toBeNull();
+      expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBeNull();
+    }
+  );
+
+  it.each(MANDATORY_AUTHORIZATION_DENIALS)(
+    'blocks token refresh with a typed error for a %s',
+    async (_label, createAuthorize) => {
+      const storage = createSessionStorage({
+        [PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY]: 'old-access-token',
+        [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
+      });
+      const adapter = {
+        authorize: createAuthorize(),
+        refreshToken: vi.fn(async () => ({
+          data: { accessToken: 'must-not-be-stored' },
+        })),
+      };
+
+      await expect(refreshPublClientSession({
+        adapter,
+        previousAccessToken: 'old-access-token',
+        refreshToken: 'refresh-token',
+        storage,
+      })).rejects.toMatchObject({
+        code: 'PUBL_CLIENT_AUTHORIZATION_DENIED',
+        name: 'PublClientAuthorizationError',
+      });
+      expect(adapter.refreshToken).not.toHaveBeenCalled();
+      expect(storage.getItem(PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY)).toBeNull();
+      expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBeNull();
+    }
+  );
+
+  it('keeps optional contact denial independent from mandatory login authorization', async () => {
+    const storage = createSessionStorage();
+    const adapter = {
+      authorize: vi.fn(async (permissionIds) => (
+        permissionIds.includes('PM_CONTACTS') ? { status: 'DENIED' } : { status: 'OK' }
+      )),
+      exchangeToken: vi.fn(async () => ({
+        data: {
+          accessToken: 'access-token',
+          refreshToken: 'refresh-token',
+        },
+      })),
+      mount: vi.fn(async () => undefined),
+      refreshToken: vi.fn(),
+      request: vi.fn(),
+    };
+    const clientConfig = createClientConfig();
+
+    await expect(bootstrapPublClientSession({ adapter, clientConfig, storage })).resolves.toMatchObject({
+      ok: true,
+      status: 'ready',
+    });
+    await expect(requestPublMemberContacts({
+      adapter,
+      clientConfig,
+      identity: { identityKey: 'optional-contact-denial-session' },
+    })).rejects.toMatchObject({ code: 'permission-denied' });
+
+    expect(adapter.exchangeToken).toHaveBeenCalledTimes(1);
+    expect(adapter.request).not.toHaveBeenCalled();
+    expect(storage.getItem(PUBL_CLIENT_ACCESS_TOKEN_SESSION_KEY)).toBe('access-token');
+    expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBe('refresh-token');
+  });
+
+  it('distinguishes iframe and top-level browser contexts', () => {
+    const topLevelWindow = {};
+    topLevelWindow.self = topLevelWindow;
+    topLevelWindow.top = topLevelWindow;
+    const parentWindow = {};
+    const iframeWindow = { self: null, top: parentWindow };
+    iframeWindow.self = iframeWindow;
+
+    expect(isPublIframeContext(topLevelWindow)).toBe(false);
+    expect(isPublIframeContext(iframeWindow)).toBe(true);
+    expect(isPublIframeContext(null)).toBe(false);
   });
 
   it('returns a safe unavailable state when no SDK adapter exists', async () => {
@@ -126,6 +271,9 @@ describe('Publ iframe client SDK adapter', () => {
   it('adapts an injected SDK boundary without relying on postMessage', async () => {
     const source = {
       [PUBL_CLIENT_ADAPTER_GLOBAL]: {
+        authorize: vi.fn(async (permissionIds) => ({
+          data: { permissionIds },
+        })),
         exchangeToken: vi.fn(async () => ({
           data: {
             accessToken: 'access-token',
@@ -147,6 +295,11 @@ describe('Publ iframe client SDK adapter', () => {
     };
     const adapter = resolvePublSdkAdapter({ source });
 
+    await expect(adapter.authorize(['PM_CONTACTS'])).resolves.toEqual({
+      data: {
+        permissionIds: ['PM_CONTACTS'],
+      },
+    });
     await expect(adapter.exchangeToken()).resolves.toEqual({
       data: {
         accessToken: 'access-token',
@@ -167,6 +320,7 @@ describe('Publ iframe client SDK adapter', () => {
         permissionId: 'PM_CONTACTS',
       },
     });
+    expect(source[PUBL_CLIENT_ADAPTER_GLOBAL].authorize).toHaveBeenCalledWith(['PM_CONTACTS']);
   });
 
   it('clears stored tokens when refresh fails', async () => {
@@ -175,6 +329,7 @@ describe('Publ iframe client SDK adapter', () => {
       [PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY]: 'refresh-token',
     });
     const adapter = {
+      authorize: vi.fn(async () => ({ status: 'OK' })),
       refreshToken: vi.fn(async () => {
         throw new Error('refresh failed');
       }),
@@ -191,30 +346,13 @@ describe('Publ iframe client SDK adapter', () => {
     expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBeNull();
   });
 
-  it('keeps /publ-client on the iframe entry and standalone routes on StandaloneConsoleRoute', () => {
-    const publRouteSource = readSource('../../app/publ-client/page.jsx');
-    const publClientSource = readSource('../../features/publClient/PublClientBootstrap.jsx');
-    const sdkAdapterSource = readSource('../../features/publClient/sdkAdapter.js');
-    const messageSendRouteSource = readSource('../../app/(console)/message-send/page.jsx');
-
-    expect(publRouteSource).toContain('PublClientBootstrap');
-    expect(publRouteSource).not.toContain('LandingAuthControls');
-    expect(publClientSource).toContain('mode="embed"');
-    expect(publClientSource).toContain('hideAccountControl');
-    expect(`${publClientSource}\n${sdkAdapterSource}`).not.toContain('postMessage');
-    expect(messageSendRouteSource).toContain('<StandaloneConsoleRoute pageId="emails"');
-    expect(messageSendRouteSource).toContain('<MessageSendScreen />');
-    expect(messageSendRouteSource).not.toContain('PublClientBootstrap');
-  });
 });
 
 function createClientConfig() {
   return {
-    authorizationPermissionIds: [
+    bootstrapPermissionIds: [
       'PM_00000_EXCHANGE_TOKEN',
       'PM_00000_REFRESH_TOKEN',
-      'PM_SELLER_INFO',
-      'PM_CONTACTS',
     ],
     clientHash: 'client-hash',
     pAppCode: '3RD_A00003_TEST',
@@ -239,8 +377,4 @@ function createSessionStorage(initialValues = {}) {
       store.set(key, String(value));
     }),
   };
-}
-
-function readSource(relativePath) {
-  return readFileSync(new URL(relativePath, import.meta.url), 'utf8');
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Plus, Sparkles } from 'lucide-react';
 import { ApiCodeDrawer, PageHeader, Toolbar } from '../../components/layout/index.js';
 import { Button, EmptyState, SegmentedControl } from '../../components/ui/index.js';
@@ -10,9 +9,10 @@ import { AutomationRulesTable } from './automations/AutomationRulesTable.jsx';
 import { AutomationUnsentTable } from './automations/AutomationUnsentTable.jsx';
 import { PublEventsTable } from './automations/PublEventsTable.jsx';
 import { SelectableDataTable } from './audience/AudienceTable.jsx';
+import { useConsoleNavigation } from './ConsoleNavigationContext.jsx';
 
 export function ConfiguredConsolePage({ meta, onDocs }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
   const [activeTab, setActiveTab] = useState(() => getConsolePageTabValue(meta.tabs?.[0]));
   const isAutomationsPage = meta.variant === 'automations';
   const activeView = {
@@ -31,13 +31,13 @@ export function ConfiguredConsolePage({ meta, onDocs }) {
   const opensAutomationCreate = activeView.action === '자동화 생성';
   const opensPublEventCreate = activeView.action === '이벤트 생성';
   const openTemplateCreatePage = opensTemplateCreate
-    ? () => router.push('/templates/alimtalk/new')
+    ? () => navigation.push('/templates/alimtalk/new')
     : undefined;
   const openAutomationCreatePage = opensAutomationCreate
-    ? () => router.push('/automations/new')
+    ? () => navigation.push('/automations/new')
     : undefined;
   const openPublEventCreatePage = opensPublEventCreate
-    ? () => router.push('/automations/publ-events/new')
+    ? () => navigation.push('/automations/publ-events/new')
     : undefined;
   const openActionPage = openTemplateCreatePage ?? openAutomationCreatePage ?? openPublEventCreatePage;
 

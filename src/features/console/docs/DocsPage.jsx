@@ -4,8 +4,10 @@ import { X } from 'lucide-react';
 import { CodeGroup, DocsCallout, DocsCard, DocsCardGrid, DocsSection } from '../../../components/docs/index.js';
 import { PageHeader } from '../../../components/layout/index.js';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../../components/ui/index.js';
+import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 
 export function DocsPage({ meta }) {
+  const navigation = useConsoleNavigation();
   const snippets = [
     {
       code: `curl -X POST https://api.resend.com/emails \\
@@ -69,10 +71,10 @@ export function DocsPage({ meta }) {
 
           <DocsSection id="next-steps" title="Next steps">
             <DocsCardGrid>
-              <DocsCard href="/message-send" meta="Console" title="메시지 발송">
+              <DocsCard href={navigation.href('/message-send')} meta="Console" title="메시지 발송">
                 문자와 카카오 메시지 발송 화면으로 이동합니다.
               </DocsCard>
-              <DocsCard href="/logs" meta="Dashboard" title="발송기록">
+              <DocsCard href={navigation.href('/logs')} meta="Dashboard" title="발송기록">
                 발송 요청과 전달 결과를 확인합니다.
               </DocsCard>
             </DocsCardGrid>

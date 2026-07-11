@@ -1,10 +1,82 @@
 'use client';
 
-import { useMemo } from 'react';
-import { Ban, Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, ConfirmationDialog, DataTableV2, IconButton, useToast } from '../../../components/ui/index.js';
+import { useMemo, useState } from 'react';
+import { Ban, Copy, MoreHorizontal, Pencil, Sparkles, Trash2 } from 'lucide-react';
+import { PageHeader } from '../../../components/layout/index.js';
+import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, ConfirmationDialog, DataTableV2, EmptyState, IconButton, SearchField, SegmentedControl, useToast } from '../../../components/ui/index.js';
+import { usePublMessageRecipients } from '../../publClient/usePublMessageRecipients.js';
 
 const SELECTABLE_TABLE_PAGE_SIZE_OPTIONS = [40, 80, 120];
+
+export function PublAudiencePage() {
+  const [activeTab, setActiveTab] = useState('contacts');
+  const [searchValue, setSearchValue] = useState('');
+  const publRecipients = usePublMessageRecipients();
+  const contactsSourceState = publRecipients.contactsSourceState;
+  const normalizedSearch = searchValue.trim().toLocaleLowerCase('ko-KR');
+  const rows = publRecipients.contacts.filter((contact) => (
+    !normalizedSearch
+    || [contact.label, contact.detail, contact.externalId]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('ko-KR')
+      .includes(normalizedSearch)
+  ));
+
+  return (
+    <section className="page-frame publ-audience-page">
+      <PageHeader title="수신자" />
+      <SegmentedControl
+        items={[
+          { label: 'Publ 수신자', value: 'contacts' },
+          { label: 'Publ 세그먼트', value: 'segments' },
+        ]}
+        onValueChange={setActiveTab}
+        value={activeTab}
+      />
+
+      {activeTab === 'contacts' ? (
+        <>
+          <div className="publ-audience-toolbar">
+            <SearchField
+              aria-label="Publ 수신자 검색"
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="이름, 전화번호, Publ ID 검색"
+              value={searchValue}
+            />
+          </div>
+          <DataTableV2
+            columns={[
+              { accessor: 'label', header: '수신자' },
+              { accessor: 'value', cell: ({ value }) => <code>{value}</code>, header: '휴대폰' },
+              { accessor: (row) => row.externalId || '-', cell: ({ value }) => <code>{value}</code>, header: 'Publ ID' },
+            ]}
+            data={rows}
+            empty={<span className="admin-empty-row">{getPublAudienceEmptyMessage(contactsSourceState, normalizedSearch)}</span>}
+            getRowId={(row) => row.externalId || row.value}
+            loading={contactsSourceState === 'loading'}
+            loadingSlot={<span className="admin-state-row">Publ 수신자를 불러오는 중입니다.</span>}
+            pagination
+            tableClassName="console-data-table-v2 publ-audience-data-table"
+          />
+        </>
+      ) : (
+        <EmptyState
+          copy="Publ 세그먼트 SDK 권한이 추가되면 이 화면에서 조회하고 발송 대상으로 선택할 수 있습니다."
+          icon={Sparkles}
+          title="Publ 세그먼트 연동 준비 중"
+        />
+      )}
+    </section>
+  );
+}
+
+function getPublAudienceEmptyMessage(state, searchValue) {
+  if (state === 'permission-denied') return 'Publ 수신자 조회 권한이 없습니다';
+  if (state === 'error') return 'Publ 수신자를 불러오지 못했습니다.';
+  if (searchValue) return '검색 조건에 맞는 Publ 수신자가 없습니다.';
+  return '전화번호가 등록된 Publ 수신자가 없습니다.';
+}
 
 function getStatusTone(cell) {
   if (['활성', '성공'].includes(cell)) {

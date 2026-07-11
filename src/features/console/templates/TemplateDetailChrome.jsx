@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   ChevronDown,
   ChevronLeft,
@@ -17,6 +15,7 @@ import {
   ActionMenuTrigger,
   Badge,
 } from '../../../components/ui/index.js';
+import { ConsoleLink, useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import {
   TEMPLATE_DETAIL_TABS,
   buildSummaryItems,
@@ -35,9 +34,9 @@ export function TemplateHeader({ channelView, detail, onCopyCode, templateCode }
         <h1 id="template-detail-title" title={title}>{title}</h1>
       </div>
       <div className="resend-domain-actions template-detail-actions">
-        <Link aria-label="템플릿 목록으로 돌아가기" className="resend-icon-button" href="/templates">
+        <ConsoleLink aria-label="템플릿 목록으로 돌아가기" className="resend-icon-button" href="/templates">
           <ChevronLeft aria-hidden="true" size={16} />
-        </Link>
+        </ConsoleLink>
         <button aria-label="템플릿 코드 복사" className="resend-icon-button" onClick={onCopyCode} type="button">
           <Copy aria-hidden="true" size={15} />
         </button>
@@ -107,7 +106,7 @@ export function TemplateDetailStatus({ copy, onRetry, title, tone }) {
 }
 
 function TemplateUseAction({ detail }) {
-  const router = useRouter();
+  const navigation = useConsoleNavigation();
 
   if (!detail) {
     return <button className="resend-primary-button" disabled type="button">템플릿 사용</button>;
@@ -115,9 +114,9 @@ function TemplateUseAction({ detail }) {
 
   if (detail.channelView?.apiChannel !== 'brand-message') {
     return (
-      <Link className="resend-primary-button template-detail-primary-link" href={buildUseTemplateHref(detail, 'use')}>
+      <ConsoleLink className="resend-primary-button template-detail-primary-link" href={buildUseTemplateHref(detail, 'use')}>
         발송에 사용
-      </Link>
+      </ConsoleLink>
     );
   }
 
@@ -133,14 +132,14 @@ function TemplateUseAction({ detail }) {
         <ActionMenuItem
           description="templateCode로 템플릿 발송"
           leadingVisual={<Send size={16} />}
-          onSelect={() => router.push(buildUseTemplateHref(detail, 'use'))}
+          onSelect={() => navigation.push(buildUseTemplateHref(detail, 'use'))}
         >
           그대로 사용
         </ActionMenuItem>
         <ActionMenuItem
           description="내용을 가져와 자유형으로 수정"
           leadingVisual={<SquarePen size={16} />}
-          onSelect={() => router.push(buildUseTemplateHref(detail, 'start'))}
+          onSelect={() => navigation.push(buildUseTemplateHref(detail, 'start'))}
         >
           복사해서 편집
         </ActionMenuItem>

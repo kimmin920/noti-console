@@ -18,6 +18,7 @@ import reservationsAnimation from '../../nav-lotties/reservations.json';
 import settingsAnimation from '../../nav-lotties/settings.json';
 import templatesAnimation from '../../nav-lotties/templates.json';
 import { navItems, sidebarPanelSize, sidebarPushSize } from './consoleConfig.js';
+import { useConsoleNavigation } from './ConsoleNavigationContext.jsx';
 import { useCurrentActorQuery } from './messageSend/queries.js';
 import { getConsoleNavigationPageId } from './routing.js';
 
@@ -366,9 +367,10 @@ function Topbar({ docsHref, getPageHref }) {
 }
 
 function useVisibleNavItems() {
+  const navigation = useConsoleNavigation();
   const { isSignedIn } = useUser();
-  const currentActorQuery = useCurrentActorQuery({ enabled: isSignedIn === true });
-  const isOperator = isSignedIn === true && Boolean(currentActorQuery.data?.user?.isOperator);
+  const currentActorQuery = useCurrentActorQuery({ enabled: navigation.mode === 'embed' || isSignedIn === true });
+  const isOperator = Boolean(currentActorQuery.data?.user?.isOperator);
 
   return navItems.filter((item) => !item.adminOnly || isOperator);
 }

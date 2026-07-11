@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import {
   AlertTriangle,
   ChevronLeft,
@@ -25,6 +24,7 @@ import {
   getMessageLogGroupStatus,
   getMessageLogStatus,
 } from './selectors.js';
+import { ConsoleLink } from '../ConsoleNavigationContext.jsx';
 
 export const MESSAGE_LOG_DETAIL_FAILURE_PAGE_SIZE = 100;
 
@@ -47,9 +47,9 @@ export function MessageLogGroupDetailHeader({
         <h1 id="message-log-detail-title" title={title}>{title}</h1>
       </div>
       <div className="resend-domain-actions message-log-detail-actions">
-        <Link aria-label="발송기록 목록으로 돌아가기" className="resend-icon-button" href={listHref}>
+        <ConsoleLink aria-label="발송기록 목록으로 돌아가기" className="resend-icon-button" href={listHref}>
           <ChevronLeft aria-hidden="true" size={16} />
-        </Link>
+        </ConsoleLink>
         <button aria-label="발송 묶음 ID 복사" className="resend-icon-button" onClick={onCopyGroupId} type="button">
           <Copy aria-hidden="true" size={15} />
         </button>
