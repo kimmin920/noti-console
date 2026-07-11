@@ -407,6 +407,7 @@ describe('automation unsent tab UI contract', () => {
     expect(automationRulesUiSource).toContain('disableMutation.mutateAsync');
     expect(automationRulesUiSource).toContain('archiveMutation.mutateAsync');
     expect(automationRulesUiSource).toContain('disabled={actionsDisabled || archived}');
+    expect(automationRulesUiSource).toContain("import { formatAutomationSendChannel } from './automationRuleDetailModel.js';");
   });
 
   it('declares automation rule detail/create/edit routes and shell routing', () => {

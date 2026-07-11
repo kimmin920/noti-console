@@ -5,6 +5,7 @@ import { Ban, CheckCircle2, ChevronDown, MoreHorizontal, Pencil, Trash2 } from '
 import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, Badge, ConfirmationDialog, DataTableV2, FilterSelect, IconButton, SearchField, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { AutomationTableLoadError } from './AutomationTableLoadError.jsx';
+import { formatAutomationSendChannel } from './automationRuleDetailModel.js';
 import { useAutomationRuleArchiveMutation, useAutomationRuleDisableMutation, useAutomationRuleEnableMutation, useAutomationRulesQuery } from './queries.js';
 import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 
