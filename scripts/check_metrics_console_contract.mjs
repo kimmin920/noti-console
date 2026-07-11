@@ -8,7 +8,7 @@ const PHASE = '46-metrics-console-hardening';
 const REQUIRED_FILES = [
   `phases/${PHASE}/current-state-audit.md`,
   `phases/${PHASE}/metrics-console-contract.md`,
-  'src/app/metrics/page.jsx',
+  'src/app/(console)/metrics/page.jsx',
   'src/app/api/metrics/summary/route.js',
   'src/features/console/consoleConfig.js',
   'src/features/console/routing.js',
@@ -53,7 +53,7 @@ async function checkPackageScript() {
 }
 
 async function checkRouteAndNavigation() {
-  const route = await readSource('src/app/metrics/page.jsx');
+  const route = await readSource('src/app/(console)/metrics/page.jsx');
   const apiRoute = await readSource('src/app/api/metrics/summary/route.js');
   const consoleConfig = await readSource('src/features/console/consoleConfig.js');
   const routing = await readSource('src/features/console/routing.js');

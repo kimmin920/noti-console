@@ -18,7 +18,6 @@ import reservationsAnimation from '../../nav-lotties/reservations.json';
 import settingsAnimation from '../../nav-lotties/settings.json';
 import templatesAnimation from '../../nav-lotties/templates.json';
 import { navItems, sidebarPanelSize, sidebarPushSize } from './consoleConfig.js';
-import { ConsolePages } from './ConsolePages.jsx';
 import { useConsoleNavigation } from './ConsoleNavigationContext.jsx';
 import { useCurrentActorQuery } from './messageSend/queries.js';
 import { getConsoleNavigationPageId } from './routing.js';
@@ -36,14 +35,11 @@ const navAnimations = {
 };
 
 export function AppShell({
-  activeMeta,
   activePage,
   children,
   docsHref,
   getPageHref,
   hideAccountControl,
-  onDocs,
-  pageProps,
 }) {
   const activeNavPage = getConsoleNavigationPageId(activePage);
 
@@ -57,14 +53,7 @@ export function AppShell({
       <div className="workspace">
         <Topbar docsHref={docsHref} getPageHref={getPageHref} />
         <main className="content">
-          <ConsoleShellContent
-            activeMeta={activeMeta}
-            activePage={activePage}
-            pageProps={pageProps}
-            onDocs={onDocs}
-          >
-            {children}
-          </ConsoleShellContent>
+          {children}
         </main>
       </div>
     </div>
@@ -72,14 +61,11 @@ export function AppShell({
 }
 
 export function EmbedShell({
-  activeMeta,
   activePage,
   children,
   docsHref,
   getPageHref,
   hideAccountControl,
-  onDocs,
-  pageProps,
 }) {
   const [sideMenuOpen, setSideMenuOpen] = useState(false);
   const activeNavPage = getConsoleNavigationPageId(activePage);
@@ -98,32 +84,10 @@ export function EmbedShell({
       />
       <div className="workspace">
         <main className="content">
-          <ConsoleShellContent
-            activeMeta={activeMeta}
-            activePage={activePage}
-            pageProps={pageProps}
-            onDocs={onDocs}
-          >
-            {children}
-          </ConsoleShellContent>
+          {children}
         </main>
       </div>
     </div>
-  );
-}
-
-function ConsoleShellContent({ activeMeta, activePage, children, onDocs, pageProps }) {
-  if (children !== undefined) {
-    return children;
-  }
-
-  return (
-    <ConsolePages
-      activePage={activePage}
-      meta={activeMeta}
-      onDocs={onDocs}
-      pageProps={pageProps}
-    />
   );
 }
 

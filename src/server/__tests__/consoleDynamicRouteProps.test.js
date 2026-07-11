@@ -10,8 +10,8 @@ const DYNAMIC_ROUTE_CASES = [
     pageProps: { automationDetail: { ruleId: 'rule-123' } },
     pathname: '/automations/rule-123',
     queryString: 'mode=embed',
-    routeSource: '../../app/automations/[ruleId]/page.jsx',
-    sourceNeedles: ['params', 'automationDetail', 'ruleId'],
+    routeSource: '../../app/(console)/automations/[ruleId]/page.jsx',
+    sourceNeedles: ['params', 'ruleId={ruleId}'],
   },
   {
     name: 'automation edit',
@@ -19,8 +19,8 @@ const DYNAMIC_ROUTE_CASES = [
     pageProps: { automationDetail: { ruleId: 'rule-123' } },
     pathname: '/automations/rule-123/edit',
     queryString: 'mode=embed&tab=review',
-    routeSource: '../../app/automations/[ruleId]/edit/page.jsx',
-    sourceNeedles: ['params', 'automationDetail', 'ruleId'],
+    routeSource: '../../app/(console)/automations/[ruleId]/edit/page.jsx',
+    sourceNeedles: ['params', 'ruleId={ruleId}'],
   },
   {
     name: 'PUBL event detail',
@@ -28,8 +28,8 @@ const DYNAMIC_ROUTE_CASES = [
     pageProps: { publEventDetail: { eventKey: 'ORDER_READY' } },
     pathname: '/automations/publ-events/ORDER_READY',
     queryString: 'mode=embed',
-    routeSource: '../../app/automations/publ-events/[eventKey]/page.jsx',
-    sourceNeedles: ['params', 'publEventDetail', 'eventKey'],
+    routeSource: '../../app/(console)/automations/publ-events/[eventKey]/page.jsx',
+    sourceNeedles: ['params', 'eventKey={resolvedParams.eventKey}'],
   },
   {
     name: 'reservation detail',
@@ -37,8 +37,8 @@ const DYNAMIC_ROUTE_CASES = [
     pageProps: { reservationDetail: { groupId: 'reservation-group-1' } },
     pathname: '/reservations/reservation-group-1',
     queryString: 'channel=sms&from=2026-07-01&to=2026-07-10',
-    routeSource: '../../app/reservations/[groupId]/page.jsx',
-    sourceNeedles: ['params', 'reservationDetail', 'groupId'],
+    routeSource: '../../app/(console)/reservations/[groupId]/page.jsx',
+    sourceNeedles: ['params', 'groupId={groupId}'],
   },
   {
     name: 'log detail',
@@ -46,8 +46,8 @@ const DYNAMIC_ROUTE_CASES = [
     pageProps: { logDetail: { groupId: 'log-group-1' } },
     pathname: '/logs/log-group-1',
     queryString: 'channel=sms&requestLocalId=req-1',
-    routeSource: '../../app/logs/[groupId]/page.jsx',
-    sourceNeedles: ['params', 'logDetail', 'groupId'],
+    routeSource: '../../app/(console)/logs/[groupId]/page.jsx',
+    sourceNeedles: ['params', 'groupId={groupId}'],
   },
   {
     name: 'template detail',
@@ -65,8 +65,8 @@ const DYNAMIC_ROUTE_CASES = [
     },
     pathname: '/templates/alimtalk/ORDER_READY',
     queryString: 'senderResourceId=sender-1&source=SENDER_PROFILE&sourceKey=sender-key-1',
-    routeSource: '../../app/templates/[channel]/[templateCode]/page.jsx',
-    sourceNeedles: ['params', 'templateDetail', 'channel', 'templateCode', 'query'],
+    routeSource: '../../app/(console)/templates/[channel]/[templateCode]/page.jsx',
+    sourceNeedles: ['params', 'channel={resolvedParams.channel}', 'templateCode={resolvedParams.templateCode}', 'query'],
   },
 ];
 
@@ -101,12 +101,11 @@ describe('console dynamic route props', () => {
       for (const needle of sourceNeedles) {
         expect(source).toContain(needle);
       }
-      expect(source).toContain('pageProps');
     }
   );
 
-  it('passes explicit dynamic props from ConsolePages to embed-supported leaf pages', () => {
-    const source = readSource('../../features/console/ConsolePages.jsx');
+  it('passes explicit dynamic props from the embed outlet to supported leaf pages', () => {
+    const source = readSource('../../features/console/ConsoleScreenOutlet.jsx');
 
     expect(source).toContain('const automationDetail = pageProps?.automationDetail');
     expect(source).toContain('const reservationDetail = pageProps?.reservationDetail');

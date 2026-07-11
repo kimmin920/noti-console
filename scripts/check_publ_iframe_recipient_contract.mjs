@@ -4,9 +4,10 @@ const files = {
   bootstrap: 'src/features/publClient/PublClientBootstrap.jsx',
   clientApi: 'src/features/console/messageSend/api.js',
   config: 'src/server/publPapp/clientConfig.js',
-  consolePages: 'src/features/console/ConsolePages.jsx',
+  consoleOutlet: 'src/features/console/ConsoleScreenOutlet.jsx',
   contract: 'docs/PUBL_IFRAME_RECIPIENT_CONTRACT.md',
   payloads: 'src/features/console/messageSend/payloads.js',
+  messageSend: 'src/features/console/messageSend/MessageSendPage.jsx',
   routeEntry: 'src/features/publClient/PublClientRouteEntry.jsx',
   recipientSelect: 'src/components/ui/RecipientSelect.jsx',
   recipientSource: 'src/features/publClient/usePublMessageRecipients.js',
@@ -28,8 +29,8 @@ checkIncludes(source.clientApi, "from '../../publClient/runtimeSession.js'", 're
 checkIncludes(source.runtimeSession, "const PUBL_CLIENT_PATH_PREFIX = '/publ-client'", 'Publ runtime is path-scoped');
 checkIncludes(source.sdkAdapter, 'clearPublClientTokens({ storage })', 'SDK bootstrap clears stale stored sessions');
 checkIncludes(source.config, 'TEST_MEMBER_CONTACTS_PERMISSION_ID', 'testflight contact permission is configurable');
-checkIncludes(source.consolePages, '<PublAudiencePage />', 'Publ embed has a dedicated audience view');
-checkIncludes(source.consolePages, 'recipientSelectProps={publRecipients.selectProps}', 'all message forms receive Publ recipient props');
+checkIncludes(source.consoleOutlet, '<PublAudiencePage />', 'Publ embed has a dedicated audience view');
+checkIncludes(source.messageSend, 'recipientSelectProps={publRecipients.selectProps}', 'all message forms receive Publ recipient props');
 checkIncludes(source.recipientSelect, 'sourceTabs = []', 'recipient selector supports independent source tabs');
 checkIncludes(source.recipientSource, "label: 'Publ 수신자'", 'recipient selector exposes Publ source labels');
 checkIncludes(source.payloads, "type === 'publ-contact'", 'Publ contacts expand as concrete recipients');

@@ -6,13 +6,13 @@ const PHASE = '44-settings-profile-tab';
 const REQUIRED_FILES = [
   `phases/${PHASE}/current-state-audit.md`,
   `phases/${PHASE}/settings-profile-tab-contract.md`,
-  'src/features/console/ConsolePages.jsx',
+  'src/features/console/settings/SettingsPage.jsx',
   'src/features/console/ConsoleShells.jsx',
   'src/features/console/consoleConfig.js',
   'src/features/console/routing.js',
   'src/features/console/tabQuery.js',
   'src/app/profile/page.jsx',
-  'src/app/settings/page.jsx',
+  'src/app/(console)/settings/page.jsx',
 ];
 
 const sourceCache = new Map();
@@ -42,7 +42,7 @@ async function checkPackageScript() {
 }
 
 async function checkSettingsTab() {
-  const consolePages = await readSource('src/features/console/ConsolePages.jsx');
+  const consolePages = await readSource('src/features/console/settings/SettingsPage.jsx');
   const tabQuery = await readSource('src/features/console/tabQuery.js');
   const settingsTabs = extractArrayLiteral(consolePages, 'SETTINGS_TABS');
   const settingsQueryMap = extractObjectLiteral(tabQuery, 'SETTINGS_TAB_QUERY_VALUES');

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const CONSOLE_SOURCE = readSource('../../features/console/ConsolePages.jsx');
+const CONSOLE_SOURCE = readSource('../../features/console/messageLogs/MessageLogsPage.jsx');
 const DETAIL_PAGE_SOURCE = readSource('../../features/console/messageLogs/MessageLogGroupDetailPage.jsx');
 const MESSAGE_LOG_API_SOURCE = readSource('../../features/console/messageLogs/api.js');
 const MESSAGE_LOG_MUTATIONS_SOURCE = readSource('../../features/console/messageLogs/mutations.js');

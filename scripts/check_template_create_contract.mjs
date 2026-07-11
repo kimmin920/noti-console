@@ -130,7 +130,7 @@ async function checkAlimtalkCreateWiring() {
 async function checkBrandCreateReuse() {
   const brandRouteSource = await readSource('src/app/api/templates/brand/route.js');
   const mutationSource = await readSource('src/features/console/messageSend/mutations.js');
-  const consolePagesSource = await readSource('src/features/console/ConsolePages.jsx');
+  const consolePagesSource = await readSource('src/features/console/messageSend/MessageSendPage.jsx');
   const templatePageSource = await readSource('src/features/console/templates/TemplatePage.jsx');
 
   assertIncludes(brandRouteSource, 'export async function POST(request)', 'Brand Message route still exposes POST');

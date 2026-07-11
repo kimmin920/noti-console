@@ -12,7 +12,7 @@ describe('Publ client actor UI boundaries', () => {
   });
 
   it('hides Clerk profile/account controls from Publ settings while leaving other settings tabs', () => {
-    const pagesSource = readSource('../../features/console/ConsolePages.jsx');
+    const pagesSource = readSource('../../features/console/settings/SettingsPage.jsx');
 
     expect(pagesSource).toContain("navigation.mode === 'embed'");
     expect(pagesSource).toContain('getVisibleSettingsTabs');

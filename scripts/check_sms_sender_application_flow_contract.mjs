@@ -23,7 +23,7 @@ const files = {
   smsSenderNumberAdd: path.join(rootDir, 'src/components/sender-resources/SmsSenderNumberAdd.jsx'),
   componentStyles: path.join(rootDir, 'src/styles/components.css'),
   playgroundRegistry: path.join(rootDir, 'src/playground/componentRegistry.jsx'),
-  consolePages: path.join(rootDir, 'src/features/console/ConsolePages.jsx'),
+  consolePages: path.join(rootDir, 'src/features/console/settings/SettingsPage.jsx'),
   mutations: path.join(rootDir, 'src/features/console/messageSend/mutations.js'),
   senderResourceService: path.join(rootDir, 'src/server/senderResources/service.js'),
   senderResourceApprovalTest: path.join(rootDir, 'src/server/__tests__/senderResourceApproval.test.js'),

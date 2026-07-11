@@ -4,10 +4,11 @@ import { readFile } from 'node:fs/promises';
 
 const REQUIRED_FILES = [
   'phases/51-message-log-detail-resend-content-redesign/resend-content-design-contract.md',
-  'src/app/logs/[groupId]/page.jsx',
+  'src/app/(console)/logs/[groupId]/page.jsx',
   'src/features/console/routing.js',
   'src/features/console/consoleConfig.js',
-  'src/features/console/ConsolePages.jsx',
+  'src/features/console/ConsoleScreenOutlet.jsx',
+  'src/features/console/messageLogs/MessageLogsPage.jsx',
   'src/features/console/messageLogs/MessageLogGroupDetailPage.jsx',
   'src/features/console/messageLogs/MessageLogGroupDetailSections.jsx',
   'src/server/messageLogs/repository.js',
@@ -45,13 +46,13 @@ async function checkPackageScript() {
 }
 
 async function checkRoutingContract() {
-  const appRoute = await readSource('src/app/logs/[groupId]/page.jsx');
+  const appRoute = await readSource('src/app/(console)/logs/[groupId]/page.jsx');
   const routing = await readSource('src/features/console/routing.js');
   const config = await readSource('src/features/console/consoleConfig.js');
-  const consolePages = await readSource('src/features/console/ConsolePages.jsx');
+  const consolePages = await readSource('src/features/console/ConsoleScreenOutlet.jsx');
 
   assertIncludes(appRoute, 'pageId="log-detail"', 'log detail route renders ConsoleRoute with log-detail page id');
-  assertIncludes(appRoute, 'pageProps={{ logDetail: { groupId } }}', 'log detail route passes group id page props');
+  assertIncludes(appRoute, '<MessageLogGroupDetailPage groupId={groupId} />', 'log detail route passes the group id directly');
   assertIncludes(routing, "'log-detail': '/logs'", 'routing maps log-detail to logs path');
   assertIncludes(routing, "normalizedPageId === 'log-detail'", 'routing keeps log-detail under logs navigation');
   assertIncludes(config, "'log-detail': { title: '발송 묶음 상세' }", 'console config has log-detail metadata');
@@ -60,7 +61,7 @@ async function checkRoutingContract() {
 }
 
 async function checkListNavigationContract() {
-  const consolePages = await readSource('src/features/console/ConsolePages.jsx');
+  const consolePages = await readSource('src/features/console/messageLogs/MessageLogsPage.jsx');
 
   assertIncludes(consolePages, 'getMessageLogGroupDetailHref({ filters, group: row, mode })', 'log list row action preserves list filters');
   assertIncludes(consolePages, "return `/logs/${encodeURIComponent(group.id)}?${params.toString()}`", 'log list row action links to group detail route');

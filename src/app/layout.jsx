@@ -10,7 +10,6 @@ import '../styles/template-detail.css';
 import '../styles/publ-event-detail.css';
 import { AppProviders } from './AppProviders.jsx';
 import { ToastProvider } from '../components/ui/Toast.jsx';
-import { ConsoleRootFrame } from '../features/console/ConsoleRootFrame.jsx';
 
 export const metadata = {
   title: 'NOTI',
@@ -42,7 +41,7 @@ export default function RootLayout({ children }) {
         <ClerkProvider dynamic>
           <AppProviders>
             <ToastProvider>
-              <ConsoleRootFrame>{children}</ConsoleRootFrame>
+              {children}
             </ToastProvider>
           </AppProviders>
         </ClerkProvider>

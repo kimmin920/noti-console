@@ -9,14 +9,16 @@ const REQUIRED_FILES = [
   'src/features/console/consoleConfig.js',
   'src/features/console/routing.js',
   'src/features/console/ConsoleShells.jsx',
-  'src/features/console/ConsolePages.jsx',
+  'src/features/console/ConsoleScreenOutlet.jsx',
+  'src/features/console/settings/SettingsPage.jsx',
+  'src/features/console/docs/DocsPage.jsx',
   'src/features/console/tabQuery.js',
   'src/app/domains/page.jsx',
   'src/app/domains/add/page.jsx',
   'src/app/domain-detail/page.jsx',
   'src/app/api-keys/page.jsx',
   'src/app/webhooks/page.jsx',
-  'src/app/docs/page.jsx',
+  'src/app/(console)/docs/page.jsx',
   'src/app/page.jsx',
 ];
 
@@ -103,7 +105,7 @@ async function checkSidebarShell() {
 }
 
 async function checkSettingsTabs() {
-  const consolePages = await readSource('src/features/console/ConsolePages.jsx');
+  const consolePages = await readSource('src/features/console/settings/SettingsPage.jsx');
   const tabQuery = await readSource('src/features/console/tabQuery.js');
   const settingsTabs = extractArrayLiteral(consolePages, 'SETTINGS_TABS');
   const settingsQueryMap = extractObjectLiteral(tabQuery, 'SETTINGS_TAB_QUERY_VALUES');
@@ -124,7 +126,10 @@ async function checkSettingsTabs() {
 }
 
 async function checkConsolePages() {
-  const source = await readSource('src/features/console/ConsolePages.jsx');
+  const source = [
+    await readSource('src/features/console/ConsoleScreenOutlet.jsx'),
+    await readSource('src/features/console/docs/DocsPage.jsx'),
+  ].join('\n');
 
   assertNotIncludes(source, 'DomainsAddPage', 'domain add console page import/branch is removed');
   assertNotIncludes(source, 'DomainsPage', 'domain console page import/branch is removed');
@@ -144,7 +149,7 @@ async function checkDirectRoutes() {
 }
 
 async function checkPreservedRoutes() {
-  const docsRoute = await readSource('src/app/docs/page.jsx');
+  const docsRoute = await readSource('src/app/(console)/docs/page.jsx');
 
   assertIncludes(docsRoute, 'pageId="docs"', 'docs route remains mounted');
 }
