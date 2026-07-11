@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, EmbedShell } from './ConsoleShells.jsx';
+import { ConsoleScreenOutlet } from './ConsoleScreenOutlet.jsx';
 import { pageMeta } from './consoleConfig.js';
 import {
   DEFAULT_CONSOLE_PAGE_ID,
@@ -38,14 +39,22 @@ export function MessagingConsole({
 
   const activeMeta = pageMeta[activePage] ?? pageMeta[DEFAULT_CONSOLE_PAGE_ID];
   const shellProps = {
-    activeMeta,
     activePage,
     docsHref: getPageHref('docs'),
     getPageHref,
     hideAccountControl,
-    onDocs: openDocs,
-    pageProps,
   };
 
-  return shellMode === 'embed' ? <EmbedShell {...shellProps} /> : <AppShell {...shellProps} />;
+  const screen = (
+    <ConsoleScreenOutlet
+      activePage={activePage}
+      meta={activeMeta}
+      onDocs={openDocs}
+      pageProps={pageProps}
+    />
+  );
+
+  return shellMode === 'embed'
+    ? <EmbedShell {...shellProps}>{screen}</EmbedShell>
+    : <AppShell {...shellProps}>{screen}</AppShell>;
 }

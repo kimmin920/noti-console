@@ -1,11 +1,9 @@
 'use client';
 
 import { useCallback, useSyncExternalStore } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { AppShell, EmbedShell } from './ConsoleShells.jsx';
-import { pageMeta } from './consoleConfig.js';
 import {
-  DEFAULT_CONSOLE_PAGE_ID,
   getConsolePageHref,
   getConsolePageIdFromPathname,
   normalizeShellMode,
@@ -13,7 +11,6 @@ import {
 
 export function ConsoleRootFrame({ children }) {
   const pathname = usePathname();
-  const router = useRouter();
   const searchText = useSyncExternalStore(
     subscribeToLocationChange,
     getBrowserLocationSearch,
@@ -27,22 +24,15 @@ export function ConsoleRootFrame({ children }) {
       pageId: nextPageId,
     })
   ), [shellMode]);
-  const openDocs = useCallback(() => {
-    router.push(getPageHref('docs'));
-  }, [getPageHref, router]);
-
   if (!activePage) {
     return children;
   }
 
-  const activeMeta = pageMeta[activePage] ?? pageMeta[DEFAULT_CONSOLE_PAGE_ID];
   const shellProps = {
-    activeMeta,
     activePage,
     docsHref: getPageHref('docs'),
     getPageHref,
     hideAccountControl: false,
-    onDocs: openDocs,
   };
 
   return shellMode === 'embed' ? (

@@ -19,7 +19,7 @@ const AUTOMATION_RULES_ROUTE_PATH = 'src/server/automations/rulesRoute.js';
 const AUTOMATION_SERVICE_PATH = 'src/server/automations/service.js';
 const AUTOMATION_REPOSITORY_PATH = 'src/server/automations/repository.js';
 const CONSOLE_CONFIG_PATH = 'src/features/console/consoleConfig.js';
-const CONSOLE_PAGES_PATH = 'src/features/console/ConsolePages.jsx';
+const CONSOLE_PAGES_PATH = 'src/features/console/automations/AutomationRulesTable.jsx';
 const COMPONENTS_CSS_PATH = 'src/styles/components.css';
 const STEP_PATHS = Array.from({ length: 6 }, (_, index) => `phases/${PHASE}/step${index}.md`);
 const DELETED_PRODUCTION_UI_PATHS = [

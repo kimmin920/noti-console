@@ -50,7 +50,7 @@ async function checkPackageScript() {
 
 async function checkUsageCopyAndLimits() {
   const usageSource = await readSource('src/features/console/settings/UsageSettingsContent.jsx');
-  const consoleSource = await readSource('src/features/console/ConsolePages.jsx');
+  const consoleSource = await readSource('src/features/console/settings/SettingsPage.jsx');
 
   assertNotIncludes(usageSource, 'Resend API', 'usage tab must not mention Resend API');
   assertNotIncludes(usageSource, 'SMTP 인터페이스', 'usage tab must not mention SMTP interface');
@@ -75,7 +75,7 @@ async function checkFrontendWiring() {
   const mutations = await readSource('src/features/console/messageSend/mutations.js');
   const adminPanel = await readSource('src/features/console/settings/AdminLimitIncreaseRequestsPanel.jsx');
   const adminTabs = await readSource('src/features/console/settings/AdminRequestTabs.jsx');
-  const consoleSource = await readSource('src/features/console/ConsolePages.jsx');
+  const consoleSource = await readSource('src/features/console/admin/SenderResourceApplicationsPage.jsx');
 
   assertIncludes(usageSource, 'useLimitIncreaseRequestsQuery()', 'usage page reads user limit requests');
   assertIncludes(usageSource, 'useLimitIncreaseRequestCreateMutation()', 'usage page submits limit requests');

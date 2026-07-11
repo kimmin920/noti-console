@@ -17,7 +17,7 @@ const files = {
   playgroundShell: path.join(rootDir, 'src/playground/Playground.jsx'),
   playgroundRegistry: path.join(rootDir, 'src/playground/componentRegistry.jsx'),
   templateRoute: path.join(rootDir, 'src/app/api/templates/brand/route.js'),
-  consolePages: path.join(rootDir, 'src/features/console/ConsolePages.jsx'),
+  consolePages: path.join(rootDir, 'src/features/console/messageSend/MessageSendPage.jsx'),
   brandForm: path.join(rootDir, 'src/components/ui/BrandMessageSendForm.jsx'),
   payloadBuilder: path.join(rootDir, 'src/features/console/messageSend/payloads.js'),
   mutations: path.join(rootDir, 'src/features/console/messageSend/mutations.js'),

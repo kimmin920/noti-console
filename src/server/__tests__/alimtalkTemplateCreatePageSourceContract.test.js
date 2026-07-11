@@ -74,9 +74,9 @@ describe('AlimTalk template create page source-control contract', () => {
   it('uses the Resend-form design in production while keeping playground coverage', () => {
     const newDesign = readSource('../../features/console/alimtalkTemplates/AlimtalkTemplateCreatePageNewDesign.jsx');
     const fileUploadField = readSource('../../components/ui/FileUploadField.jsx');
-    const consolePages = readSource('../../features/console/ConsolePages.jsx');
+    const consolePages = readSource('../../features/console/ConsoleScreenOutlet.jsx');
     const registry = readSource('../../playground/componentRegistry.jsx');
-    const productionRoute = readSource('../../app/templates/alimtalk/new/page.jsx');
+    const productionRoute = readSource('../../app/(console)/templates/alimtalk/new/page.jsx');
 
     for (const primitive of [
       'ChoiceCardGroup',

@@ -191,18 +191,19 @@ describe('Publ iframe client SDK adapter', () => {
     expect(storage.getItem(PUBL_CLIENT_REFRESH_TOKEN_SESSION_KEY)).toBeNull();
   });
 
-  it('keeps /publ-client on the iframe entry and standalone routes on ConsoleRoute', () => {
+  it('keeps /publ-client on the iframe entry and standalone routes on StandaloneConsoleRoute', () => {
     const publRouteSource = readSource('../../app/publ-client/page.jsx');
     const publClientSource = readSource('../../features/publClient/PublClientBootstrap.jsx');
     const sdkAdapterSource = readSource('../../features/publClient/sdkAdapter.js');
-    const messageSendRouteSource = readSource('../../app/message-send/page.jsx');
+    const messageSendRouteSource = readSource('../../app/(console)/message-send/page.jsx');
 
     expect(publRouteSource).toContain('PublClientBootstrap');
     expect(publRouteSource).not.toContain('LandingAuthControls');
     expect(publClientSource).toContain('mode="embed"');
     expect(publClientSource).toContain('hideAccountControl');
     expect(`${publClientSource}\n${sdkAdapterSource}`).not.toContain('postMessage');
-    expect(messageSendRouteSource).toContain('<ConsoleRoute pageId="emails"');
+    expect(messageSendRouteSource).toContain('<StandaloneConsoleRoute pageId="emails"');
+    expect(messageSendRouteSource).toContain('<MessageSendScreen />');
     expect(messageSendRouteSource).not.toContain('PublClientBootstrap');
   });
 });

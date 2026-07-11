@@ -12,11 +12,11 @@ const TOP_LEVEL_INDEX_PATH = 'phases/index.json';
 const PACKAGE_PATH = 'package.json';
 const PUBL_VIEWS_PATH = 'src/server/publEvents/views.js';
 const PUBL_QUERY_PATH = 'src/features/console/publEvents/queries.js';
-const CONSOLE_PAGES_PATH = 'src/features/console/ConsolePages.jsx';
+const CONSOLE_PAGES_PATH = 'src/features/console/ConsoleScreenOutlet.jsx';
 const ROUTING_PATH = 'src/features/console/routing.js';
 const CONSOLE_CONFIG_PATH = 'src/features/console/consoleConfig.js';
 const API_DETAIL_ROUTE_PATH = 'src/app/api/publ-events/[eventKey]/route.js';
-const APP_DETAIL_ROUTE_PATH = 'src/app/automations/publ-events/[eventKey]/page.jsx';
+const APP_DETAIL_ROUTE_PATH = 'src/app/(console)/automations/publ-events/[eventKey]/page.jsx';
 const DETAIL_PAGE_PATH = 'src/features/console/publEvents/PublEventDetailPage.jsx';
 const DETAIL_SECTIONS_PATH = 'src/features/console/publEvents/PublEventDetailSections.jsx';
 const DETAIL_MODEL_PATH = 'src/features/console/publEvents/publEventDetailModel.js';
@@ -412,7 +412,7 @@ async function assertProductionRoutesDoNotImportPlayground() {
 
 async function assertNoPrimerPackageImports() {
   const sourceFiles = [
-    ...(await listFiles('src/app/automations').catch(() => [])),
+    ...(await listFiles('src/app/(console)/automations').catch(() => [])),
     ...(await listFiles('src/app/api/publ-events').catch(() => [])),
     ...(await listFiles('src/features/console/publEvents').catch(() => [])),
     CONSOLE_PAGES_PATH,

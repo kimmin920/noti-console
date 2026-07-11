@@ -24,9 +24,11 @@ const REQUIRED_FILES = [
   'src/features/console/automations/automationRuleDetailModel.js',
   'src/features/console/automations/AutomationRuleEditorForm.jsx',
   'src/features/console/automations/builder/AutomationTriggerNode.jsx',
-  'src/app/automations/[ruleId]/page.jsx',
-  'src/app/automations/[ruleId]/edit/page.jsx',
-  'src/features/console/ConsolePages.jsx',
+  'src/app/(console)/automations/[ruleId]/page.jsx',
+  'src/app/(console)/automations/[ruleId]/edit/page.jsx',
+  'src/features/console/ConsoleScreenOutlet.jsx',
+  'src/features/console/ConfiguredConsolePage.jsx',
+  'src/features/console/automations/AutomationRulesTable.jsx',
   'src/features/console/routing.js',
   'src/features/console/publEvents/PublEventDetailChrome.jsx',
   'src/features/console/publEvents/PublEventDetailPage.jsx',
@@ -230,9 +232,13 @@ async function checkAutomationRuleDetailIntegration() {
   const detailPage = await readSource('src/features/console/automations/AutomationRuleDetailPage.jsx');
   const detailSections = await readSource('src/features/console/automations/AutomationRuleDetailSections.jsx');
   const editorForm = await readSource('src/features/console/automations/AutomationRuleEditorForm.jsx');
-  const consolePages = await readSource('src/features/console/ConsolePages.jsx');
-  const detailRoute = await readSource('src/app/automations/[ruleId]/page.jsx');
-  const editRoute = await readSource('src/app/automations/[ruleId]/edit/page.jsx');
+  const consolePages = [
+    await readSource('src/features/console/ConsoleScreenOutlet.jsx'),
+    await readSource('src/features/console/ConfiguredConsolePage.jsx'),
+    await readSource('src/features/console/automations/AutomationRulesTable.jsx'),
+  ].join('\n');
+  const detailRoute = await readSource('src/app/(console)/automations/[ruleId]/page.jsx');
+  const editRoute = await readSource('src/app/(console)/automations/[ruleId]/edit/page.jsx');
   const routing = await readSource('src/features/console/routing.js');
 
   assertIncludes(detailRoute, 'pageId="automations-detail"', 'automation rule dynamic route opens read-only detail');

@@ -10,7 +10,7 @@ const REQUIRED_FILES = [
   `phases/${PHASE}/sms-sender-duplicate-guard-contract.md`,
   'src/components/sender-resources/smsSenderNumberDuplicateGuard.js',
   'src/components/sender-resources/SmsSenderNumberAdd.jsx',
-  'src/features/console/ConsolePages.jsx',
+  'src/features/console/settings/SettingsPage.jsx',
   'src/server/senderResources/service.js',
   'src/server/__tests__/senderResourceApproval.test.js',
 ];
@@ -105,7 +105,7 @@ function checkDuplicateHelper() {
 
 async function checkUiWiring() {
   const componentSource = await readSource('src/components/sender-resources/SmsSenderNumberAdd.jsx');
-  const pageSource = await readSource('src/features/console/ConsolePages.jsx');
+  const pageSource = await readSource('src/features/console/settings/SettingsPage.jsx');
 
   assertIncludes(componentSource, 'getSmsSenderNumberDuplicateIssue', 'SMS sender add component uses duplicate helper');
   assertIncludes(componentSource, 'duplicateIssue?.message', 'SMS sender add component renders duplicate issue copy');

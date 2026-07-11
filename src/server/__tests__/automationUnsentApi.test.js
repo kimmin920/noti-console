@@ -367,12 +367,7 @@ describe('automation unsent tab UI contract', () => {
     const configSource = readSource('../../features/console/consoleConfig.js');
     const apiSource = readSource('../../features/console/automations/apiClient.js');
     const querySource = readSource('../../features/console/automations/queries.js');
-    const consoleSource = readSource('../../features/console/ConsolePages.jsx');
-    const automationRulesUiSource = extractSourceBetween(
-      consoleSource,
-      'function AutomationDataTable',
-      'function SelectableDataTable'
-    );
+    const automationRulesUiSource = readSource('../../features/console/automations/AutomationRulesTable.jsx');
 
     expect(configSource).toContain("variant: 'automations'");
     expect(configSource).not.toContain('welcome-sequence');
@@ -386,17 +381,13 @@ describe('automation unsent tab UI contract', () => {
   });
 
   it('keeps only the working automation rule table search input', () => {
-    const consoleSource = readSource('../../features/console/ConsolePages.jsx');
+    const consoleSource = readSource('../../features/console/ConfiguredConsolePage.jsx');
     const consolePageSource = extractSourceBetween(
       consoleSource,
-      'function ConsolePage',
+      'function ConfiguredConsolePage',
       'function getConsolePageTabValue'
     );
-    const automationRulesUiSource = extractSourceBetween(
-      consoleSource,
-      'function AutomationDataTable',
-      'function filterAutomationRules'
-    );
+    const automationRulesUiSource = readSource('../../features/console/automations/AutomationRulesTable.jsx');
 
     expect(consolePageSource).toContain('const shouldShowToolbar = !isAutomationsPage;');
     expect(consolePageSource).toContain('{shouldShowToolbar ? (');
@@ -406,12 +397,7 @@ describe('automation unsent tab UI contract', () => {
 
   it('wires automation rule lifecycle actions to mutations and invalidates rule queries', () => {
     const querySource = readSource('../../features/console/automations/queries.js');
-    const consoleSource = readSource('../../features/console/ConsolePages.jsx');
-    const automationRulesUiSource = extractSourceBetween(
-      consoleSource,
-      'function AutomationDataTable',
-      'function SelectableDataTable'
-    );
+    const automationRulesUiSource = readSource('../../features/console/automations/AutomationRulesTable.jsx');
 
     expect(querySource).toContain('useAutomationRuleEnableMutation');
     expect(querySource).toContain('useAutomationRuleDisableMutation');
@@ -424,12 +410,14 @@ describe('automation unsent tab UI contract', () => {
   });
 
   it('declares automation rule detail/create/edit routes and shell routing', () => {
-    const newRouteSource = readSource('../../app/automations/new/page.jsx');
-    const detailRouteSource = readSource('../../app/automations/[ruleId]/page.jsx');
-    const editRouteSource = readSource('../../app/automations/[ruleId]/edit/page.jsx');
+    const newRouteSource = readSource('../../app/(console)/automations/new/page.jsx');
+    const detailRouteSource = readSource('../../app/(console)/automations/[ruleId]/page.jsx');
+    const editRouteSource = readSource('../../app/(console)/automations/[ruleId]/edit/page.jsx');
     const routingSource = readSource('../../features/console/routing.js');
     const configSource = readSource('../../features/console/consoleConfig.js');
-    const consoleSource = readSource('../../features/console/ConsolePages.jsx');
+    const consoleSource = readSource('../../features/console/ConfiguredConsolePage.jsx');
+    const automationRulesSource = readSource('../../features/console/automations/AutomationRulesTable.jsx');
+    const embedOutletSource = readSource('../../features/console/ConsoleScreenOutlet.jsx');
 
     expect(newRouteSource).toContain('pageId="automations-new"');
     expect(detailRouteSource).toContain('pageId="automations-detail"');
@@ -441,12 +429,15 @@ describe('automation unsent tab UI contract', () => {
     expect(configSource).toContain("'automations-new': { title: '자동화 생성' }");
     expect(configSource).toContain("'automations-detail': { title: '자동화 상세' }");
     expect(configSource).toContain("'automations-edit': { title: '자동화 편집' }");
-    expect(consoleSource).toContain('<AutomationRuleDetailPage />');
-    expect(consoleSource).toContain('<AutomationRuleEditorPage mode="create" />');
-    expect(consoleSource).toContain('<AutomationRuleEditorPage mode="edit" />');
+    expect(detailRouteSource).toContain('<AutomationRuleDetailScreen />');
+    expect(newRouteSource).toContain('<AutomationRuleEditorPage mode="create" />');
+    expect(editRouteSource).toContain('<AutomationRuleEditorPage mode="edit" />');
+    expect(embedOutletSource).toContain('<AutomationRuleDetailPage />');
+    expect(embedOutletSource).toContain('<AutomationRuleEditorPage mode="create" />');
+    expect(embedOutletSource).toContain('<AutomationRuleEditorPage mode="edit" />');
     expect(consoleSource).toContain("router.push('/automations/new')");
-    expect(consoleSource).toContain('router.push(`/automations/${encodeURIComponent(row.id)}`)');
-    expect(consoleSource).toContain('router.push(`/automations/${encodeURIComponent(row.id)}/edit`)');
+    expect(automationRulesSource).toContain('router.push(`/automations/${encodeURIComponent(row.id)}`)');
+    expect(automationRulesSource).toContain('router.push(`/automations/${encodeURIComponent(row.id)}/edit`)');
   });
 
   it('keeps the automation editor shell reducer-backed and wired to create/update APIs', () => {
@@ -680,12 +671,7 @@ describe('automation unsent tab UI contract', () => {
   });
 
   it('does not render raw payload, encrypted payload, or raw recipient fields in the unsent tab', () => {
-    const consoleSource = readSource('../../features/console/ConsolePages.jsx');
-    const automationUiSource = extractSourceBetween(
-      consoleSource,
-      'function AutomationUnsentDataTable',
-      'function PublEventLoadError'
-    );
+    const automationUiSource = readSource('../../features/console/automations/AutomationUnsentTable.jsx');
     const automationFeatureSource = [
       automationUiSource,
       readSource('../../features/console/automations/apiClient.js'),
@@ -699,12 +685,7 @@ describe('automation unsent tab UI contract', () => {
   });
 
   it('renders the unsent table as a selectable table with bulk retry and dismiss actions', () => {
-    const consoleSource = readSource('../../features/console/ConsolePages.jsx');
-    const automationUiSource = extractSourceBetween(
-      consoleSource,
-      'function AutomationUnsentDataTable',
-      'function AutomationUnsentEventCell'
-    );
+    const automationUiSource = readSource('../../features/console/automations/AutomationUnsentTable.jsx');
 
     expect(automationUiSource).toContain('selectable');
     expect(automationUiSource).toContain('selectionVisibility="hover"');

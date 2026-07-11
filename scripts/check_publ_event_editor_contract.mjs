@@ -589,7 +589,7 @@ async function readPhaseProgress() {
 async function getEditorImplementationFiles() {
   const files = [
     ...(await listFiles('src/app/api/publ-events').catch(() => [])),
-    ...(await listFiles('src/app/automations').catch(() => [])),
+    ...(await listFiles('src/app/(console)/automations').catch(() => [])),
     ...(await listFiles('src/server/publEvents').catch(() => [])),
     ...(await listFiles('src/features/console/publEvents').catch(() => [])),
     DETAIL_CSS_PATH,
