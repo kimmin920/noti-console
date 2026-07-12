@@ -4,11 +4,9 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import Link from 'next/link';
 import Image from 'next/image';
 import { Show, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/nextjs';
-import { BookOpen, CircleHelp } from 'lucide-react';
 import lottie from 'lottie-web';
 import { BuildVersionBadge } from '../../components/layout/BuildVersionBadge.jsx';
 import { InspectorSidebar } from '../../components/layout/index.js';
-import { Button, CommandPalette, Kbd, Popover, PopoverClose, PopoverContent, PopoverTrigger } from '../../components/ui/index.js';
 import audienceAnimation from '../../nav-lotties/audience.json';
 import automationsAnimation from '../../nav-lotties/automations.json';
 import emailsAnimation from '../../nav-lotties/emails.json';
@@ -37,7 +35,6 @@ const navAnimations = {
 export function AppShell({
   activePage,
   children,
-  docsHref,
   getPageHref,
   hideAccountControl,
 }) {
@@ -51,7 +48,6 @@ export function AppShell({
         hideAccountControl={hideAccountControl}
       />
       <div className="workspace">
-        <Topbar docsHref={docsHref} getPageHref={getPageHref} />
         <main className="content">
           {children}
         </main>
@@ -63,7 +59,6 @@ export function AppShell({
 export function EmbedShell({
   activePage,
   children,
-  docsHref,
   getPageHref,
   hideAccountControl,
 }) {
@@ -77,7 +72,6 @@ export function EmbedShell({
     >
       <EmbedSidebar
         activePage={activeNavPage}
-        docsHref={docsHref}
         getPageHref={getPageHref}
         hideAccountControl={hideAccountControl}
         onOpenChange={setSideMenuOpen}
@@ -91,7 +85,7 @@ export function EmbedShell({
   );
 }
 
-function EmbedSidebar({ activePage, docsHref, getPageHref, hideAccountControl, onOpenChange }) {
+function EmbedSidebar({ activePage, getPageHref, hideAccountControl, onOpenChange }) {
   return (
     <InspectorSidebar
       handleColor="var(--text)"
@@ -101,10 +95,8 @@ function EmbedSidebar({ activePage, docsHref, getPageHref, hideAccountControl, o
     >
       <SidebarContent
         activePage={activePage}
-        docsHref={docsHref}
         getPageHref={getPageHref}
         hideAccountControl={hideAccountControl}
-        showUtilityActions
       />
     </InspectorSidebar>
   );
@@ -124,15 +116,13 @@ function FixedSidebar({ activePage, getPageHref, hideAccountControl }) {
 
 function SidebarContent({
   activePage,
-  docsHref,
   getPageHref,
   hideAccountControl = false,
-  showUtilityActions = false,
 }) {
   const visibleNavItems = useVisibleNavItems();
 
   return (
-    <aside className={`sidebar-menu ${showUtilityActions ? 'has-utility-actions' : ''}`}>
+    <aside className="sidebar-menu">
       <SidebarProductHeader href={getPageHref('emails')} />
 
       <nav className="sidebar-nav" aria-label="주 메뉴">
@@ -148,18 +138,6 @@ function SidebarContent({
       </nav>
 
       <div className="sidebar-bottom-stack">
-        {showUtilityActions ? (
-          <div className="sidebar-utility-actions">
-            <Link className="sidebar-utility-button" href={docsHref}>
-              <BookOpen size={15} />
-              문서
-            </Link>
-            <button className="sidebar-utility-button" type="button">
-              도움이 필요하신가요?
-            </button>
-          </div>
-        ) : null}
-
         {hideAccountControl ? null : <SidebarAccountControl />}
 
         <BuildVersionBadge />
@@ -303,68 +281,6 @@ const AnimatedNavIcon = forwardRef(function AnimatedNavIcon({ active, id }, ref)
 
   return <span aria-hidden="true" className={`nav-lottie ${active ? 'active' : ''}`} ref={containerRef} />;
 });
-
-function Topbar({ docsHref, getPageHref }) {
-  const visibleNavItems = useVisibleNavItems();
-  const commands = [
-    ...visibleNavItems.map(({ id, label }) => ({
-      description: `${label} 페이지로 이동`,
-      href: getPageHref(id),
-      id: `nav-${id}`,
-      label,
-      keywords: [id],
-    })),
-    {
-      description: 'API와 브랜드 메시지 사용 가이드를 엽니다.',
-      href: docsHref,
-      icon: BookOpen,
-      id: 'docs',
-      label: '문서 열기',
-      shortcut: 'D',
-    },
-  ];
-
-  return (
-    <header className="topbar">
-      <CommandPalette commands={commands} title="빠른 이동" />
-      <Link aria-label="문서" className="docs-link" href={docsHref}>
-        <BookOpen aria-hidden="true" className="docs-link-icon" size={15} />
-        <span className="docs-link-label">문서</span>
-      </Link>
-      <Popover>
-        <PopoverTrigger asChild>
-          <button aria-label="도움말 열기" className="help-button" type="button">
-            <span className="help-button-label">도움이 필요하신가요?</span>
-            <span className="help-key">H</span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent aria-label="도움말" side="bottom">
-          <div className="popover-heading">
-            <strong>도움말</strong>
-            <p>문서를 열거나 빠른 이동 메뉴에서 콘솔 페이지를 바로 찾을 수 있습니다.</p>
-          </div>
-          <p>
-            <Kbd>K</Kbd>
-            {' '}
-            키로 명령 메뉴를 열고, 방향키와 Enter로 이동합니다.
-          </p>
-          <div className="popover-actions">
-            <Link className="button secondary" href={docsHref}>
-              <BookOpen size={15} />
-              문서
-            </Link>
-            <PopoverClose asChild>
-              <Button>
-                <CircleHelp size={15} />
-                확인
-              </Button>
-            </PopoverClose>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </header>
-  );
-}
 
 function useVisibleNavItems() {
   const navigation = useConsoleNavigation();

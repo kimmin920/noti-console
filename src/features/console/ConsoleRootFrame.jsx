@@ -31,7 +31,6 @@ export function ConsoleRootFrame({ children }) {
 
   const shellProps = {
     activePage,
-    docsHref: getPageHref('docs'),
     getPageHref,
     hideAccountControl: false,
   };

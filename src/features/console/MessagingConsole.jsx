@@ -41,7 +41,6 @@ export function MessagingConsole({
   const activeMeta = pageMeta[activePage] ?? pageMeta[DEFAULT_CONSOLE_PAGE_ID];
   const shellProps = {
     activePage,
-    docsHref: getPageHref('docs'),
     getPageHref,
     hideAccountControl,
   };
