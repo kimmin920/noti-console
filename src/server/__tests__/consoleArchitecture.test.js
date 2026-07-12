@@ -42,6 +42,23 @@ describe('console screen architecture', () => {
     }
   });
 
+  it('keeps console utility header controls out of standalone and embed shells', () => {
+    const rootFrame = readSource('features/console/ConsoleRootFrame.jsx');
+    const messagingConsole = readSource('features/console/MessagingConsole.jsx');
+    const shells = readSource('features/console/ConsoleShells.jsx');
+    const styles = readSource('styles/components.css');
+
+    expect(shells).not.toContain('function Topbar');
+    expect(shells).not.toContain('<Topbar');
+    expect(shells).not.toContain('CommandPalette');
+    expect(shells).not.toContain('빠른 이동');
+    expect(shells).not.toContain('도움이 필요하신가요?');
+    expect(shells).not.toContain('sidebar-utility-actions');
+    expect(rootFrame).not.toContain('docsHref');
+    expect(messagingConsole).not.toContain('docsHref');
+    expect(styles).not.toMatch(/(^|\n)\.topbar\s*\{/);
+  });
+
   it('shares sender resource type constants across settings and admin screens', () => {
     const adminScreen = readSource('features/console/admin/SenderResourceApplicationsPage.jsx');
     const settingsScreen = readSource('features/console/settings/SettingsPage.jsx');
