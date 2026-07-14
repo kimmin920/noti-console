@@ -5,6 +5,7 @@ import { AlertTriangle, RefreshCcw } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
 import { Button, DataTableV2, SelectPill } from '../../../components/ui/index.js';
 import { ConsoleLink } from '../ConsoleNavigationContext.jsx';
+import { useStandaloneConsole } from '../StandaloneConsoleContext.jsx';
 import { MetricsTrendChart } from './MetricsTrendChart.jsx';
 import {
   formatMetricDate,
@@ -54,7 +55,9 @@ const CHANNEL_COLUMNS = [
   },
 ];
 
-export function MetricsPage({ meta }) {
+export function MetricsPage({ meta: metaProp }) {
+  const standaloneConsole = useStandaloneConsole();
+  const meta = metaProp ?? standaloneConsole?.meta;
   const [range, setRange] = useState('15d');
   const [channel, setChannel] = useState('all');
   const [source, setSource] = useState('all');

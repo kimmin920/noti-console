@@ -1,9 +1,10 @@
 'use client';
 
-import { cloneElement, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { pageMeta } from './consoleConfig.js';
 import { SmsBulkSendRunWatcher } from './messageSend/MessageSendPage.jsx';
+import { StandaloneConsoleProvider } from './StandaloneConsoleContext.jsx';
 import {
   DEFAULT_CONSOLE_PAGE_ID,
   getConsolePageHref,
@@ -24,9 +25,9 @@ export function StandaloneConsolePage({ children, mode, pageId }) {
   }, [router, shellMode]);
 
   return (
-    <>
+    <StandaloneConsoleProvider meta={activeMeta} onDocs={openDocs}>
       <SmsBulkSendRunWatcher />
-      {cloneElement(children, { meta: activeMeta, onDocs: openDocs })}
-    </>
+      {children}
+    </StandaloneConsoleProvider>
   );
 }

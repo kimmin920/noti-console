@@ -16,6 +16,40 @@ const SYNTHETIC_MANUAL_PHONE = '010-5555-0199';
 const SYNTHETIC_MANUAL_PHONE_DIGITS = '01055550199';
 const PHONE_PATTERN = /(?<!\d)0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/gu;
 
+test('standalone sidebar survives repeated client navigation', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-desktop', 'Desktop fixed-sidebar regression coverage.');
+
+  const apiState = createApiFixtureState();
+  const runtimeErrors = [];
+  await context.addCookies([{
+    name: '__dev_auth_user_id',
+    url: 'http://127.0.0.1:3410',
+    value: 'e2e-user',
+  }]);
+  await installApiFixtures(page, apiState);
+  page.on('console', (message) => {
+    if (message.type() === 'error') runtimeErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => runtimeErrors.push(error.message));
+
+  await page.goto('/message-send');
+  const targets = [
+    { heading: '메시지 발송', href: '/message-send', name: '메시지 발송' },
+    { heading: '자동화', href: '/automations', name: '자동화' },
+    { heading: '템플릿', href: '/templates', name: '템플릿' },
+  ];
+
+  for (let cycle = 0; cycle < 6; cycle += 1) {
+    for (const target of targets) {
+      await page.getByRole('link', { name: target.name, exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`${target.href.replaceAll('/', '\\/')}$`, 'u'));
+      await expect(page.getByRole('heading', { name: target.heading, exact: true })).toBeVisible();
+    }
+  }
+
+  expect(runtimeErrors).toEqual([]);
+});
+
 test('approved parent renders prefixed Publ console without overflow', async ({ page }, testInfo) => {
   const evidence = createEvidenceRecorder(page, testInfo);
   const apiState = createApiFixtureState();

@@ -5,8 +5,11 @@ import { CodeGroup, DocsCallout, DocsCard, DocsCardGrid, DocsSection } from '../
 import { PageHeader } from '../../../components/layout/index.js';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../../components/ui/index.js';
 import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
+import { useStandaloneConsole } from '../StandaloneConsoleContext.jsx';
 
-export function DocsPage({ meta }) {
+export function DocsPage({ meta: metaProp }) {
+  const standaloneConsole = useStandaloneConsole();
+  const meta = metaProp ?? standaloneConsole?.meta;
   const navigation = useConsoleNavigation();
   const snippets = [
     {

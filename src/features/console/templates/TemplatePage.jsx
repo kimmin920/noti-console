@@ -17,6 +17,7 @@ import {
 } from '../messageSend/mappers.js';
 import { useSenderResourcesQuery } from '../messageSend/queries.js';
 import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
+import { useStandaloneConsole } from '../StandaloneConsoleContext.jsx';
 import { buildTabQueryHref, getTemplateTabFromQuery, getTemplateTabQueryValue } from '../tabQuery.js';
 import { TemplateCardList } from './TemplateCardList.jsx';
 import { TemplateListToolbar } from './TemplateListToolbar.jsx';
@@ -31,7 +32,9 @@ const defaultPageSize = 20;
 const pageSizeOptions = [20, 50, 100];
 const KAKAO_TEMPLATE_TABS = new Set(['알림톡', '브랜드 메시지']);
 
-export function TemplatePage({ meta }) {
+export function TemplatePage({ meta: metaProp }) {
+  const standaloneConsole = useStandaloneConsole();
+  const meta = metaProp ?? standaloneConsole?.meta;
   const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();

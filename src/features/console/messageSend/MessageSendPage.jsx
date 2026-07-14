@@ -19,6 +19,7 @@ import { getSmsBulkSendRunToastView } from './smsBulkSendRunToast.js';
 import { messageLogQueryKeys } from '../messageLogs/queryKeys.js';
 import { buildTabQueryHref, getMessageSendTabFromQuery, getMessageSendTabQueryValue } from '../tabQuery.js';
 import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
+import { useStandaloneConsole } from '../StandaloneConsoleContext.jsx';
 import { usePublMessageRecipients } from '../../publClient/usePublMessageRecipients.js';
 
 const BRAND_TEMPLATE_REGISTRATION_NAME_MAX_LENGTH = 200;
@@ -47,7 +48,10 @@ export function SmsBulkSendRunWatcher() {
   return null;
 }
 
-export function MessageSendPage({ meta, onDocs }) {
+export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
+  const standaloneConsole = useStandaloneConsole();
+  const meta = metaProp ?? standaloneConsole?.meta;
+  const onDocs = onDocsProp ?? standaloneConsole?.onDocs;
   const navigation = useConsoleNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();

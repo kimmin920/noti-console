@@ -10,8 +10,12 @@ import { AutomationUnsentTable } from './automations/AutomationUnsentTable.jsx';
 import { PublEventsTable } from './automations/PublEventsTable.jsx';
 import { SelectableDataTable } from './audience/AudienceTable.jsx';
 import { useConsoleNavigation } from './ConsoleNavigationContext.jsx';
+import { useStandaloneConsole } from './StandaloneConsoleContext.jsx';
 
-export function ConfiguredConsolePage({ meta, onDocs }) {
+export function ConfiguredConsolePage({ meta: metaProp, onDocs: onDocsProp }) {
+  const standaloneConsole = useStandaloneConsole();
+  const meta = metaProp ?? standaloneConsole?.meta;
+  const onDocs = onDocsProp ?? standaloneConsole?.onDocs;
   const navigation = useConsoleNavigation();
   const [activeTab, setActiveTab] = useState(() => getConsolePageTabValue(meta.tabs?.[0]));
   const isAutomationsPage = meta.variant === 'automations';
