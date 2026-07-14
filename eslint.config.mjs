@@ -9,6 +9,8 @@ const eslintConfig = [
       'out/**',
       'build/**',
       'coverage/**',
+      // RUI is generated and validated in its source repository.
+      'src/ui-kits/resend/**',
     ],
   },
 ];

@@ -1,8 +1,16 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "checkJs": false,
+    "ignoreDeprecations": "6.0",
+    "jsx": "preserve",
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "exclude": [
+    "node_modules",
+    ".next",
+    "src/ui-kits/resend"
+  ]
 }

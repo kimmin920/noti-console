@@ -24,6 +24,11 @@ const nextConfig = {
     ? ['js', 'jsx', 'ts', 'tsx']
     : ['dev.js', 'dev.jsx', 'dev.ts', 'dev.tsx', 'js', 'jsx', 'ts', 'tsx'],
   turbopack: {
+    resolveAlias: {
+      module: {
+        browser: './src/shims/node-module-browser.js',
+      },
+    },
     root: rootDir,
   },
 };

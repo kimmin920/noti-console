@@ -7,7 +7,8 @@ This repository is a Next.js App Router messaging console scaffold.
 - Runtime: Next.js 16, React 19, JavaScript ESM.
 - Routes live under `src/app`.
 - Console feature orchestration lives under `src/features/console`.
-- Reusable UI primitives live under `src/components/ui`.
+- Generated Resend UI primitives live under `src/ui-kits/resend`.
+- Legacy reusable UI primitives live under `src/components/ui` until their consumers migrate.
 - Layout primitives live under `src/components/layout`.
 - Development-only component playground lives under `src/playground` and `src/app/playground`.
 - Database access starts at `src/db/client.js`; domain schemas are intentionally not defined yet.
@@ -29,7 +30,9 @@ npm run harness:test
 
 ## Critical Rules
 
-- Do not introduce TypeScript until the project intentionally migrates from JavaScript.
+- Keep application code in JavaScript. TypeScript is allowed only under the generated
+  `src/ui-kits/resend` boundary and must be updated through the RUI copy tool, not by hand.
+- Do not manually edit files under `src/ui-kits/resend`.
 - Do not import `src/playground` from production routes or shared runtime modules.
 - Keep `*.dev.jsx` playground routes development-only through `next.config.mjs`.
 - Do not add domain schemas, migrations, external API calls, or auth routes without an explicit task.
