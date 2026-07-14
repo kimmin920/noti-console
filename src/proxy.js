@@ -11,6 +11,7 @@ const isPublicAuthRoute = createRouteMatcher([
 ]);
 const isPublicRoute = createRouteMatcher([
   '/__clerk(.*)',
+  '/documents/phone-number-consent-individual.pdf',
   '/publ-client(.*)',
   '/integrations/exchange-token',
   '/integrations/refresh-token',

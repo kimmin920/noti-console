@@ -151,6 +151,7 @@ export function createSenderResourceApprovalService({
 
     async submitSmsApplication({ actorUserId, payload, files = [] }) {
       const user = await requireActiveUser(repository, actorUserId);
+      requireSmsPrivacyConsent(payload);
       const resubmitApplicationId = normalizeOptionalString(payload.applicationId);
 
       if (resubmitApplicationId) {
@@ -588,6 +589,12 @@ export function createSenderResourceApprovalService({
       };
     },
   };
+}
+
+function requireSmsPrivacyConsent(payload) {
+  if (payload?.privacyConsentAccepted !== true) {
+    throw new RelayValidationError('개인정보 수집 및 이용에 동의해야 발신번호를 등록할 수 있습니다.');
+  }
 }
 
 async function requireActiveUser(repository, actorUserId) {

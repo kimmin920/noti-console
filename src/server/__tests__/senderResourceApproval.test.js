@@ -28,6 +28,20 @@ const COMPANY_EVIDENCE_DOCUMENT_TYPES = [
 ];
 
 describe('sender resource approval service', () => {
+  it('requires privacy consent before submitting an SMS sender number application', async () => {
+    const repository = createMemoryRepository();
+    const service = createTestService({ assumePrivacyConsent: false, repository });
+
+    await expect(service.submitSmsApplication({
+      actorUserId: 'user_1',
+      payload: {
+        sendNo: '1544-6859',
+        senderNumberType: PERSONAL_SENDER_NUMBER_TYPE,
+        evidenceFiles: createPersonalEvidenceDescriptors(),
+      },
+    })).rejects.toThrow('개인정보 수집 및 이용에 동의해야 발신번호를 등록할 수 있습니다.');
+  });
+
   it('does not require evidence storage config when creating the default read service', async () => {
     vi.stubEnv('DATABASE_URL', 'postgres://user:pass@example.com:5432/app');
     vi.stubEnv('NODE_ENV', 'production');
@@ -1422,6 +1436,7 @@ describe('sender resource approval service', () => {
 });
 
 function createTestService({
+  assumePrivacyConsent = true,
   repository,
   evidenceStore,
   kakaoClient,
@@ -1429,7 +1444,7 @@ function createTestService({
   smsClient,
   now = FIXED_NOW,
 } = {}) {
-  return createSenderResourceApprovalService({
+  const service = createSenderResourceApprovalService({
     repository,
     evidenceStore: evidenceStore || createStubEvidenceStore({ repository }),
     kakaoClient:
@@ -1445,6 +1460,23 @@ function createTestService({
     smsClient: smsClient || createSmsClientMock(),
     now: () => now,
   });
+
+  if (!assumePrivacyConsent) {
+    return service;
+  }
+
+  return {
+    ...service,
+    submitSmsApplication(request) {
+      return service.submitSmsApplication({
+        ...request,
+        payload: {
+          privacyConsentAccepted: true,
+          ...request.payload,
+        },
+      });
+    },
+  };
 }
 
 function createSmsClientMock({

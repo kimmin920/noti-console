@@ -109,11 +109,12 @@ export function DomainsAddPage({
 
 export function DomainAddHeader({
   description = 'Use a domain you own to send and receive emails.',
+  icon = Mail,
   title = 'Add domain',
 }) {
   return (
     <header className="domain-add-header">
-      <DomainAddStatusIcon />
+      <DomainAddStatusIcon icon={icon} />
       <div className="domain-add-header-copy">
         <h1>{title}</h1>
         <span>{description}</span>
@@ -122,14 +123,14 @@ export function DomainAddHeader({
   );
 }
 
-export function DomainAddStatusIcon() {
+export function DomainAddStatusIcon({ icon: Icon = Mail }) {
   return (
     <div aria-hidden="true" className="domain-add-status-icon">
       <svg fill="none" height="80" viewBox="0 0 80 80" width="80" xmlns="http://www.w3.org/2000/svg">
         <rect className="domain-add-status-icon-shell" height="79" rx="18" width="79" x="0.5" y="0.5" />
         <path className="domain-add-status-icon-grid" d="M20 28h40M20 40h40M20 52h40M28 20v40M40 20v40M52 20v40" />
       </svg>
-      <Mail size={25} strokeWidth={1.7} />
+      <Icon size={25} strokeWidth={1.7} />
     </div>
   );
 }

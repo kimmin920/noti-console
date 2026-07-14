@@ -12884,23 +12884,62 @@ body.is-brand-message-button-dragging {
   line-height: 16px;
 }
 
-.sender-number-evidence-requirement-label {
-  height: 20px;
-  border: 1px solid var(--line-soft);
-  border-radius: 999px;
-  background: var(--control);
-  color: var(--text-soft);
-  display: inline-flex;
-  align-items: center;
-  padding: 0 7px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 16px;
-}
-
 .sender-number-evidence-required-star {
   color: var(--red);
   font-weight: 700;
+}
+
+.sms-sender-privacy-consent {
+  border-top: 1px solid var(--line);
+  padding: 18px 0;
+}
+
+.sms-sender-privacy-consent .app-rui-checkbox-field {
+  align-items: center;
+}
+
+.sms-sender-privacy-consent-modal-body {
+  color: var(--rui-text-muted);
+}
+
+.sms-sender-privacy-consent-copy {
+  display: grid;
+  gap: calc(var(--rui-spacing) * 5);
+  font-size: var(--rui-text-sm);
+  line-height: var(--rui-text-sm--line-height);
+}
+
+.sms-sender-privacy-consent-copy p,
+.sms-sender-privacy-consent-copy dl,
+.sms-sender-privacy-consent-copy dd {
+  margin: 0;
+}
+
+.sms-sender-privacy-consent-copy dl {
+  display: grid;
+}
+
+.sms-sender-privacy-consent-copy dl > div {
+  border-bottom: 1px solid var(--rui-gray-3);
+  display: grid;
+  gap: calc(var(--rui-spacing) * 3);
+  grid-template-columns: 88px minmax(0, 1fr);
+  padding: calc(var(--rui-spacing) * 4) 0;
+}
+
+.sms-sender-privacy-consent-copy dl > div:first-child {
+  border-top: 1px solid var(--rui-gray-3);
+}
+
+.sms-sender-privacy-consent-copy dt {
+  color: var(--rui-text-emphasis);
+  font-weight: var(--rui-font-weight-semibold);
+}
+
+.sms-sender-privacy-consent-retention dt,
+.sms-sender-privacy-consent-retention dd {
+  color: var(--rui-text-emphasis);
+  font-weight: var(--rui-font-weight-semibold);
 }
 
 .sender-number-evidence-remove {
@@ -12972,6 +13011,254 @@ body.is-brand-message-button-dragging {
   opacity: 0;
   overflow: hidden;
   clip: rect(0 0 0 0);
+}
+
+.app-rui-dialog-body.sms-consent-document-modal-body {
+  background: var(--rui-gray-2);
+  border: 1px solid var(--rui-gray-3);
+  border-radius: var(--rui-radius-xl);
+  display: block;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.sms-consent-document-form {
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  width: 100%;
+}
+
+.sms-consent-document-form-host {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
+
+.sms-consent-document-preview,
+.sms-consent-document-preview-frame {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
+
+.sms-consent-document-preview {
+  background: var(--rui-gray-2);
+}
+
+.sms-consent-document-preview-frame {
+  background: #fff;
+  border: 0;
+  display: block;
+}
+
+.sms-consent-document-action-error {
+  flex: 0 0 auto;
+  margin-top: calc(var(--rui-spacing) * 3);
+}
+
+.sms-consent-document-action-error p {
+  margin: 0;
+}
+
+.sms-consent-document-modal-footer {
+  justify-content: space-between;
+}
+
+.sms-consent-document-modal-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--rui-spacing) * 2);
+  justify-content: flex-end;
+}
+
+.sms-consent-document-form-status {
+  align-items: center;
+  background: var(--rui-gray-2);
+  color: var(--rui-gray-11);
+  display: flex;
+  gap: calc(var(--rui-spacing) * 2);
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+}
+
+.sms-consent-document-form-status span {
+  font-size: var(--rui-text-sm);
+  line-height: var(--rui-text-sm--line-height);
+}
+
+.sms-consent-document-form-spinner {
+  animation: sms-consent-document-form-spin 800ms linear infinite;
+}
+
+.sms-consent-document-form [data-pdfme-field-shell] {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-radius: 2px;
+  box-shadow: none !important;
+  outline: 1px solid var(--rui-border-interactive) !important;
+  transition: outline-color var(--rui-duration-base) var(--rui-ease-in-out);
+}
+
+.sms-consent-document-form [data-pdfme-field-shell]:hover {
+  outline-color: var(--rui-gray-a4) !important;
+}
+
+.sms-consent-document-form [data-pdfme-field-shell]:focus-within {
+  outline-color: var(--rui-gray-a5) !important;
+}
+
+.sms-consent-document-form [data-pdfme-field][data-placeholder]:empty::before {
+  color: var(--rui-gray-8);
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+.sms-consent-document-form [data-pdfme-field-shell][data-invalid] {
+  background: var(--rui-red-a2) !important;
+  outline-color: var(--rui-red-a9) !important;
+}
+
+.sms-consent-document-form[data-sms-relationship-proof-document-form] [data-pdfme-field-shell] {
+  background: transparent !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.sms-consent-document-form[data-sms-relationship-proof-document-form] [data-pdfme-field-shell]:hover,
+.sms-consent-document-form[data-sms-relationship-proof-document-form] [data-pdfme-field-shell]:focus-within {
+  background: rgba(255, 255, 255, 0.48) !important;
+}
+
+.sms-consent-document-form[data-sms-relationship-proof-document-form] [data-pdfme-field-shell][data-invalid] {
+  background: var(--rui-red-a2) !important;
+  box-shadow: inset 0 0 0 1px var(--rui-red-a9) !important;
+}
+
+.sms-consent-document-seal-field {
+  overflow: visible !important;
+}
+
+.sms-consent-document-seal-field[data-invalid] .sms-consent-document-seal-upload {
+  background: var(--rui-red-a2);
+  border-color: var(--rui-red-a9);
+}
+
+.sms-consent-document-seal-container,
+.sms-consent-document-seal-upload,
+.sms-consent-document-seal-image {
+  height: 100%;
+  width: 100%;
+}
+
+.sms-consent-document-seal-container {
+  position: relative;
+}
+
+.sms-consent-document-seal-upload {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px dashed rgba(0, 0, 0, 0.52);
+  color: var(--rui-gray-11);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.sms-consent-document-seal-upload:hover,
+.sms-consent-document-seal-upload:focus-within {
+  background: #fff;
+  border-color: var(--rui-gray-12);
+  color: var(--rui-gray-12);
+}
+
+.sms-consent-document-seal-upload:focus-within {
+  box-shadow: 0 0 0 1px var(--rui-gray-12);
+}
+
+.sms-consent-document-seal-upload-icon {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.sms-consent-document-seal-upload-label {
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.sms-consent-document-seal-input {
+  cursor: pointer;
+  height: 100%;
+  inset: 0;
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.sms-consent-document-seal-image {
+  display: block;
+  object-fit: contain;
+}
+
+.sms-consent-document-seal-remove {
+  align-items: center;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.24);
+  border-radius: 2px;
+  color: var(--rui-gray-12);
+  cursor: pointer;
+  display: inline-flex;
+  height: 18px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  width: 18px;
+  z-index: 1;
+}
+
+@media (max-width: 40rem) {
+  .sms-consent-document-modal-footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .sms-consent-document-modal-footer > button {
+    align-self: flex-start;
+  }
+
+  .sms-consent-document-modal-actions {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .sms-consent-document-modal-actions > button {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@keyframes sms-consent-document-form-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .split-section {

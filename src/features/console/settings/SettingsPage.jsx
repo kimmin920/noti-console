@@ -393,6 +393,7 @@ function SmsSenderResourceApplicationPage({ onBack }) {
         applicationId: payload.applicationId,
         documents: getSmsSenderApplicationEvidenceDocuments(senderNumberType),
         evidenceFiles: payload.evidenceFiles,
+        privacyConsentAccepted: payload.privacyConsentAccepted,
         sendNo: payload.sendNo,
         senderNumberType,
       }));
@@ -426,6 +427,7 @@ function buildSenderNumberApplicationFormData({
   applicationId,
   documents,
   evidenceFiles,
+  privacyConsentAccepted,
   senderNumberType,
   sendNo,
 }) {
@@ -435,6 +437,7 @@ function buildSenderNumberApplicationFormData({
   formData.append('payload', JSON.stringify({
     ...(applicationId ? { applicationId } : {}),
     evidenceFiles: evidenceDescriptors,
+    privacyConsentAccepted,
     senderNumberType,
     sendNo,
   }));
@@ -458,6 +461,7 @@ function buildSenderNumberApplicationFormData({
   formData.set('payload', JSON.stringify({
     ...(applicationId ? { applicationId } : {}),
     evidenceFiles: evidenceDescriptors,
+    privacyConsentAccepted,
     senderNumberType,
     sendNo,
   }));

@@ -1,11 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
   ChevronLeft,
+  Download,
+  Eye,
   FileText,
   Info,
+  LoaderCircle,
+  Pencil,
+  Phone,
   Plus,
   ShieldCheck,
   X,
@@ -20,8 +25,27 @@ import {
   DomainStepHeading,
   DomainTextInput,
 } from '../domains/index.js';
-import { Notice, SegmentedControl, Tooltip } from '../ui/index.js';
+import {
+  Button,
+  Checkbox,
+  Modal,
+  ModalBody,
+  ModalClose,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+  ModalTrigger,
+  Notice,
+  SegmentedControl,
+  Tooltip,
+} from '../ui/index.js';
 import { getSmsSenderNumberDuplicateIssue } from './smsSenderNumberDuplicateGuard.js';
+import { SmsConsentDocumentForm } from './SmsConsentDocumentForm.jsx';
+import { SmsRelationshipProofDocumentForm } from './SmsRelationshipProofDocumentForm.jsx';
+import { SMS_CONSENT_DOCUMENT_INITIAL_INPUTS } from './smsConsentDocumentTemplate.js';
+import { createSmsRelationshipProofInitialInputs } from './smsRelationshipProofDocumentTemplate.js';
 
 export const SMS_SENDER_NUMBER_TYPE_OPTIONS = [
   {
@@ -218,6 +242,7 @@ export function SmsSenderNumberAdd({
   );
   const [evidenceFiles, setEvidenceFiles] = useState(initialEvidenceFiles);
   const [additionalEvidenceFiles, setAdditionalEvidenceFiles] = useState(initialAdditionalEvidenceFiles);
+  const [privacyConsentAccepted, setPrivacyConsentAccepted] = useState(false);
   const [localSubmitError, setLocalSubmitError] = useState('');
   const [localSubmitting, setLocalSubmitting] = useState(false);
   const normalizedSendNo = normalizeSenderNumberInput(sendNo);
@@ -299,6 +324,14 @@ export function SmsSenderNumberAdd({
     setLocalSubmitError('');
   }
 
+  function updateGeneratedEvidenceFile(documentId, file) {
+    setEvidenceFiles((current) => ({
+      ...current,
+      [documentId]: createEvidenceFileDescriptor(file),
+    }));
+    setLocalSubmitError('');
+  }
+
   function updateAdditionalEvidenceFiles(event) {
     const selectedFiles = Array.from(event.target.files ?? []);
 
@@ -325,7 +358,7 @@ export function SmsSenderNumberAdd({
   async function submitEvidence(event) {
     event.preventDefault();
 
-    if (!evidenceReady || isSubmitting) {
+    if (!evidenceReady || !privacyConsentAccepted || isSubmitting) {
       return;
     }
 
@@ -333,6 +366,7 @@ export function SmsSenderNumberAdd({
       additionalEvidenceFiles,
       evidenceFiles,
       formContext,
+      privacyConsentAccepted,
     });
 
     setLocalSubmitError('');
@@ -354,6 +388,7 @@ export function SmsSenderNumberAdd({
         description={isResubmission
           ? '반려 사유를 확인하고 필요한 서류만 교체해 다시 제출합니다.'
           : '발신번호와 증빙서류를 확인한 뒤 운영자 심사로 접수합니다.'}
+        icon={Phone}
         title={isResubmission ? '발신번호 재신청' : '발신번호 추가'}
       />
       {onBack ? (
@@ -406,11 +441,15 @@ export function SmsSenderNumberAdd({
             onAdditionalEvidenceFileRemove={removeAdditionalEvidenceFile}
             onBack={() => setStep('number')}
             onEvidenceFileChange={updateEvidenceFile}
+            onGeneratedEvidenceFile={updateGeneratedEvidenceFile}
             onEvidenceFileRemove={removeEvidenceFile}
+            onPrivacyConsentChange={setPrivacyConsentAccepted}
             onSubmit={submitEvidence}
+            privacyConsentAccepted={privacyConsentAccepted}
             rejectReason={resubmitApplication?.rejectReason}
             resubmitApplication={resubmitApplication}
             selectedNumberType={selectedNumberType}
+            sendNo={normalizedSendNo}
             submitError={renderedSubmitError}
           />
         )}
@@ -539,11 +578,15 @@ function SmsEvidenceStep({
   onAdditionalEvidenceFileRemove,
   onBack,
   onEvidenceFileChange,
+  onGeneratedEvidenceFile,
   onEvidenceFileRemove,
+  onPrivacyConsentChange,
   onSubmit,
+  privacyConsentAccepted,
   rejectReason,
   resubmitApplication,
   selectedNumberType,
+  sendNo,
   submitError,
 }) {
   return (
@@ -570,8 +613,11 @@ function SmsEvidenceStep({
             existingFile={getReusableApplicationEvidenceFiles(resubmitApplication, document.id)[0] ?? null}
             key={document.id}
             onChange={onEvidenceFileChange}
+            onGeneratedFile={onGeneratedEvidenceFile}
             onRemove={onEvidenceFileRemove}
+            selectedNumberType={selectedNumberType}
             selectedFile={evidenceFiles[document.id]}
+            sendNo={sendNo}
           />
         ))}
         <SmsAdditionalEvidenceRow
@@ -579,6 +625,10 @@ function SmsEvidenceStep({
           files={additionalEvidenceFiles}
           onChange={onAdditionalEvidenceFileChange}
           onRemove={onAdditionalEvidenceFileRemove}
+        />
+        <SmsPrivacyConsent
+          checked={privacyConsentAccepted}
+          onCheckedChange={onPrivacyConsentChange}
         />
         {submitError ? (
           <Notice
@@ -596,13 +646,87 @@ function SmsEvidenceStep({
               이전
             </button>
           ) : null}
-          <button className="domain-add-primary-button" disabled={!evidenceReady || isSubmitting} type="submit">
+          <button
+            className="domain-add-primary-button"
+            disabled={!evidenceReady || !privacyConsentAccepted || isSubmitting}
+            type="submit"
+          >
             <CheckCircle2 aria-hidden="true" size={16} />
             <span>{isSubmitting ? '제출 중' : isResubmission ? '재신청 제출' : '신청 제출'}</span>
           </button>
         </div>
       </form>
     </DomainStep>
+  );
+}
+
+function SmsPrivacyConsent({ checked, onCheckedChange }) {
+  const [open, setOpen] = useState(false);
+
+  function handleCheckedChange(nextChecked) {
+    if (nextChecked) {
+      setOpen(true);
+      return;
+    }
+
+    onCheckedChange(false);
+  }
+
+  function acceptConsent() {
+    onCheckedChange(true);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <section className="sms-sender-privacy-consent">
+        <Checkbox
+          aria-haspopup="dialog"
+          checked={checked}
+          label="개인정보 수집 및 이용에 동의합니다."
+          onCheckedChange={handleCheckedChange}
+          required
+        />
+      </section>
+      <Modal onOpenChange={setOpen} open={open}>
+        <ModalContent className="sms-sender-privacy-consent-modal" size="md">
+          <ModalHeader>
+            <ModalTitle>개인정보 수집 이용 동의서(발신 번호 등록)</ModalTitle>
+            <ModalDescription>
+              회사는 귀하의 개인정보를 아래와 같이 수집 및 이용하고자 하오니, 동의하여 주시기 바랍니다.
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="sms-sender-privacy-consent-modal-body">
+            <div className="sms-sender-privacy-consent-copy">
+              <dl>
+                <div>
+                  <dt>수집 항목</dt>
+                  <dd>이름, 생년월일, 성별, 내외국인 정보, 휴대폰 번호, 중복가입확인정보(DI), 암호화된 식별정보(CI), 재직증명서, 사업자등록증, 통신서비스 이용증명원, 기타 발신 번호 명의자 및 사전승낙여부를 확인하기 위한 문서</dd>
+                </div>
+                <div>
+                  <dt>수집 목적</dt>
+                  <dd>발신 번호 등록, 본인 확인</dd>
+                </div>
+                <div className="sms-sender-privacy-consent-retention">
+                  <dt>보유 기간</dt>
+                  <dd>관련 법령에 따라 보관 후 삭제</dd>
+                </div>
+              </dl>
+              <p>귀하는 상기 개인정보 수집을 거부하실 권리가 있으며, 거부하시는 경우 서비스 이용이 불가합니다.</p>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <ModalClose>
+              <Button type="button">취소</Button>
+            </ModalClose>
+            <Button onClick={acceptConsent} type="button" variant="primary">
+              <CheckCircle2 aria-hidden="true" size={15} />
+              동의하기
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 }
 
@@ -621,10 +745,15 @@ function SmsEvidenceRow({
   document,
   existingFile,
   onChange,
+  onGeneratedFile,
   onRemove,
+  selectedNumberType,
   selectedFile,
+  sendNo,
 }) {
   const displayFile = selectedFile || existingFile;
+  const isConsentDocument = document.id === 'consent_document';
+  const isRelationshipProof = document.id === 'relationship_proof';
 
   return (
     <div className="sender-number-evidence-row">
@@ -663,18 +792,483 @@ function SmsEvidenceRow({
             )}
           </span>
         ) : null}
-        <label className="sender-number-evidence-upload" htmlFor={`sms-sender-evidence-${document.id}`}>
-          {displayFile ? '변경' : '파일 선택'}
-          <input
-            accept={SENDER_EVIDENCE_FILE_ACCEPT}
-            id={`sms-sender-evidence-${document.id}`}
-            onChange={(event) => onChange(document.id, event)}
-            type="file"
+        {isConsentDocument ? (
+          <SmsConsentDocumentModal
+            numberType={selectedNumberType.value}
+            onUseDocument={(file) => onGeneratedFile(document.id, file)}
+            triggerLabel={displayFile ? '변경' : '작성하기'}
           />
-        </label>
+        ) : isRelationshipProof ? (
+          <SmsRelationshipProofDocumentModal
+            initialSenderNumber={sendNo}
+            onUseDocument={(file) => onGeneratedFile(document.id, file)}
+            triggerLabel={displayFile ? '변경' : '작성하기'}
+          />
+        ) : (
+          <label className="sender-number-evidence-upload" htmlFor={`sms-sender-evidence-${document.id}`}>
+            {displayFile ? '변경' : '파일 선택'}
+            <input
+              accept={SENDER_EVIDENCE_FILE_ACCEPT}
+              id={`sms-sender-evidence-${document.id}`}
+              onChange={(event) => onChange(document.id, event)}
+              type="file"
+            />
+          </label>
+        )}
       </div>
     </div>
   );
+}
+
+function SmsConsentDocumentModal({ numberType, onUseDocument, triggerLabel }) {
+  const documentFormRef = useRef(null);
+  const generatedDocumentRef = useRef(null);
+  const previewUrlRef = useRef('');
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState('edit');
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [documentAction, setDocumentAction] = useState('');
+  const [documentActionError, setDocumentActionError] = useState('');
+  const [savedDocumentInputs, setSavedDocumentInputs] = useState(() => ({
+    ...SMS_CONSENT_DOCUMENT_INITIAL_INPUTS,
+  }));
+  const [documentInputs, setDocumentInputs] = useState(() => ({
+    ...SMS_CONSENT_DOCUMENT_INITIAL_INPUTS,
+  }));
+
+  useEffect(() => () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+  }, []);
+
+  function clearGeneratedDocument() {
+    generatedDocumentRef.current = null;
+
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = '';
+      setPreviewUrl('');
+    }
+  }
+
+  function handleOpenChange(nextOpen) {
+    if (nextOpen) {
+      setDocumentInputs({ ...savedDocumentInputs });
+    }
+
+    clearGeneratedDocument();
+    setDocumentAction('');
+    setDocumentActionError('');
+    setView('edit');
+    setOpen(nextOpen);
+  }
+
+  function handleInputsChange(nextInputs) {
+    generatedDocumentRef.current = null;
+    setDocumentInputs(nextInputs);
+  }
+
+  async function getGeneratedDocument() {
+    if (generatedDocumentRef.current) {
+      return generatedDocumentRef.current;
+    }
+
+    if (!documentFormRef.current) {
+      throw new Error('이용승낙서 편집 화면이 아직 준비되지 않았습니다.');
+    }
+
+    const generatedDocument = await documentFormRef.current.generatePdf();
+
+    generatedDocumentRef.current = generatedDocument;
+    setDocumentInputs({ ...generatedDocument.inputs });
+    return generatedDocument;
+  }
+
+  async function runDocumentAction(action, callback) {
+    setDocumentAction(action);
+    setDocumentActionError('');
+
+    try {
+      await callback();
+    } catch (error) {
+      setDocumentActionError(error?.message || '이용승낙서 PDF를 만들지 못했습니다.');
+    } finally {
+      setDocumentAction('');
+    }
+  }
+
+  function showGeneratedDocumentPreview(generatedDocument) {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(new Blob(
+      [generatedDocument.pdf],
+      { type: 'application/pdf' },
+    ));
+
+    previewUrlRef.current = nextPreviewUrl;
+    setPreviewUrl(nextPreviewUrl);
+    setView('preview');
+  }
+
+  function returnToEditor() {
+    clearGeneratedDocument();
+    setDocumentActionError('');
+    setView('edit');
+  }
+
+  async function handlePreview() {
+    await runDocumentAction('preview', async () => {
+      showGeneratedDocumentPreview(await getGeneratedDocument());
+    });
+  }
+
+  async function handleDownload() {
+    await runDocumentAction('download', async () => {
+      const generatedDocument = await getGeneratedDocument();
+      downloadPdf(generatedDocument.pdf, getConsentDocumentFileName(numberType));
+    });
+  }
+
+  async function handleUseDocument() {
+    await runDocumentAction('use', async () => {
+      const generatedDocument = await getGeneratedDocument();
+      const file = new File(
+        [generatedDocument.pdf],
+        getConsentDocumentFileName(numberType),
+        { type: 'application/pdf' },
+      );
+
+      await onUseDocument?.(file);
+      setDocumentInputs({ ...generatedDocument.inputs });
+      setSavedDocumentInputs({ ...generatedDocument.inputs });
+      handleOpenChange(false);
+    });
+  }
+
+  const isWorking = Boolean(documentAction);
+
+  return (
+    <Modal onOpenChange={handleOpenChange} open={open}>
+      <ModalTrigger>
+        <button className="sender-number-evidence-upload" type="button">{triggerLabel}</button>
+      </ModalTrigger>
+      <ModalContent className="sms-consent-document-modal" size="workspace">
+        <ModalHeader>
+          <ModalTitle>이용승낙서 작성</ModalTitle>
+          <ModalDescription>
+            {numberType === 'company' ? '회사' : '개인'} 발신번호 등록에 사용할 이용승낙서 양식입니다.
+          </ModalDescription>
+        </ModalHeader>
+        <ModalBody className="sms-consent-document-modal-body">
+          {view === 'preview' ? (
+            <div className="sms-consent-document-preview">
+              <iframe
+                className="sms-consent-document-preview-frame"
+                src={`${previewUrl}#view=FitH&toolbar=0&navpanes=0`}
+                title="작성된 이용승낙서 미리보기"
+              />
+            </div>
+          ) : (
+            <SmsConsentDocumentForm
+              initialInputs={documentInputs}
+              key={numberType}
+              numberType={numberType}
+              onInputsChange={handleInputsChange}
+              ref={documentFormRef}
+            />
+          )}
+        </ModalBody>
+        {documentActionError ? (
+          <Notice
+            className="sms-consent-document-action-error"
+            title="문서를 만들지 못했습니다"
+            urgent
+            variant="critical"
+          >
+            <p>{documentActionError}</p>
+          </Notice>
+        ) : null}
+        <ModalFooter className="sms-consent-document-modal-footer">
+          <ModalClose>
+            <Button disabled={isWorking} type="button">취소</Button>
+          </ModalClose>
+          <div className="sms-consent-document-modal-actions">
+            {view === 'preview' ? (
+              <Button disabled={isWorking} onClick={returnToEditor} type="button">
+                <Pencil aria-hidden="true" size={15} />
+                편집으로 돌아가기
+              </Button>
+            ) : (
+              <Button disabled={isWorking} onClick={handlePreview} type="button">
+                {documentAction === 'preview' ? (
+                  <LoaderCircle aria-hidden="true" className="sms-consent-document-form-spinner" size={15} />
+                ) : (
+                  <Eye aria-hidden="true" size={15} />
+                )}
+                {documentAction === 'preview' ? '미리보기 생성 중' : '미리보기'}
+              </Button>
+            )}
+            <Button disabled={isWorking} onClick={handleDownload} type="button">
+              {documentAction === 'download' ? (
+                <LoaderCircle aria-hidden="true" className="sms-consent-document-form-spinner" size={15} />
+              ) : (
+                <Download aria-hidden="true" size={15} />
+              )}
+              {documentAction === 'download' ? 'PDF 생성 중' : 'PDF로 다운로드'}
+            </Button>
+            <Button disabled={isWorking} onClick={handleUseDocument} type="button" variant="primary">
+              {documentAction === 'use' ? (
+                <LoaderCircle aria-hidden="true" className="sms-consent-document-form-spinner" size={15} />
+              ) : (
+                <CheckCircle2 aria-hidden="true" size={15} />
+              )}
+              {documentAction === 'use' ? '서류 준비 중' : '신청에 사용하기'}
+            </Button>
+          </div>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+function getConsentDocumentFileName(numberType) {
+  return numberType === 'company'
+    ? '발신번호-이용승낙서-사업자.pdf'
+    : '발신번호-이용승낙서-개인.pdf';
+}
+
+function SmsRelationshipProofDocumentModal({
+  initialSenderNumber,
+  onUseDocument,
+  triggerLabel,
+}) {
+  const documentFormRef = useRef(null);
+  const generatedDocumentRef = useRef(null);
+  const previewUrlRef = useRef('');
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState('edit');
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [documentAction, setDocumentAction] = useState('');
+  const [documentActionError, setDocumentActionError] = useState('');
+  const [savedDocumentInputs, setSavedDocumentInputs] = useState(() => (
+    createSmsRelationshipProofInitialInputs(initialSenderNumber)
+  ));
+  const [documentInputs, setDocumentInputs] = useState(() => (
+    createSmsRelationshipProofInitialInputs(initialSenderNumber)
+  ));
+
+  useEffect(() => () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+  }, []);
+
+  function clearGeneratedDocument() {
+    generatedDocumentRef.current = null;
+
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = '';
+      setPreviewUrl('');
+    }
+  }
+
+  function handleOpenChange(nextOpen) {
+    if (nextOpen) {
+      setDocumentInputs({
+        ...savedDocumentInputs,
+        senderNumber: savedDocumentInputs.senderNumber || initialSenderNumber,
+      });
+    }
+
+    clearGeneratedDocument();
+    setDocumentAction('');
+    setDocumentActionError('');
+    setView('edit');
+    setOpen(nextOpen);
+  }
+
+  function handleInputsChange(nextInputs) {
+    generatedDocumentRef.current = null;
+    setDocumentInputs(nextInputs);
+  }
+
+  async function getGeneratedDocument() {
+    if (generatedDocumentRef.current) {
+      return generatedDocumentRef.current;
+    }
+
+    if (!documentFormRef.current) {
+      throw new Error('관계확인서 편집 화면이 아직 준비되지 않았습니다.');
+    }
+
+    const generatedDocument = await documentFormRef.current.generatePdf();
+
+    generatedDocumentRef.current = generatedDocument;
+    setDocumentInputs({ ...generatedDocument.inputs });
+    return generatedDocument;
+  }
+
+  async function runDocumentAction(action, callback) {
+    setDocumentAction(action);
+    setDocumentActionError('');
+
+    try {
+      await callback();
+    } catch (error) {
+      setDocumentActionError(error?.message || '관계확인서 PDF를 만들지 못했습니다.');
+    } finally {
+      setDocumentAction('');
+    }
+  }
+
+  function showGeneratedDocumentPreview(generatedDocument) {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(new Blob(
+      [generatedDocument.pdf],
+      { type: 'application/pdf' },
+    ));
+
+    previewUrlRef.current = nextPreviewUrl;
+    setPreviewUrl(nextPreviewUrl);
+    setView('preview');
+  }
+
+  function returnToEditor() {
+    clearGeneratedDocument();
+    setDocumentActionError('');
+    setView('edit');
+  }
+
+  async function handlePreview() {
+    await runDocumentAction('preview', async () => {
+      showGeneratedDocumentPreview(await getGeneratedDocument());
+    });
+  }
+
+  async function handleDownload() {
+    await runDocumentAction('download', async () => {
+      const generatedDocument = await getGeneratedDocument();
+      downloadPdf(generatedDocument.pdf, '발신번호-관계확인서.pdf');
+    });
+  }
+
+  async function handleUseDocument() {
+    await runDocumentAction('use', async () => {
+      const generatedDocument = await getGeneratedDocument();
+      const file = new File(
+        [generatedDocument.pdf],
+        '발신번호-관계확인서.pdf',
+        { type: 'application/pdf' },
+      );
+
+      await onUseDocument?.(file);
+      setDocumentInputs({ ...generatedDocument.inputs });
+      setSavedDocumentInputs({ ...generatedDocument.inputs });
+      handleOpenChange(false);
+    });
+  }
+
+  const isWorking = Boolean(documentAction);
+
+  return (
+    <Modal onOpenChange={handleOpenChange} open={open}>
+      <ModalTrigger>
+        <button className="sender-number-evidence-upload" type="button">{triggerLabel}</button>
+      </ModalTrigger>
+      <ModalContent className="sms-consent-document-modal" size="workspace">
+        <ModalHeader>
+          <ModalTitle>사업자 관계확인서 작성</ModalTitle>
+          <ModalDescription>
+            번호 명의 사업자와 실제 이용 사업자 간 발신번호 사용 관계를 확인하는 양식입니다.
+          </ModalDescription>
+        </ModalHeader>
+        <ModalBody className="sms-consent-document-modal-body">
+          {view === 'preview' ? (
+            <div className="sms-consent-document-preview">
+              <iframe
+                className="sms-consent-document-preview-frame"
+                src={`${previewUrl}#view=FitH&toolbar=0&navpanes=0`}
+                title="작성된 사업자 관계확인서 미리보기"
+              />
+            </div>
+          ) : (
+            <SmsRelationshipProofDocumentForm
+              initialInputs={documentInputs}
+              onInputsChange={handleInputsChange}
+              ref={documentFormRef}
+            />
+          )}
+        </ModalBody>
+        {documentActionError ? (
+          <Notice
+            className="sms-consent-document-action-error"
+            title="문서를 만들지 못했습니다"
+            urgent
+            variant="critical"
+          >
+            <p>{documentActionError}</p>
+          </Notice>
+        ) : null}
+        <ModalFooter className="sms-consent-document-modal-footer">
+          <ModalClose>
+            <Button disabled={isWorking} type="button">취소</Button>
+          </ModalClose>
+          <div className="sms-consent-document-modal-actions">
+            {view === 'preview' ? (
+              <Button disabled={isWorking} onClick={returnToEditor} type="button">
+                <Pencil aria-hidden="true" size={15} />
+                편집으로 돌아가기
+              </Button>
+            ) : (
+              <Button disabled={isWorking} onClick={handlePreview} type="button">
+                {documentAction === 'preview' ? (
+                  <LoaderCircle aria-hidden="true" className="sms-consent-document-form-spinner" size={15} />
+                ) : (
+                  <Eye aria-hidden="true" size={15} />
+                )}
+                {documentAction === 'preview' ? '미리보기 생성 중' : '미리보기'}
+              </Button>
+            )}
+            <Button disabled={isWorking} onClick={handleDownload} type="button">
+              {documentAction === 'download' ? (
+                <LoaderCircle aria-hidden="true" className="sms-consent-document-form-spinner" size={15} />
+              ) : (
+                <Download aria-hidden="true" size={15} />
+              )}
+              {documentAction === 'download' ? 'PDF 생성 중' : 'PDF로 다운로드'}
+            </Button>
+            <Button disabled={isWorking} onClick={handleUseDocument} type="button" variant="primary">
+              {documentAction === 'use' ? (
+                <LoaderCircle aria-hidden="true" className="sms-consent-document-form-spinner" size={15} />
+              ) : (
+                <CheckCircle2 aria-hidden="true" size={15} />
+              )}
+              {documentAction === 'use' ? '서류 준비 중' : '신청에 사용하기'}
+            </Button>
+          </div>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+function downloadPdf(pdf, fileName) {
+  const downloadUrl = URL.createObjectURL(new Blob([pdf], { type: 'application/pdf' }));
+  const anchor = document.createElement('a');
+
+  anchor.download = fileName;
+  anchor.href = downloadUrl;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
 }
 
 function SmsAdditionalEvidenceRow({ existingFiles, files, onChange, onRemove }) {
@@ -683,7 +1277,6 @@ function SmsAdditionalEvidenceRow({ existingFiles, files, onChange, onRemove }) 
       <div className="sender-number-evidence-copy">
         <span className="sender-number-evidence-title-row">
           <strong>{ADDITIONAL_SENDER_EVIDENCE_FILE.label}</strong>
-          <span className="sender-number-evidence-requirement-label">선택</span>
           <SmsEvidenceHelpTooltip document={ADDITIONAL_SENDER_EVIDENCE_FILE} />
         </span>
         <span className="sender-number-evidence-description">{ADDITIONAL_SENDER_EVIDENCE_FILE.description}</span>
@@ -855,12 +1448,14 @@ export function buildSmsSenderNumberApplicationPayload({
   additionalEvidenceFiles = [],
   evidenceFiles = {},
   formContext,
+  privacyConsentAccepted = false,
 }) {
   return {
     additionalEvidenceFiles,
     applicationId: formContext.applicationId,
     evidenceFiles,
     existingEvidenceFiles: formContext.existingEvidenceFiles,
+    privacyConsentAccepted,
     senderNumberType: formContext.senderNumberType,
     sendNo: formContext.sendNo,
   };

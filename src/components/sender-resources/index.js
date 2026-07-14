@@ -20,3 +20,5 @@ export {
   smsSenderNumberAddFixtures,
   SmsSenderNumberAdd,
 } from './SmsSenderNumberAdd.jsx';
+export { SmsConsentDocumentForm } from './SmsConsentDocumentForm.jsx';
+export { SMS_CONSENT_DOCUMENT_INITIAL_INPUTS } from './smsConsentDocumentTemplate.js';
