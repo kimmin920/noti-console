@@ -305,7 +305,7 @@ function DrawerInspectorSample() {
       />
 
       <Drawer onOpenChange={setOpen} open={open}>
-        <DrawerContent className="brand-button-editor-drawer" side="right">
+        <DrawerContent className="brand-button-editor-drawer" side="right" title="버튼 설정">
           <DrawerHeader>
             <DrawerTitle>버튼 설정</DrawerTitle>
             <DrawerDescription>{activeButton?.name || '새 버튼'} · {activeButton ? getButtonTypeLabel(activeButton.type) : ''}</DrawerDescription>

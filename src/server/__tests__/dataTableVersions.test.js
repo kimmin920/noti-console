@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as ui from '../../components/ui/index.js';
-import { DataTableV2 } from '../../components/ui/DataTableV2.jsx';
-import { DataTableV2Primitives } from '../../components/ui/DataTableV2Primitives.jsx';
+import { DataTableV2 } from '../../components/ui-extensions/AppDataTable.jsx';
+import { DataTableV2Primitives } from '../../components/ui-extensions/AppDataTablePrimitives.jsx';
 
 describe('DataTable versions', () => {
   it('pins the UI barrel to the canonical TanStack-backed V2 table', () => {

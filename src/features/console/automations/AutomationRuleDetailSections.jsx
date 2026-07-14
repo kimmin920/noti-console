@@ -59,18 +59,22 @@ export function AutomationRuleDetailHeader({ eventKey, onOpenApi, rule }) {
         <code title={rule.id} translate="no">{rule.id}</code>
       </div>
       <div className="automation-rule-detail-header-actions">
-        <ConsoleLink className="button secondary automation-rule-detail-link-button" href="/automations">
-          <ChevronLeft aria-hidden="true" size={15} />
-          목록
-        </ConsoleLink>
+        <Button asChild variant="secondary">
+          <ConsoleLink className="automation-rule-detail-link-button" href="/automations">
+            <ChevronLeft aria-hidden="true" size={15} />
+            목록
+          </ConsoleLink>
+        </Button>
         <Button disabled={!eventKey} onClick={onOpenApi} variant="secondary">
           <Code2 aria-hidden="true" size={14} />
           Open API
         </Button>
-        <ConsoleLink className="button primary automation-rule-detail-link-button" href={`/automations/${encodedRuleId}/edit`}>
-          <Pencil aria-hidden="true" size={14} />
-          편집
-        </ConsoleLink>
+        <Button asChild variant="primary">
+          <ConsoleLink className="automation-rule-detail-link-button" href={`/automations/${encodedRuleId}/edit`}>
+            <Pencil aria-hidden="true" size={14} />
+            편집
+          </ConsoleLink>
+        </Button>
       </div>
     </header>
   );
@@ -99,7 +103,9 @@ export function AutomationRuleDetailStatus({ actionHref, actionLabel, message, o
           <span>{message}</span>
         </div>
         {onRetry ? <Button onClick={onRetry}>다시 시도</Button> : null}
-        <ConsoleLink className="button secondary automation-rule-detail-link-button" href={actionHref}>{actionLabel}</ConsoleLink>
+        <Button asChild variant="secondary">
+          <ConsoleLink className="automation-rule-detail-link-button" href={actionHref}>{actionLabel}</ConsoleLink>
+        </Button>
       </div>
     </section>
   );

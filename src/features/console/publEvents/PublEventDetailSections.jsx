@@ -202,7 +202,7 @@ export function PublEventVariableDrawer({ onOpenChange, open, variable }) {
 
   return (
     <Drawer onOpenChange={onOpenChange} open={open}>
-      <DrawerContent className="publ-event-variable-drawer">
+      <DrawerContent className="publ-event-variable-drawer" title="변수 상세">
         <DrawerHeader>
           <DrawerTitle>변수 상세</DrawerTitle>
           <DrawerDescription>{variable.alias || variable.rawPath}</DrawerDescription>
@@ -365,7 +365,7 @@ export function PublEventVariableEditorDrawer({
 
   return (
     <Drawer onOpenChange={onOpenChange} open={open}>
-      <DrawerContent className="publ-event-variable-drawer publ-event-variable-editor-drawer">
+      <DrawerContent className="publ-event-variable-drawer publ-event-variable-editor-drawer" title={title}>
         <DrawerHeader>
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerDescription>{description}</DrawerDescription>

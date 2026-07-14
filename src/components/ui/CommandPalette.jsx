@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import { Button } from './Button.jsx';
+import { AppButton as Button } from '../ui-extensions/AppButton.jsx';
 import {
   Dialog,
   DialogBody,
@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from './Dialog.jsx';
 import { Kbd } from './Kbd.jsx';
-import { TextField } from './TextField.jsx';
+import { AppTextField as TextField } from '../ui-extensions/AppTextField.jsx';
 
 function commandMatches(command, query) {
   if (!query) return true;

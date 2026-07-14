@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
-import { IconButton } from './IconButton.jsx';
+import { AppIconButton as IconButton } from '../ui-extensions/AppIconButton.jsx';
 
 async function copyText(value) {
   if (navigator.clipboard?.writeText) {

@@ -1,0 +1,39 @@
+.resend-ui-icon-button {
+  gap: calc(var(--rui-spacing) * 2);
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.resend-ui-icon-button__content {
+  align-items: center;
+  display: inline-flex;
+  gap: calc(var(--rui-spacing) * 1);
+  justify-content: center;
+  min-width: 0;
+  opacity: 1;
+}
+
+.resend-ui-icon-button__icon {
+  display: block;
+  flex-shrink: 0;
+  height: 18px;
+  width: 18px;
+}
+
+.resend-ui-icon-button__icon svg {
+  height: calc(var(--rui-spacing) * 4);
+  width: calc(var(--rui-spacing) * 4);
+}
+
+@media (min-width: 48rem) {
+  .resend-ui-icon-button {
+    justify-content: center;
+    min-width: calc(var(--rui-spacing) * 8);
+    padding: calc(var(--rui-spacing) * 0);
+    width: auto;
+  }
+
+  .resend-ui-icon-button__label {
+    display: none;
+  }
+}

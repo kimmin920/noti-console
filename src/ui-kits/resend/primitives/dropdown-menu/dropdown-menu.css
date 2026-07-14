@@ -1,0 +1,73 @@
+.resend-ui-dropdown-menu-content {
+  background-color: var(--rui-overlay-background);
+  border: 1px solid var(--rui-overlay-border-color);
+  border-radius: var(--rui-overlay-radius);
+  box-shadow: var(--rui-shadow-menu);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--rui-spacing) * 1);
+  max-height: calc(var(--rui-spacing) * 96);
+  max-width: calc(var(--rui-spacing) * 76);
+  min-width: var(--radix-popper-anchor-width);
+  overflow: auto;
+  padding-block: var(--rui-overlay-padding-block);
+  z-index: 20;
+}
+
+.resend-ui-dropdown-menu-content[data-state="open"] {
+  animation: var(--rui-animation-open-slide-down-fade);
+}
+
+.resend-ui-dropdown-menu-content[data-state="closed"] {
+  animation: var(--rui-animation-close-slide-up-fade);
+}
+
+.resend-ui-dropdown-menu-item {
+  align-items: center;
+  border-radius: var(--rui-menu-item-radius);
+  color: var(--rui-text-default);
+  cursor: pointer;
+  display: flex;
+  font-size: var(--rui-text-sm);
+  gap: calc(var(--rui-spacing) * 1.5);
+  line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+  margin-inline: calc(var(--rui-spacing) * 1);
+  min-height: var(--rui-menu-item-height);
+  outline-style: none;
+  padding-inline: calc(var(--rui-spacing) * 2);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.resend-ui-dropdown-menu-item[data-highlighted],
+.resend-ui-dropdown-menu-item:focus-visible {
+  background-color: var(--rui-bg-interactive);
+  color: var(--rui-text-emphasis);
+}
+
+.resend-ui-dropdown-menu-item[data-disabled] {
+  color: var(--rui-gray-9);
+  cursor: not-allowed;
+}
+
+.resend-ui-dropdown-menu-item[data-variant="red"] {
+  color: var(--rui-red-a7);
+}
+
+.resend-ui-dropdown-menu-item[data-variant="red"][data-highlighted],
+.resend-ui-dropdown-menu-item[data-variant="red"]:focus-visible {
+  background-color: var(--rui-red-a3);
+  color: var(--rui-red-a7);
+}
+
+.resend-ui-dropdown-menu-separator {
+  background-color: var(--rui-bg-interactive-hover);
+  min-height: 1px;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resend-ui-dropdown-menu-content[data-state] {
+    animation: none;
+  }
+}

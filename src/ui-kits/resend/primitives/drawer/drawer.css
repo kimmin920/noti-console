@@ -1,0 +1,76 @@
+.resend-ui-drawer__overlay {
+  animation: resend-ui-drawer-fade-in var(--rui-duration-base) var(--rui-ease-out);
+  background-color: var(--rui-bg-overlay);
+  inset: 0;
+  position: fixed;
+  z-index: 60;
+}
+
+.resend-ui-drawer__content {
+  animation: resend-ui-drawer-slide-in var(--rui-duration-base) var(--rui-ease-in-out);
+  background-color: var(--rui-background);
+  border-left: 1px solid var(--rui-gray-3);
+  bottom: 0;
+  box-shadow: 0 4px 18px rgb(0 0 0 / 10%);
+  max-width: 490px;
+  outline: none;
+  overflow-y: auto;
+  padding: 0 calc(var(--rui-spacing) * 8) calc(var(--rui-spacing) * 8);
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 100%;
+  z-index: 61;
+}
+
+.resend-ui-drawer__header {
+  align-items: flex-start;
+  background-color: var(--rui-background);
+  display: flex;
+  justify-content: space-between;
+  padding-block: calc(var(--rui-spacing) * 8) calc(var(--rui-spacing) * 4);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.resend-ui-drawer__title {
+  color: var(--rui-text-emphasis);
+  font-family: var(--rui-font-display);
+  font-size: var(--rui-dialog-title-font-size);
+  font-weight: var(--rui-font-weight-semibold);
+  line-height: var(--rui-dialog-title-line-height);
+  margin: 0;
+}
+
+.resend-ui-drawer__close {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--rui-radius-xl);
+  color: var(--rui-text-default);
+  cursor: pointer;
+  display: inline-flex;
+  height: var(--rui-control-height-sm);
+  justify-content: center;
+  width: calc(var(--rui-spacing) * 8);
+}
+
+.resend-ui-drawer__close:hover,
+.resend-ui-drawer__close:focus-visible {
+  background-color: var(--rui-bg-interactive);
+  color: var(--rui-text-emphasis);
+  outline: none;
+}
+
+@keyframes resend-ui-drawer-fade-in { from { opacity: 0; } }
+@keyframes resend-ui-drawer-slide-in { from { transform: translateX(100%); } }
+
+@media (max-width: 39.999rem) {
+  .resend-ui-drawer__content { max-width: none; padding-inline: calc(var(--rui-spacing) * 6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resend-ui-drawer__content,
+  .resend-ui-drawer__overlay { animation: none; }
+}

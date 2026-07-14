@@ -1,0 +1,70 @@
+@font-face {
+  font-family: inter;
+  src: url("./fonts/inter_variable.p.0r27kd5h06n72.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: aBCFavorit;
+  src: url("./fonts/abc_favorit_book.p.0or15w12zowqm.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: aBCFavorit;
+  src: url("./fonts/abc_favorit_medium.p.07z90h2q5wq-8.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: domaine;
+  src: url("./fonts/domaine_regular.p.0e_gg64pmz90.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: domaine;
+  src: url("./fonts/domaine_medium.p.0q2xq1frl9er.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: domaine;
+  src: url("./fonts/domaine_bold.p.0vmrcg.1eleq.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: commitMono;
+  src: url("./fonts/commit_mono_regular.p.0aa27026uqvh.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: commitMono;
+  src: url("./fonts/commit_mono_italic.p.0_9c8p15epbr_.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400;
+  font-style: italic;
+}
+
+html,
+[data-resend-ui-theme] {
+  --rui-font-inter: "inter";
+  --rui-font-abc-favorit: "aBCFavorit";
+  --rui-font-domaine-src: "domaine";
+  --rui-font-commit-mono: "commitMono";
+}

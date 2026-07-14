@@ -2,8 +2,8 @@
 
 import { useId, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
-import { Button } from './Button.jsx';
-import { IconButton } from './IconButton.jsx';
+import { AppButton as Button } from '../ui-extensions/AppButton.jsx';
+import { AppIconButton as IconButton } from '../ui-extensions/AppIconButton.jsx';
 
 function classNames(...values) {
   return values.filter(Boolean).join(' ');

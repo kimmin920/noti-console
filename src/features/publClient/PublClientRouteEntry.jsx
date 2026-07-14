@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert } from 'lucide-react';
+import { Button } from '../../components/ui/index.js';
 import {
   buildPublClientPath,
   DEFAULT_CONSOLE_PAGE_ID,
@@ -102,7 +103,9 @@ export function PublClientInvalidRouteView() {
           <h1 id="publ-client-invalid-route-title">열 수 없는 경로입니다</h1>
           <p>요청한 Publ client 경로가 등록된 콘솔 화면과 일치하지 않습니다.</p>
         </div>
-        <Link className="button secondary" href="/publ-client/message-send">메시지 발송으로 이동</Link>
+        <Button asChild variant="secondary">
+          <Link href="/publ-client/message-send">메시지 발송으로 이동</Link>
+        </Button>
       </section>
     </main>
   );

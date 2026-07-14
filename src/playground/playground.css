@@ -245,9 +245,7 @@
   width: calc(var(--spacing) * 100);
 }
 
-.playground-stage > .button,
 .playground-stage > .accordion-root,
-.playground-stage > .icon-button,
 .playground-stage > .badge,
 .playground-stage > .checkbox-field,
 .playground-stage > .popover-root,
@@ -525,14 +523,40 @@
   color: var(--text-soft);
 }
 
-.playground-panel-content .button {
-  justify-self: start;
-}
-
 .inspector-demo-content {
   display: grid;
   gap: 8px;
   padding-right: 6px;
+}
+
+.playground-modal-workspace-preview {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 148px;
+  min-height: 180px;
+  overflow: hidden;
+}
+
+.playground-modal-workspace-preview > div {
+  align-items: center;
+  background: var(--control);
+  color: var(--text-soft);
+  display: flex;
+  font-size: 13px;
+  justify-content: center;
+}
+
+.playground-modal-workspace-preview > aside {
+  border-left: 1px solid var(--line);
+  color: var(--text-soft);
+  font-size: 12px;
+  padding: 16px;
+}
+
+.playground-modal-workspace-preview[data-size='workspace'] {
+  min-height: min(56vh, 560px);
 }
 
 .inspector-demo-content h4 {
@@ -921,10 +945,6 @@
   white-space: nowrap;
   font-size: 13px;
   line-height: 18px;
-}
-
-.brand-button-manager-detail .button {
-  justify-self: start;
 }
 
 .brand-button-modal-editor.dialog-large {
@@ -1691,5 +1711,14 @@
 
   .playground-back {
     max-width: 100%;
+  }
+
+  .playground-modal-workspace-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .playground-modal-workspace-preview > aside {
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
 }

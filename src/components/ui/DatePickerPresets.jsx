@@ -6,8 +6,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from './DropdownMenu.jsx';
-import { Button } from './Button.jsx';
+} from '../ui-extensions/AppDropdownMenu.jsx';
+import { AppButton as Button } from '../ui-extensions/AppButton.jsx';
 
 const dayMs = 24 * 60 * 60 * 1000;
 

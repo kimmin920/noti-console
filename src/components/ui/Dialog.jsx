@@ -15,7 +15,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { IconButton } from './IconButton.jsx';
+import { AppIconButton as IconButton } from '../ui-extensions/AppIconButton.jsx';
 
 const DialogContext = createContext(null);
 

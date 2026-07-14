@@ -1,23 +1,12 @@
 'use client';
 
-import { useState } from 'react';
 import { ArrowDownToLine, Code2 } from 'lucide-react';
+import { ApiDrawer } from '../../ui-kits/resend/layout/api-drawer';
 import {
-  CodeBlock,
-  CopyableSlot,
   DatePickerPresets,
-  Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
   FilterSelect,
   IconButton,
-  Kbd,
   SearchField,
-  SegmentedControl,
   Tooltip,
 } from '../ui/index.js';
 
@@ -207,37 +196,17 @@ function ToolbarFilter({ filter }) {
 }
 
 export function ApiCodeDrawer() {
-  const [sdk, setSdk] = useState(sdkOptions[0]);
-
   return (
-    <Drawer>
-      <Tooltip content="API 코드" side="bottom">
-        <DrawerTrigger asChild>
-          <IconButton icon={Code2} label="API 코드" title="" />
-        </DrawerTrigger>
-      </Tooltip>
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>API 코드</DrawerTitle>
-          <DrawerDescription>
-            현재 메시지 발송 흐름을 API로 연결할 때 사용할 기본 예시입니다.
-          </DrawerDescription>
-        </DrawerHeader>
-        <DrawerBody>
-          <div className="api-drawer-stack">
-            <SegmentedControl items={sdkOptions} onValueChange={setSdk} value={sdk} />
-            <div className="api-drawer-meta">
-              <CopyableSlot label="환경 변수" value="RESEND_API_KEY" />
-              <CopyableSlot label="엔드포인트" value="https://api.resend.com/emails" />
-            </div>
-            <CodeBlock code={apiSnippets[sdk]} language={sdk.toLowerCase()} title={sdk} />
-            <p className="api-drawer-help">
-              단축키 <Kbd>A</Kbd> 로 열리는 Resend 원본의 API drawer 흐름을 기준으로, 여기서는 toolbar 코드 버튼에서 같은 작업을 시작하게 했습니다.
-            </p>
-          </div>
-        </DrawerBody>
-      </DrawerContent>
-    </Drawer>
+    <ApiDrawer
+      sdks={sdkOptions}
+      sections={[{
+        code: apiSnippets,
+        description: '현재 메시지 발송 흐름을 API로 연결할 때 사용할 기본 예시입니다.',
+        title: '메시지 발송',
+      }]}
+      title="API 코드"
+      trigger={<IconButton icon={Code2} label="API 코드" title="" />}
+    />
   );
 }
 

@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import { ChartContainer, ChartLegendContent, ChartTooltipContent } from '../../../components/ui/index.js';
+import { Button, ChartContainer, ChartLegendContent, ChartTooltipContent } from '../../../components/ui/index.js';
 import { ConsoleLink } from '../ConsoleNavigationContext.jsx';
 import { formatMetricNumber } from './metricsFormatters.js';
 
@@ -55,7 +55,9 @@ export function MetricsTrendChart({ data = [], loading = false }) {
     return (
       <div className="metrics-chart-empty">
         <span>선택한 기간에 집계할 발송이 없습니다.</span>
-        <ConsoleLink className="button secondary metrics-empty-action" href="/message-send">첫 발송 만들기</ConsoleLink>
+        <Button asChild variant="secondary">
+          <ConsoleLink className="metrics-empty-action" href="/message-send">첫 발송 만들기</ConsoleLink>
+        </Button>
       </div>
     );
   }

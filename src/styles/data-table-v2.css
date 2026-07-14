@@ -721,19 +721,6 @@
   width: 48px;
 }
 
-.automation-data-table .is-automation-actions .icon-button {
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-soft);
-}
-
-.automation-data-table .is-automation-actions .icon-button:hover,
-.automation-data-table .is-automation-actions .icon-button:focus-visible {
-  background: var(--control);
-  border-color: var(--line-soft);
-  color: var(--text);
-}
-
 .automation-data-table .automation-rule-row.is-clickable {
   cursor: pointer;
 }
@@ -1050,19 +1037,6 @@
   display: inline-flex;
   gap: 6px;
   justify-content: flex-end;
-}
-
-.automation-unsent-action-buttons .icon-button {
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-soft);
-}
-
-.automation-unsent-action-buttons .icon-button:hover,
-.automation-unsent-action-buttons .icon-button:focus-visible {
-  background: var(--control);
-  border-color: var(--line-soft);
-  color: var(--text);
 }
 
 .automation-unsent-loading {
@@ -1400,10 +1374,6 @@
     width: 100%;
   }
 
-  .automations-header-actions .button {
-    flex: 1 1 auto;
-  }
-
   .automations-toolbar {
     grid-template-columns: 1fr;
   }
@@ -1411,11 +1381,6 @@
   .publ-event-load-error {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .publ-event-load-error .button {
-    justify-content: center;
-    width: 100%;
   }
 }
 

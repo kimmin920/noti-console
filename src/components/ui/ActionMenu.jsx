@@ -7,7 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './DropdownMenu.jsx';
+} from '../ui-extensions/AppDropdownMenu.jsx';
 
 export function ActionMenu(props) {
   return <DropdownMenu {...props} />;

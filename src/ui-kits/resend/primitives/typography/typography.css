@@ -1,0 +1,50 @@
+.resend-ui-text,
+.resend-ui-heading {
+  color: var(--rui-text-default);
+  font-family: var(--rui-font-sans);
+  margin: 0;
+}
+
+.resend-ui-text[data-color="white"],
+.resend-ui-heading[data-color="white"] { color: var(--rui-text-emphasis); }
+.resend-ui-text[data-color="red"] { color: var(--rui-red-a11); }
+.resend-ui-text[data-color="yellow"] { color: var(--rui-amber-a11); }
+
+.resend-ui-text[data-weight="normal"] { font-weight: var(--rui-font-weight-normal); }
+.resend-ui-text[data-weight="medium"],
+.resend-ui-heading[data-weight="medium"] { font-weight: var(--rui-font-weight-medium); }
+.resend-ui-text[data-weight="semibold"],
+.resend-ui-heading[data-weight="semibold"] { font-weight: var(--rui-font-weight-semibold); }
+.resend-ui-text[data-weight="bold"],
+.resend-ui-heading[data-weight="bold"] { font-weight: var(--rui-font-weight-bold); }
+
+.resend-ui-text[data-size="1"],
+.resend-ui-heading[data-size="1"] { font-size: var(--rui-type-1-font-size); line-height: var(--rui-type-1-line-height); }
+.resend-ui-text[data-size="2"],
+.resend-ui-heading[data-size="2"] { font-size: var(--rui-type-2-font-size); line-height: var(--rui-type-2-line-height); }
+.resend-ui-text[data-size="3"],
+.resend-ui-heading[data-size="3"] { font-size: var(--rui-type-3-font-size); line-height: var(--rui-type-3-line-height); }
+.resend-ui-text[data-size="4"],
+.resend-ui-heading[data-size="4"] { font-size: var(--rui-type-4-font-size); line-height: var(--rui-type-4-line-height); }
+.resend-ui-text[data-size="5"],
+.resend-ui-heading[data-size="5"] { font-size: var(--rui-type-5-font-size); letter-spacing: var(--rui-type-5-tracking); line-height: var(--rui-type-5-line-height); }
+.resend-ui-text[data-size="6"],
+.resend-ui-heading[data-size="6"] { font-size: var(--rui-type-6-font-size); letter-spacing: var(--rui-type-6-tracking); line-height: var(--rui-type-6-line-height); }
+.resend-ui-text[data-size="7"] { font-size: var(--rui-type-7-font-size); letter-spacing: var(--rui-type-7-tracking); line-height: var(--rui-type-7-line-height); }
+.resend-ui-text[data-size="8"] { font-size: var(--rui-type-8-font-size); letter-spacing: var(--rui-type-8-tracking); line-height: var(--rui-type-8-line-height); }
+.resend-ui-text[data-size="9"] { font-size: var(--rui-type-9-font-size); letter-spacing: var(--rui-type-9-tracking); line-height: var(--rui-type-9-line-height); }
+
+.resend-ui-heading[data-size="7"],
+.resend-ui-heading[data-size="8"] {
+  font-family: var(--rui-font-display);
+  font-feature-settings: "ss01", "ss04", "ss11";
+  letter-spacing: var(--rui-heading-display-tracking);
+}
+.resend-ui-heading[data-size="7"] { font-size: var(--rui-type-7-font-size); line-height: var(--rui-type-7-line-height); }
+.resend-ui-heading[data-size="8"] { font-size: var(--rui-type-8-font-size); line-height: var(--rui-type-8-line-height); }
+
+@media (min-width: 40rem) {
+  .resend-ui-text[data-size="4"],
+  .resend-ui-heading[data-size="4"] { font-size: var(--rui-type-4-desktop-font-size); line-height: var(--rui-type-4-desktop-line-height); }
+  .resend-ui-heading[data-size="8"] { font-size: var(--rui-heading-8-desktop-font-size); letter-spacing: var(--rui-type-9-tracking); line-height: var(--rui-heading-8-desktop-line-height); }
+}

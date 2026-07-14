@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './DropdownMenu.jsx';
+} from '../ui-extensions/AppDropdownMenu.jsx';
 
 function getOption(options, value) {
   return options.find((option) => option.value === value) ?? null;

@@ -1418,8 +1418,7 @@
   }
 
   .publ-event-primary-button,
-  .publ-event-secondary-button,
-  .publ-event-detail-actions .button {
+  .publ-event-secondary-button {
     width: 100%;
   }
 
@@ -1450,9 +1449,6 @@
     flex-direction: column;
   }
 
-  .publ-event-editor-notice .button,
-  .publ-event-variables-header .button,
-  .publ-event-create-actions .button,
   .publ-event-create-actions .publ-event-detail-link-button {
     width: 100%;
   }

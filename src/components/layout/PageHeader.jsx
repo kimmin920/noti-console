@@ -1,15 +1,16 @@
-import { Plus } from 'lucide-react';
-import { Button } from '../ui/Button.jsx';
+import {
+  PageHeaderActions,
+  PageHeaderPrimaryButton,
+} from '../../ui-kits/resend/layout/page-header-actions';
 
 export function PageHeader({ action, onAction, title }) {
   return (
     <div className="page-header">
       <h1>{title}</h1>
       {action ? (
-        <Button onClick={onAction} variant="primary">
-          <Plus size={15} />
-          {action}
-        </Button>
+        <PageHeaderActions>
+          <PageHeaderPrimaryButton onClick={onAction}>{action}</PageHeaderPrimaryButton>
+        </PageHeaderActions>
       ) : null}
     </div>
   );

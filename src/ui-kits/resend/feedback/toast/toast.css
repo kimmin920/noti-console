@@ -1,0 +1,192 @@
+.resend-ui-toaster-section {
+  pointer-events: none;
+  position: fixed;
+  z-index: 70;
+}
+
+.resend-ui-toaster {
+  bottom: 24px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  max-width: calc(100vw - 32px);
+  padding: 0;
+  pointer-events: none;
+  position: fixed;
+  right: 24px;
+  width: 356px;
+}
+
+.resend-ui-toaster [data-sonner-toast] {
+  list-style: none;
+  pointer-events: auto;
+}
+
+.resend-ui-toast-card {
+  --resend-toast-border: var(--rui-gray-3);
+  --resend-toast-glow: var(--rui-gray-2);
+
+  background: var(--rui-background);
+  border: 1px solid var(--resend-toast-border);
+  border-radius: 16px;
+  box-sizing: border-box;
+  color: var(--rui-gray-12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 360px;
+  overflow: hidden;
+  padding: 16px;
+  position: relative;
+  transition: all .15s var(--rui-ease-in-out);
+  width: 100%;
+}
+
+.resend-ui-toast-card:focus-visible,
+.resend-ui-toaster [data-sonner-toast]:focus-visible .resend-ui-toast-card {
+  outline: none;
+}
+
+.resend-ui-toast-card::before {
+  background: var(--resend-toast-glow);
+  border-radius: var(--rui-radius-full);
+  content: "";
+  filter: blur(16px);
+  height: 200px;
+  left: -80px;
+  position: absolute;
+  top: -16px;
+  width: 160px;
+}
+
+.resend-ui-toast-card[data-appearance="green"] {
+  --resend-toast-border: var(--rui-green-a11);
+  --resend-toast-glow: var(--rui-green-a3);
+  --resend-toast-icon: #a8e7a6;
+}
+
+.resend-ui-toast-card[data-appearance="red"] {
+  --resend-toast-border: var(--rui-red-a11);
+  --resend-toast-glow: var(--rui-red-a3);
+  --resend-toast-icon: #d35352;
+}
+
+.resend-ui-toast-card[data-appearance="yellow"] {
+  --resend-toast-border: var(--rui-amber-a11);
+  --resend-toast-glow: #f99c0024;
+}
+
+.resend-ui-toast-card[data-appearance="gray"] {
+  --resend-toast-border: var(--rui-gray-3);
+  --resend-toast-glow: var(--rui-gray-2);
+}
+
+.resend-ui-toast-card__body {
+  align-items: flex-start;
+  display: flex;
+  flex: 1;
+  gap: 16px;
+  position: relative;
+}
+
+.resend-ui-toast-card__icon {
+  align-self: flex-start;
+  color: var(--resend-toast-icon);
+  display: block;
+  flex: 0 0 18px;
+  height: 18px;
+  min-width: 18px;
+  position: relative;
+  width: 18px;
+  z-index: 20;
+}
+
+.resend-ui-toast-card__icon svg {
+  display: block;
+  fill: currentcolor;
+  height: 18px;
+  width: 18px;
+}
+
+.resend-ui-toast-card__icon-mark {
+  fill: none;
+  stroke: var(--rui-background);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.resend-ui-toast-card__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  position: relative;
+  z-index: 20;
+}
+
+.resend-ui-toast-card__content--with-action {
+  padding-right: 40px;
+}
+
+.resend-ui-toast-card__title {
+  color: var(--rui-gray-12);
+  display: block;
+  font-size: var(--rui-text-sm);
+  font-weight: var(--rui-font-weight-semibold);
+  line-height: var(--rui-text-sm--line-height);
+}
+
+.resend-ui-toast-card__description {
+  color: var(--rui-gray-11);
+  display: block;
+  font-size: var(--rui-text-sm);
+  line-height: 20px;
+  width: 100%;
+}
+
+.resend-ui-toast-card__action {
+  align-self: flex-start;
+  height: 24px;
+  position: absolute;
+  right: 16px;
+  top: 12px;
+  z-index: 30;
+}
+
+.resend-ui-toast-card__close {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--rui-radius-xl);
+  color: var(--rui-gray-11);
+  cursor: pointer;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  padding: 0;
+  transition: background-color .2s var(--rui-ease-in-out), color .2s var(--rui-ease-in-out);
+  width: 24px;
+}
+
+.resend-ui-toast-card__close:hover,
+.resend-ui-toast-card__close:focus-visible {
+  background: var(--rui-gray-a2);
+  color: var(--rui-gray-12);
+  outline: none;
+}
+
+.resend-ui-toast-card__close svg {
+  height: 16px;
+  width: 16px;
+}
+
+@media (max-width: 500px) {
+  .resend-ui-toaster {
+    bottom: 16px;
+    right: 16px;
+  }
+}

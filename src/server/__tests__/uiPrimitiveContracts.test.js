@@ -5,17 +5,17 @@ import { describe, expect, it } from 'vitest';
 import { FileUploadField } from '../../components/ui/FileUploadField.jsx';
 import { ChoiceCardGroup } from '../../components/ui/ChoiceCardGroup.jsx';
 import {
-  FormField,
-  FormFieldControl,
-  FormFieldCounter,
-  FormFieldError,
-  FormFieldHelp,
-  FormFieldInput,
-  FormFieldLabel,
-  FormFieldRoot,
-  FormFieldSelect,
-  FormFieldTextarea,
-} from '../../components/ui/FormField.jsx';
+  AppFormField as FormField,
+  AppFormFieldControl as FormFieldControl,
+  AppFormFieldCounter as FormFieldCounter,
+  AppFormFieldError as FormFieldError,
+  AppFormFieldHelp as FormFieldHelp,
+  AppFormFieldInput as FormFieldInput,
+  AppFormFieldLabel as FormFieldLabel,
+  AppFormFieldRoot as FormFieldRoot,
+  AppFormFieldSelect as FormFieldSelect,
+  AppFormFieldTextarea as FormFieldTextarea,
+} from '../../components/ui-extensions/AppFormField.jsx';
 import { Notice } from '../../components/ui/Notice.jsx';
 import { ValidationChecklist } from '../../components/ui/ValidationChecklist.jsx';
 
@@ -61,27 +61,26 @@ describe('FormField primitive contract', () => {
       )
     );
 
-    expect(html).toContain('form-field-root has-action custom-root');
-    expect(html).toContain('class="form-field-label"');
+    expect(html).toContain('resend-ui-form-field app-rui-form-field--has-action custom-root');
+    expect(html).toContain('class="resend-ui-form-label"');
     expect(html).toContain('for="template-name"');
-    expect(html).toContain('class="form-field-label-text"');
+    expect(html).toContain('class="resend-ui-form-label__text"');
     expect(html).toContain('Template name');
-    expect(html).toContain('class="form-field-required"');
-    expect(html).toContain('class="form-field-affordance"');
+    expect(html).toContain('class="app-rui-form-field__required"');
+    expect(html).toContain('class="app-rui-form-field__affordance"');
     expect(html).toContain('aria-label="Required value missing"');
-    expect(html).toContain('class="form-field-control"');
-    expect(html).toContain('class="form-field-input"');
+    expect(html).toContain('class="app-rui-form-field__control"');
+    expect(html).toContain('class="resend-ui-input"');
     expect(html).toContain('aria-describedby="template-name-help template-name-error"');
     expect(html).toContain('aria-invalid="true"');
     expect(html).toContain('disabled=""');
     expect(html).toContain('readOnly=""');
-    expect(html).toContain('class="form-field-help"');
-    expect(html).toContain('class="form-field-error"');
+    expect(html).toContain('class="resend-ui-text"');
+    expect(html).toContain('class="resend-ui-form-message"');
     expect(html).toContain('role="alert"');
-    expect(html).toContain('class="form-field-counter"');
-    expect(html).toContain('data-invalid="true"');
+    expect(html).toContain('data-color="red"');
     expect(html).toContain('12 / 40');
-    expect(html).toContain('class="form-field-action"');
+    expect(html).toContain('class="app-rui-form-field__action"');
   });
 
   it('renders textarea and native select controls while preserving arbitrary native props', () => {
@@ -110,10 +109,10 @@ describe('FormField primitive contract', () => {
     );
 
     expect(html).toContain('data-kind="advanced"');
-    expect(html).toContain('class="form-field-textarea"');
+    expect(html).toContain('class="resend-ui-textarea"');
     expect(html).toContain('maxLength="1000"');
     expect(html).toContain('rows="4"');
-    expect(html).toContain('class="form-field-select"');
+    expect(html).toContain('class="resend-ui-input app-rui-native-select"');
     expect(html).toContain('name="templateType"');
     expect(html).toContain('<option value="basic" selected="">Basic</option>');
     expect(html).toContain('<option value="image">Image</option>');

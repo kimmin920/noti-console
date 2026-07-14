@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Cropper from 'react-easy-crop';
 import { RotateCcw } from 'lucide-react';
-import { Button } from './Button.jsx';
+import { AppButton as Button } from '../ui-extensions/AppButton.jsx';
 import {
   Dialog,
   DialogBody,

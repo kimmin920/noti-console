@@ -2,9 +2,9 @@
 
 import { useId, useRef } from 'react';
 import { Trash2, Upload } from 'lucide-react';
-import { Button } from './Button.jsx';
-import { IconButton } from './IconButton.jsx';
-import { TextField } from './TextField.jsx';
+import { AppButton as Button } from '../ui-extensions/AppButton.jsx';
+import { AppIconButton as IconButton } from '../ui-extensions/AppIconButton.jsx';
+import { AppTextField as TextField } from '../ui-extensions/AppTextField.jsx';
 
 export function SectionPanel({
   bodyClassName = '',

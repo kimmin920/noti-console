@@ -1,0 +1,37 @@
+.resend-ui-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--rui-spacing) * 2);
+}
+
+.resend-ui-form-label {
+  color: var(--rui-text-default);
+  cursor: pointer;
+  display: block;
+  font-size: var(--rui-text-sm);
+  font-weight: var(--rui-font-weight-normal);
+  line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+}
+
+.resend-ui-form-label__text {
+  color: var(--rui-text-emphasis);
+  display: block;
+  font-size: var(--rui-text-sm);
+  font-weight: var(--rui-font-weight-semibold);
+  line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+}
+
+.resend-ui-form-label__description {
+  color: var(--rui-text-default);
+  display: block;
+  font-size: var(--rui-text-sm);
+  font-weight: var(--rui-font-weight-normal);
+  line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+}
+
+.resend-ui-form-message {
+  color: var(--rui-red-a7);
+  font-size: var(--rui-text-xs);
+  line-height: var(--tw-leading, var(--rui-text-xs--line-height));
+  margin: 0;
+}

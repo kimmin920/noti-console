@@ -24,7 +24,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './DropdownMenu.jsx';
+} from '../ui-extensions/AppDropdownMenu.jsx';
 import { RecipientSelect } from './RecipientSelect.jsx';
 import { SubscribeTopicSelect } from './SubscribeTopicSelect.jsx';
 import { Tooltip } from './Tooltip.jsx';

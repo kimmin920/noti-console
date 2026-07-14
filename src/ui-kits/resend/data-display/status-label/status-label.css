@@ -1,0 +1,20 @@
+.resend-ui-status-label {
+  align-items: center;
+  background-color: var(--rui-gray-2);
+  border-color: transparent;
+  border-radius: var(--rui-radius-lg);
+  border-style: var(--tw-border-style);
+  border-width: 1px;
+  color: var(--rui-gray-11);
+  display: inline-flex;
+  font-family: var(--rui-font-sans);
+  font-size: var(--rui-text-xs);
+  font-weight: var(--rui-font-weight-medium);
+  height: calc(var(--rui-spacing) * 6);
+  line-height: var(--tw-leading, var(--rui-text-xs--line-height));
+  overflow: hidden;
+  padding-inline: calc(var(--rui-spacing) * 2);
+  text-transform: capitalize;
+  user-select: none;
+  -webkit-user-select: none;
+}

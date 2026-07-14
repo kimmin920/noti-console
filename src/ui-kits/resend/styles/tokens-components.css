@@ -1,0 +1,23 @@
+html,
+[data-resend-ui-theme] {
+  --rui-control-height-sm: calc(var(--rui-spacing) * 8);
+  --rui-control-radius: var(--rui-radius-xl);
+  --rui-control-padding-inline: calc(var(--rui-spacing) * 3);
+  --rui-icon-size-sm: calc(var(--rui-spacing) * 4);
+  --rui-focus-ring-width: 2px;
+  --rui-overlay-background: var(--rui-background);
+  --rui-overlay-border-color: var(--rui-border-interactive);
+  --rui-overlay-radius: var(--rui-radius-2xl);
+  --rui-overlay-padding-block: calc(var(--rui-spacing) * 1);
+  --rui-menu-item-height: var(--rui-control-height-sm);
+  --rui-menu-item-radius: var(--rui-radius-xl);
+  --rui-checkbox-size: calc(var(--rui-spacing) * 5);
+  --rui-radio-size: calc(var(--rui-spacing) * 4);
+  --rui-radio-indicator-size: calc(var(--rui-spacing) * 2);
+  --rui-switch-height: calc(var(--rui-spacing) * 6);
+  --rui-switch-width: calc(var(--rui-spacing) * 10);
+  --rui-switch-thumb-size: calc(var(--rui-spacing) * 4);
+  --rui-data-table-header-height: calc(var(--rui-spacing) * 8);
+  --rui-data-table-row-height: calc(var(--rui-spacing) * 10);
+  --rui-calendar-day-size: calc(var(--rui-spacing) * 8);
+}

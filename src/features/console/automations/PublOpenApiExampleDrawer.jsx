@@ -41,7 +41,7 @@ export function PublOpenApiExampleDrawer({
   return (
     <Drawer onOpenChange={onOpenChange} open={open}>
       {trigger ? <DrawerTrigger asChild>{trigger}</DrawerTrigger> : null}
-      <DrawerContent className="publ-open-api-example-drawer">
+      <DrawerContent className="publ-open-api-example-drawer" title="PUBL Open API 예시">
         <DrawerHeader>
           <DrawerTitle>PUBL Open API 예시</DrawerTitle>
           <DrawerDescription>

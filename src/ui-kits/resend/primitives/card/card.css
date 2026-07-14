@@ -1,0 +1,13 @@
+.resend-ui-card {
+  background-color: var(--rui-background);
+  border: 1px solid var(--rui-gray-3);
+  border-radius: var(--rui-radius-2xl);
+  min-width: 0;
+  position: relative;
+}
+
+.resend-ui-card[data-radius="3xl"] { border-radius: var(--rui-radius-3xl); }
+
+.resend-ui-card__body {
+  padding: calc(var(--rui-spacing) * 5);
+}

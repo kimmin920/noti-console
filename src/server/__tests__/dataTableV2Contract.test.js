@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as ui from '../../components/ui/index.js';
-import { DataTableV2 } from '../../components/ui/DataTableV2.jsx';
+import { DataTableV2 } from '../../components/ui-extensions/AppDataTable.jsx';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -15,7 +15,7 @@ describe('DataTableV2 generic wrapper contract', () => {
   });
 
   it('keeps the generic wrapper backed by TanStack Table and the Resend edge checkbox pattern', () => {
-    const source = fs.readFileSync(path.join(repoRoot, 'src/components/ui/DataTableV2.jsx'), 'utf8');
+    const source = fs.readFileSync(path.join(repoRoot, 'src/components/ui-extensions/AppDataTable.jsx'), 'utf8');
 
     expect(source).toContain('@tanstack/react-table');
     expect(source).toContain('useReactTable');

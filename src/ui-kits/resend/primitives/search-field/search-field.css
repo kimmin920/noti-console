@@ -1,0 +1,31 @@
+.resend-ui-search-field {
+  position: relative;
+  width: 100%;
+}
+
+.resend-ui-search-field__slot {
+  align-items: center;
+  bottom: 0;
+  color: var(--rui-text-default);
+  display: flex;
+  gap: calc(var(--rui-spacing) * .5);
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  z-index: 10;
+}
+
+.resend-ui-search-field__slot[data-side="left"] {
+  left: calc(var(--rui-spacing) * 2);
+}
+
+.resend-ui-search-field__slot[data-side="right"] {
+  right: calc(var(--rui-spacing) * 1.5);
+}
+
+.resend-ui-search-field__slot-frame {
+  display: grid;
+  height: 24px;
+  place-content: center;
+  width: 24px;
+}

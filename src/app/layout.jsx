@@ -1,15 +1,16 @@
 import { ClerkProvider } from '@clerk/nextjs';
 
 import './globals.css';
-import '../resend-ui/resend-ui.css';
 import '../styles/components.css';
 import '../styles/data-table-v2.css';
 import '../styles/domain-detail.css';
 import '../styles/resend-automation.css';
 import '../styles/template-detail.css';
 import '../styles/publ-event-detail.css';
+import '../ui-kits/resend/styles/index.css';
+import '../styles/rui-extensions.css';
 import { AppProviders } from './AppProviders.jsx';
-import { ToastProvider } from '../components/ui/Toast.jsx';
+import { AppToastProvider as ToastProvider } from '../components/ui-extensions/AppToast.jsx';
 
 export const metadata = {
   title: 'NOTI',
@@ -36,7 +37,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ko">
+    <html data-resend-ui-theme="light" lang="ko">
       <body>
         <ClerkProvider dynamic>
           <AppProviders>

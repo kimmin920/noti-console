@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { IconButton } from './IconButton.jsx';
+import { AppIconButton as IconButton } from '../ui-extensions/AppIconButton.jsx';
 
 export function Pagination({
   className = '',

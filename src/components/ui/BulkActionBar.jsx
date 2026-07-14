@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { IconButton } from './IconButton.jsx';
+import { AppIconButton as IconButton } from '../ui-extensions/AppIconButton.jsx';
 
 export function BulkActionBar({
   children,

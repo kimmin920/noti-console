@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Button } from './Button.jsx';
+import { AppButton as Button } from '../ui-extensions/AppButton.jsx';
 import {
   Dialog,
   DialogBody,

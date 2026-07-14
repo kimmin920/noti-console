@@ -341,7 +341,10 @@ function AdminSenderApplicationDrawer({
         onClose();
       }
     }}>
-      <DrawerContent className="admin-application-drawer">
+      <DrawerContent
+        className="admin-application-drawer"
+        title={application ? formatSettingsPhoneNumber(application.requestedValue) : '신청 상세'}
+      >
         {application ? (
           <>
             <DrawerHeader>
@@ -501,13 +504,15 @@ function AdminEvidenceFileRow({ applicationId, file }) {
         <strong>{EVIDENCE_DOCUMENT_LABELS[file.documentType] ?? file.documentType}</strong>
         <small>{file.originalFileName} · {formatFileSize(file.byteSize)}</small>
       </span>
-      <a
-        className="button secondary admin-evidence-download"
-        href={`/api/admin/sender-resource-applications/${encodeURIComponent(applicationId)}/evidence-files/${encodeURIComponent(file.id)}/download`}
-      >
-        <Download aria-hidden="true" size={15} />
-        다운로드
-      </a>
+      <Button asChild variant="secondary">
+        <a
+          className="admin-evidence-download"
+          href={`/api/admin/sender-resource-applications/${encodeURIComponent(applicationId)}/evidence-files/${encodeURIComponent(file.id)}/download`}
+        >
+          <Download aria-hidden="true" size={15} />
+          다운로드
+        </a>
+      </Button>
     </div>
   );
 }

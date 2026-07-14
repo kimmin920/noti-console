@@ -511,7 +511,7 @@ function MessageReservationGroupDetailDrawer({
         onClose();
       }
     }} open={Boolean(selectedGroup)}>
-      <DrawerContent className="message-log-drawer">
+      <DrawerContent className="message-log-drawer" title="예약 상세">
         <DrawerHeader>
           <DrawerTitle>예약 상세</DrawerTitle>
           <DrawerDescription>{groupDescription}</DrawerDescription>

@@ -113,6 +113,15 @@ import {
   FilterSelect,
   IconButton,
   Kbd,
+  Modal,
+  ModalBody,
+  ModalClose,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+  ModalTrigger,
   AlimtalkSendForm,
   defaultAlimtalkSenderProfiles,
   defaultAlimtalkTemplates,
@@ -1053,6 +1062,36 @@ function DialogPreview({ description, size, title }) {
   );
 }
 
+function ModalPreview({ description, size, title }) {
+  return (
+    <Modal>
+      <ModalTrigger>
+        <Button>Open modal</Button>
+      </ModalTrigger>
+      <ModalContent size={size}>
+        <ModalHeader>
+          <ModalTitle>{title}</ModalTitle>
+          <ModalDescription>{description}</ModalDescription>
+        </ModalHeader>
+        <ModalBody>
+          <div className="playground-modal-workspace-preview" data-size={size}>
+            <div>Document</div>
+            <aside>Tools</aside>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <ModalClose>
+            <Button>Cancel</Button>
+          </ModalClose>
+          <ModalClose>
+            <Button variant="primary">Save changes</Button>
+          </ModalClose>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
 function ConfirmationDialogPreview({ confirmLabel, description, destructive, title }) {
   const { showToast } = useToast();
 
@@ -1460,8 +1499,8 @@ function NhnBrandMessageSendFormPlayground() {
 export const playgroundSections = [
   {
     id: 'resend-form-primitives',
-    title: 'Resend Form Primitives',
-    description: 'Copied form primitives from resends-clone for visual and API comparison before replacing call sites.',
+    title: 'RUI Ready Components',
+    description: 'Generated ready RUI components used by the application migration.',
     components: resendFormPrimitiveEntries,
   },
   {
@@ -1478,7 +1517,7 @@ export const playgroundSections = [
       {
         id: 'button',
         name: 'Button',
-        path: 'src/components/ui/Button.jsx',
+        path: 'src/components/ui-extensions/AppButton.jsx',
         description: 'Command button used for primary and secondary actions.',
         controls: [
           { id: 'variant', label: 'variant', type: 'select', options: ['primary', 'secondary'], defaultValue: 'primary' },
@@ -1498,7 +1537,7 @@ export const playgroundSections = [
       {
         id: 'icon-button',
         name: 'IconButton',
-        path: 'src/components/ui/IconButton.jsx',
+        path: 'src/components/ui-extensions/AppIconButton.jsx',
         description: 'Square icon-only action button with accessible label.',
         controls: [
           { id: 'icon', label: 'icon', type: 'select', options: ['more', 'export', 'code'], defaultValue: 'more' },
@@ -1564,7 +1603,7 @@ export const playgroundSections = [
       {
         id: 'toast',
         name: 'Toast',
-        path: 'src/components/ui/Toast.jsx',
+        path: 'src/components/ui-extensions/AppToast.jsx',
         description: 'Live-region feedback notification with Resend-style colored appearances.',
         controls: [
           { id: 'appearance', label: 'appearance', type: 'select', options: ['green', 'red', 'yellow', 'gray'], defaultValue: 'green' },
@@ -1598,6 +1637,20 @@ export const playgroundSections = [
         },
       },
       {
+        id: 'modal',
+        name: 'Modal',
+        path: 'src/components/ui-extensions/AppDialog.jsx',
+        description: 'RUI-styled Radix modal with stable application size variants, including a document workspace.',
+        controls: [
+          { id: 'title', label: 'title', type: 'text', defaultValue: 'Document editor' },
+          { id: 'description', label: 'description', type: 'text', defaultValue: 'Complete the document and review it before saving.' },
+          { id: 'size', label: 'size', type: 'select', options: ['sm', 'md', 'lg', 'workspace'], defaultValue: 'md' },
+        ],
+        render(values) {
+          return <ModalPreview description={values.description} size={values.size} title={values.title} />;
+        },
+      },
+      {
         id: 'confirmation-dialog',
         name: 'ConfirmationDialog',
         path: 'src/components/ui/ConfirmationDialog.jsx',
@@ -1622,7 +1675,7 @@ export const playgroundSections = [
       {
         id: 'checkbox',
         name: 'Checkbox',
-        path: 'src/components/ui/Checkbox.jsx',
+        path: 'src/components/ui-extensions/AppCheckbox.jsx',
         description: 'Native checkbox control with visible label, caption, disabled, and mixed states.',
         controls: [
           { id: 'label', label: 'label', type: 'text', defaultValue: 'Include inactive contacts' },
@@ -1730,7 +1783,7 @@ export const playgroundSections = [
       {
         id: 'text-field',
         name: 'TextField',
-        path: 'src/components/ui/TextField.jsx',
+        path: 'src/components/ui-extensions/AppTextField.jsx',
         description: 'Composable input root with optional leading slot for forms and toolbar controls.',
         controls: [
           { id: 'placeholder', label: 'placeholder', type: 'text', defaultValue: 'Search messages...' },
@@ -1757,7 +1810,7 @@ export const playgroundSections = [
       {
         id: 'search-field',
         name: 'SearchField',
-        path: 'src/components/ui/SearchField.jsx',
+        path: 'src/ui-kits/resend/primitives/search-field/search-field.tsx',
         description: 'Toolbar search input with fixed icon and control height.',
         controls: [
           { id: 'placeholder', label: 'placeholder', type: 'text', defaultValue: 'Search...' },
@@ -1770,7 +1823,7 @@ export const playgroundSections = [
       {
         id: 'filter-select',
         name: 'FilterSelect',
-        path: 'src/components/ui/FilterSelect.jsx',
+        path: 'src/components/ui-extensions/AppFilterSelect.jsx',
         description: 'Toolbar filter dropdown with single-select and multi-select states.',
         controls: [
           { id: 'label', label: 'label', type: 'text', defaultValue: 'Statuses' },
@@ -1965,7 +2018,7 @@ export const playgroundSections = [
       {
         id: 'select-pill',
         name: 'SelectPill',
-        path: 'src/components/ui/SelectPill.jsx',
+        path: 'src/components/ui-extensions/AppSelectPill.jsx',
         description: 'Filter dropdown trigger used in console toolbars.',
         controls: [
           { id: 'label', label: 'children', type: 'text', defaultValue: 'Last 15 days' },
@@ -1999,7 +2052,7 @@ export const playgroundSections = [
       {
         id: 'dropdown-menu',
         name: 'DropdownMenu',
-        path: 'src/components/ui/DropdownMenu.jsx',
+        path: 'src/components/ui-extensions/AppDropdownMenu.jsx',
         description: 'Composable anchored menu primitive with trigger, content, item, checkbox item, label, and separator exports.',
         controls: [
           { id: 'label', label: 'trigger label', type: 'text', defaultValue: 'Open menu' },
@@ -2039,7 +2092,7 @@ export const playgroundSections = [
       {
         id: 'drawer',
         name: 'Drawer',
-        path: 'src/components/ui/Drawer.jsx',
+        path: 'src/components/ui-extensions/AppDrawer.jsx',
         description: 'Accessible side-sheet dialog with trigger, header, body, footer, focus return, and Escape close.',
         controls: [
           { id: 'title', label: 'title', type: 'text', defaultValue: 'API code' },
@@ -2055,7 +2108,7 @@ export const playgroundSections = [
                   <ChevronDown size={15} />
                 </Button>
               </DrawerTrigger>
-              <DrawerContent side={values.side}>
+              <DrawerContent side={values.side} title={values.title}>
                 <DrawerHeader>
                   <DrawerTitle>{values.title}</DrawerTitle>
                   <DrawerDescription>{values.description}</DrawerDescription>
@@ -2107,7 +2160,7 @@ export const playgroundSections = [
       {
         id: 'segmented-control',
         name: 'SegmentedControl',
-        path: 'src/components/ui/SegmentedControl.jsx',
+        path: 'src/components/ui-extensions/AppSegmentedControl.jsx',
         description: 'Two or more tab-like options with local selected state.',
         controls: [
           { id: 'items', label: 'items', type: 'select', options: ['Sending,Receiving', 'Usage,Billing,Team'], defaultValue: 'Sending,Receiving' },
@@ -2155,7 +2208,7 @@ export const playgroundSections = [
       {
         id: 'card',
         name: 'Card',
-        path: 'src/components/ui/Card.jsx',
+        path: 'src/components/ui-extensions/AppCard.jsx',
         description: 'Profile/settings card frame with header, copy, and actions slots.',
         controls: [
           { id: 'title', label: 'title', type: 'text', defaultValue: 'Your email' },
@@ -2183,7 +2236,7 @@ export const playgroundSections = [
       {
         id: 'panel',
         name: 'Panel',
-        path: 'src/components/ui/Panel.jsx',
+        path: 'src/components/ui-extensions/AppPanel.jsx',
         description: 'Static inspector-style frame that accepts any child components.',
         controls: [
           { id: 'padded', label: 'padded', type: 'boolean', defaultValue: true },
@@ -2206,7 +2259,7 @@ export const playgroundSections = [
       {
         id: 'data-table-v2',
         name: 'DataTableV2',
-        path: 'src/components/ui/DataTableV2.jsx',
+        path: 'src/components/ui-extensions/AppDataTable.jsx',
         description: 'Generic TanStack-backed DataTableV2 renderer with Resend edge checkboxes, bulk actions, row menu, and pagination mock.',
         controls: [
           { id: 'loading', label: 'loading', type: 'boolean', defaultValue: false },
@@ -2246,7 +2299,7 @@ export const playgroundSections = [
       {
         id: 'empty-state',
         name: 'EmptyState',
-        path: 'src/components/ui/EmptyState.jsx',
+        path: 'src/components/ui-extensions/AppEmptyState.jsx',
         description: 'Centered empty surface used by console pages without records.',
         controls: [
           { id: 'icon', label: 'icon', type: 'select', options: ['braces', 'sparkles'], defaultValue: 'braces' },

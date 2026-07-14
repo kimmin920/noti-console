@@ -1,0 +1,73 @@
+.resend-ui-select-trigger {
+  align-items: center;
+  appearance: none;
+  background-color: var(--rui-bg-interactive);
+  border-color: var(--rui-border-interactive);
+  border-radius: var(--rui-control-radius);
+  border-style: var(--tw-border-style);
+  border-width: 1px;
+  color: var(--rui-text-default);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--rui-text-base);
+  height: var(--rui-control-height-sm);
+  justify-content: space-between;
+  line-height: var(--tw-leading, var(--rui-text-base--line-height));
+  max-width: 200px;
+  outline-style: none;
+  padding-left: var(--rui-control-padding-inline);
+  padding-right: calc(var(--rui-spacing) * 2);
+  user-select: none;
+  width: 100%;
+  -webkit-user-select: none;
+}
+
+.resend-ui-select-trigger--max-none {
+  max-width: none;
+}
+
+.resend-ui-select-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .7;
+}
+
+.resend-ui-select-trigger:not(:disabled):hover,
+.resend-ui-select-trigger:focus-visible,
+.resend-ui-select-trigger[data-state="open"] {
+  background-color: var(--rui-bg-interactive-hover);
+}
+
+.resend-ui-select-trigger:focus-visible {
+  --tw-ring-color: var(--rui-ring-focus);
+  --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(var(--rui-focus-ring-width) + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+  box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  outline-style: none;
+}
+
+.resend-ui-select-trigger__label {
+  min-width: 0;
+  overflow: hidden;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resend-ui-select-trigger__icon {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: var(--rui-icon-size-sm);
+  justify-content: center;
+  width: var(--rui-icon-size-sm);
+}
+
+.resend-ui-select-trigger[data-state="open"] .resend-ui-chevron-down-icon {
+  transform: rotate(180deg);
+}
+
+@media (min-width: 40rem) {
+  .resend-ui-select-trigger {
+    font-size: var(--rui-text-sm);
+    line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+  }
+}

@@ -20,7 +20,7 @@ export {
   defaultAlimtalkTemplates,
 } from './AlimtalkSendForm.jsx';
 export { AlimtalkPreview } from './AlimtalkPreview.jsx';
-export { Badge } from './Badge.jsx';
+export { AppStatusBadge as Badge } from '../ui-extensions/AppStatusBadge.jsx';
 export { KakaoTemplatePreview } from './KakaoTemplatePreview.jsx';
 export {
   BrandMessagePreview,
@@ -36,14 +36,20 @@ export {
   normalizeBrandMessageDraftValue,
 } from './BrandMessageSendForm.jsx';
 export { BulkActionBar } from './BulkActionBar.jsx';
-export { Button } from './Button.jsx';
-export { Card, CardActions, CardCopy, CardHeader, CardTitle } from './Card.jsx';
+export { AppButton as Button } from '../ui-extensions/AppButton.jsx';
+export {
+  AppCard as Card,
+  AppCardActions as CardActions,
+  AppCardCopy as CardCopy,
+  AppCardHeader as CardHeader,
+  AppCardTitle as CardTitle,
+} from '../ui-extensions/AppCard.jsx';
 export {
   ChartContainer,
   ChartLegendContent,
   ChartTooltipContent,
 } from './Chart.jsx';
-export { Checkbox } from './Checkbox.jsx';
+export { AppCheckbox as Checkbox } from '../ui-extensions/AppCheckbox.jsx';
 export { ChoiceCardGroup } from './ChoiceCardGroup.jsx';
 export { CodeBlock } from './CodeBlock.jsx';
 export { CommandPalette } from './CommandPalette.jsx';
@@ -55,16 +61,16 @@ export {
   defaultSmsFallbackSenderNumbers,
   SmsFallbackSelect,
 } from './SmsFallbackSelect.jsx';
-export { DataTableV2 } from './DataTableV2.jsx';
+export { DataTableV2 } from '../ui-extensions/AppDataTable.jsx';
 export {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from './DropdownMenu.jsx';
+  AppDropdownMenu as DropdownMenu,
+  AppDropdownMenuCheckboxItem as DropdownMenuCheckboxItem,
+  AppDropdownMenuContent as DropdownMenuContent,
+  AppDropdownMenuItem as DropdownMenuItem,
+  AppDropdownMenuLabel as DropdownMenuLabel,
+  AppDropdownMenuSeparator as DropdownMenuSeparator,
+  AppDropdownMenuTrigger as DropdownMenuTrigger,
+} from '../ui-extensions/AppDropdownMenu.jsx';
 export {
   Dialog,
   DialogBody,
@@ -77,31 +83,43 @@ export {
   DialogTrigger,
 } from './Dialog.jsx';
 export {
-  Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from './Drawer.jsx';
-export { EmptyState } from './EmptyState.jsx';
-export { FilterSelect } from './FilterSelect.jsx';
+  AppDrawer as Drawer,
+  AppDrawerBody as DrawerBody,
+  AppDrawerContent as DrawerContent,
+  AppDrawerDescription as DrawerDescription,
+  AppDrawerFooter as DrawerFooter,
+  AppDrawerHeader as DrawerHeader,
+  AppDrawerTitle as DrawerTitle,
+  AppDrawerTrigger as DrawerTrigger,
+} from '../ui-extensions/AppDrawer.jsx';
+export { AppEmptyState as EmptyState } from '../ui-extensions/AppEmptyState.jsx';
+export { AppFilterSelect as FilterSelect } from '../ui-extensions/AppFilterSelect.jsx';
 export {
-  FormField,
-  FormFieldControl,
-  FormFieldCounter,
-  FormFieldError,
-  FormFieldHelp,
-  FormFieldInput,
-  FormFieldLabel,
-  FormFieldRoot,
-  FormFieldSelect,
-  FormFieldTextarea,
-} from './FormField.jsx';
+  AppFormField as FormField,
+  AppFormFieldControl as FormFieldControl,
+  AppFormFieldCounter as FormFieldCounter,
+  AppFormFieldError as FormFieldError,
+  AppFormFieldHelp as FormFieldHelp,
+  AppFormFieldInput as FormFieldInput,
+  AppFormFieldLabel as FormFieldLabel,
+  AppFormFieldRoot as FormFieldRoot,
+  AppFormFieldSelect as FormFieldSelect,
+  AppFormFieldTextarea as FormFieldTextarea,
+} from '../ui-extensions/AppFormField.jsx';
 export { FileUploadField } from './FileUploadField.jsx';
-export { IconButton } from './IconButton.jsx';
+export { AppIconButton as IconButton } from '../ui-extensions/AppIconButton.jsx';
+export {
+  APP_DIALOG_SIZES as MODAL_SIZES,
+  AppDialog as Modal,
+  AppDialogBody as ModalBody,
+  AppDialogClose as ModalClose,
+  AppDialogContent as ModalContent,
+  AppDialogDescription as ModalDescription,
+  AppDialogFooter as ModalFooter,
+  AppDialogHeader as ModalHeader,
+  AppDialogTitle as ModalTitle,
+  AppDialogTrigger as ModalTrigger,
+} from '../ui-extensions/AppDialog.jsx';
 export { ImageCropDialog } from './ImageCropDialog.jsx';
 export {
   createCroppedImageFile,
@@ -145,11 +163,11 @@ export {
   getSmsTemplateDialogItems,
 } from './MessageTemplateDialogAdapters.jsx';
 export { Pagination } from './Pagination.jsx';
-export { Panel } from './Panel.jsx';
+export { AppPanel as Panel } from '../ui-extensions/AppPanel.jsx';
 export { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './Popover.jsx';
-export { SearchField } from './SearchField.jsx';
-export { SegmentedControl } from './SegmentedControl.jsx';
-export { SelectPill } from './SelectPill.jsx';
+export { SearchField } from '../../ui-kits/resend/primitives/search-field';
+export { AppSegmentedControl as SegmentedControl } from '../ui-extensions/AppSegmentedControl.jsx';
+export { AppSelectPill as SelectPill } from '../ui-extensions/AppSelectPill.jsx';
 export {
   InlineEmptyState,
   PropertyRow,
@@ -170,7 +188,12 @@ export {
   SmsSendForm,
 } from './SmsSendForm.jsx';
 export { SubscribeTopicSelect } from './SubscribeTopicSelect.jsx';
-export { TextField, TextFieldInput, TextFieldRoot, TextFieldSlot } from './TextField.jsx';
+export {
+  AppTextField as TextField,
+  AppTextFieldInput as TextFieldInput,
+  AppTextFieldRoot as TextFieldRoot,
+  AppTextFieldSlot as TextFieldSlot,
+} from '../ui-extensions/AppTextField.jsx';
 export {
   Tooltip,
   TooltipContent,
@@ -181,5 +204,8 @@ export {
   TooltipRoot,
   TooltipTrigger,
 } from './Tooltip.jsx';
-export { ToastProvider, useToast } from './Toast.jsx';
+export {
+  AppToastProvider as ToastProvider,
+  useAppToast as useToast,
+} from '../ui-extensions/AppToast.jsx';
 export { ValidationChecklist } from './ValidationChecklist.jsx';

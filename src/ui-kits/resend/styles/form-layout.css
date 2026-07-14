@@ -1,0 +1,177 @@
+.resend-ui-form-layout {
+  --resend-ui-form-layout-width: calc(var(--rui-spacing) * 112);
+  --resend-ui-form-layout-gap: calc(var(--rui-spacing) * 6);
+  --resend-ui-form-section-gap: calc(var(--rui-spacing) * 4);
+  --resend-ui-form-divider-gap: calc(var(--rui-spacing) * 6);
+  --resend-ui-form-divider-color: var(--rui-gray-a3);
+  --resend-ui-form-field-gap: calc(var(--rui-spacing) * 2);
+  --resend-ui-form-fields-gap: var(--resend-ui-form-section-gap);
+  --resend-ui-form-legend-gap: calc(var(--rui-spacing) * 1);
+  --resend-ui-form-grid-gap: calc(var(--rui-spacing) * 4);
+  --resend-ui-form-choice-group-gap: calc(var(--rui-spacing) * 3);
+  --resend-ui-form-choice-gap: calc(var(--rui-spacing) * 2);
+  --resend-ui-form-action-gap: calc(var(--rui-spacing) * 2);
+  --resend-ui-form-control-width: 100%;
+
+  box-sizing: border-box;
+  color: var(--rui-gray-12);
+  display: grid;
+  gap: var(--resend-ui-form-layout-gap);
+  justify-self: center;
+  max-width: var(--resend-ui-form-layout-width);
+  min-width: 0;
+  width: min(100%, var(--resend-ui-form-layout-width));
+}
+
+.resend-ui-form-layout .resend-ui-form-field {
+  gap: var(--resend-ui-form-field-gap);
+}
+
+.resend-ui-form-layout :is(.resend-ui-input, .resend-ui-select__trigger, .resend-ui-textarea) {
+  max-width: none;
+  width: var(--resend-ui-form-control-width);
+}
+
+.resend-ui-form-layout *,
+.resend-ui-form-layout *::before,
+.resend-ui-form-layout *::after {
+  box-sizing: inherit;
+}
+
+.resend-ui-form-layout__section,
+.resend-ui-form-layout__fieldset {
+  display: grid;
+  gap: var(--resend-ui-form-section-gap);
+  min-inline-size: 0;
+}
+
+.resend-ui-form-layout__section {
+  margin: 0;
+}
+
+.resend-ui-form-layout__fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.resend-ui-form-layout__section + .resend-ui-form-layout__section,
+.resend-ui-form-layout__section + .resend-ui-form-layout__fieldset,
+.resend-ui-form-layout__fieldset + .resend-ui-form-layout__section,
+.resend-ui-form-layout__fieldset + .resend-ui-form-layout__fieldset {
+  border-top: 1px solid var(--resend-ui-form-divider-color);
+  padding-top: var(--resend-ui-form-divider-gap);
+}
+
+.resend-ui-form-layout__legend-group {
+  display: grid;
+  gap: var(--resend-ui-form-legend-gap);
+}
+
+.resend-ui-form-layout__fields {
+  display: grid;
+  gap: var(--resend-ui-form-fields-gap);
+  min-width: 0;
+}
+
+.resend-ui-form-layout__fields--compact {
+  gap: var(--resend-ui-form-field-gap);
+}
+
+.resend-ui-form-layout legend,
+.resend-ui-form-layout__title {
+  color: var(--rui-gray-12);
+  font-size: var(--rui-text-sm);
+  font-weight: var(--rui-font-weight-semibold);
+  line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+  margin: 0;
+  padding: 0;
+}
+
+.resend-ui-form-layout__helper,
+.resend-ui-form-layout__description {
+  color: var(--rui-gray-11);
+  font-size: var(--rui-text-sm);
+  line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+  margin: 0;
+}
+
+.resend-ui-form-layout__error {
+  color: var(--rui-red-a7);
+  font-size: var(--rui-text-xs);
+  line-height: var(--tw-leading, var(--rui-text-xs--line-height));
+  margin: 0;
+}
+
+.resend-ui-form-layout__field-row,
+.resend-ui-form-layout__grid {
+  display: grid;
+  gap: var(--resend-ui-form-grid-gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.resend-ui-form-layout__field-row > *,
+.resend-ui-form-layout__grid > * {
+  min-width: 0;
+}
+
+.resend-ui-form-layout__field-row--two,
+.resend-ui-form-layout__grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.resend-ui-form-layout__field-row--three,
+.resend-ui-form-layout__grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.resend-ui-form-layout__choice-group {
+  display: grid;
+  gap: var(--resend-ui-form-choice-group-gap);
+}
+
+.resend-ui-form-layout__choice-row {
+  align-items: flex-start;
+  color: var(--rui-gray-11);
+  cursor: pointer;
+  display: inline-flex;
+  gap: var(--resend-ui-form-choice-gap);
+  justify-self: start;
+  line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+  min-width: 0;
+}
+
+.resend-ui-form-layout__choice-row > span {
+  color: var(--rui-gray-12);
+  font-size: var(--rui-text-sm);
+  font-weight: var(--rui-font-weight-semibold);
+  line-height: var(--tw-leading, var(--rui-text-sm--line-height));
+  min-width: 0;
+}
+
+.resend-ui-form-layout__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--resend-ui-form-action-gap);
+  justify-content: flex-end;
+}
+
+.resend-ui-form-layout__actions--start {
+  justify-content: flex-start;
+}
+
+@media (max-width: 42rem) {
+  .resend-ui-form-layout__field-row,
+  .resend-ui-form-layout__field-row--two,
+  .resend-ui-form-layout__field-row--three,
+  .resend-ui-form-layout__grid,
+  .resend-ui-form-layout__grid--two,
+  .resend-ui-form-layout__grid--three {
+    grid-template-columns: 1fr;
+  }
+
+  .resend-ui-form-layout__actions {
+    justify-content: flex-start;
+  }
+}

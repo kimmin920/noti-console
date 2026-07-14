@@ -1,0 +1,35 @@
+html,
+[data-resend-ui-theme] {
+  --rui-duration-fast: .15s;
+  --rui-duration-base: .2s;
+  --rui-duration-slow: .3s;
+  --rui-ease-in: cubic-bezier(.4, 0, 1, 1);
+  --rui-ease-out: cubic-bezier(0, 0, .2, 1);
+  --rui-ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --rui-animation-open-slide-down-fade: resend-ui-open-slide-down-fade var(--rui-duration-base);
+  --rui-animation-close-slide-up-fade: resend-ui-close-slide-up-fade var(--rui-duration-base);
+}
+
+@keyframes resend-ui-open-slide-down-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes resend-ui-close-slide-up-fade {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

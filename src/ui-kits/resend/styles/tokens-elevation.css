@@ -1,0 +1,12 @@
+html,
+[data-resend-ui-theme] {
+  --rui-shadow-menu: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+  --rui-shadow-popover: 0 12px 28px rgb(0 0 0 / 10%);
+  --rui-shadow-confirmation-popover: 0 18px 52px rgb(0 0 0 / 16%);
+  --rui-shadow-preview: 0 -2px 40px rgb(0 0 0 / 6.25%);
+  --rui-shadow-modal-strong: 0 25px 50px -12px rgb(0 0 0 / 25%);
+  --rui-shadow-slide-track: 0 0 40px 10px rgb(0 0 0 / 25%);
+  --rui-shadow-3xl: 0 0 60px 30px #f2f2f2;
+  --rui-shadow-4xl: 2px 13px 68px 7px #0000001a;
+  --rui-shadow-button: 0 0 4px #ffffff0f, 0 1px 14px #ffffff1f, 0 3px 32px #ffffff2e;
+}

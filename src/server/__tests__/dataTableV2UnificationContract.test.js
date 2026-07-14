@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as ui from '../../components/ui/index.js';
-import { DataTableV2 } from '../../components/ui/DataTableV2.jsx';
+import { DataTableV2 } from '../../components/ui-extensions/AppDataTable.jsx';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const unversionedTableName = 'Data' + 'Table';

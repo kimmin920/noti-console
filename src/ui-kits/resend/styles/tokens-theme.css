@@ -1,0 +1,42 @@
+html:not([data-resend-ui-theme="dark"]),
+[data-resend-ui-theme="light"],
+.light-theme {
+  --rui-background: #fdfdfd;
+  --rui-canvas: #eee;
+  --rui-bg-overlay: #fffffff2;
+  --rui-bg-accent: var(--rui-color-black);
+  --rui-bg-accent-hover: var(--rui-gray-a11);
+  --rui-bg-interactive: var(--rui-gray-a2);
+  --rui-bg-interactive-hover: var(--rui-gray-a3);
+  --rui-border-interactive: var(--rui-gray-a3);
+  --rui-ring-accent: var(--rui-gray-a4);
+  --rui-ring-focus: var(--rui-gray-a3);
+  --rui-text-default: var(--rui-gray-11);
+  --rui-text-emphasis: var(--rui-gray-12);
+  --rui-text-on-accent: var(--rui-color-white);
+  --rui-text-info: var(--rui-blue-a11);
+  --rui-link-border: var(--rui-blue-a11);
+  --rui-link-border-hover: var(--rui-blue-a11);
+  --rui-text-placeholder: var(--rui-gray-5);
+}
+
+html:is(.dark, [data-resend-ui-theme="dark"]),
+.dark-theme {
+  --rui-background: #000;
+  --rui-canvas: #14151799;
+  --rui-bg-overlay: #000000f2;
+  --rui-bg-accent: var(--rui-color-white);
+  --rui-bg-accent-hover: var(--rui-gray-12);
+  --rui-bg-interactive: var(--rui-gray-a2);
+  --rui-bg-interactive-hover: var(--rui-gray-a3);
+  --rui-border-interactive: var(--rui-gray-a3);
+  --rui-ring-accent: var(--rui-gray-a4);
+  --rui-ring-focus: var(--rui-gray-a3);
+  --rui-text-default: var(--rui-gray-11);
+  --rui-text-emphasis: var(--rui-gray-12);
+  --rui-text-on-accent: var(--rui-color-black);
+  --rui-text-info: var(--rui-blue-a11);
+  --rui-link-border: var(--rui-blue-a11);
+  --rui-link-border-hover: var(--rui-blue-a11);
+  --rui-text-placeholder: var(--rui-gray-8);
+}

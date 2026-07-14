@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './DropdownMenu.jsx';
+} from '../ui-extensions/AppDropdownMenu.jsx';
 
 export const defaultSmsFallbackSenderNumbers = [
   { label: '1544-0000', value: '1544-0000' },
