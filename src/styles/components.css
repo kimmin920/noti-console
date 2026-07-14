@@ -17420,6 +17420,30 @@ body.is-brand-message-button-dragging {
   gap: 20px;
 }
 
+.kakao-channel-creation-guide {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--control);
+  color: var(--text-soft);
+  display: grid;
+  gap: 9px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.kakao-channel-creation-guide p {
+  margin: 0;
+}
+
+.kakao-channel-creation-guide .domain-external-link {
+  justify-self: start;
+}
+
+.kakao-channel-creation-guide-note {
+  color: var(--text);
+}
+
 .kakao-channel-contact-grid {
   display: grid;
   grid-template-columns: 1fr;

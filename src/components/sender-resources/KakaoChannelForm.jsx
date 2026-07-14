@@ -1,6 +1,7 @@
 import { MessageCircle, Plus } from 'lucide-react';
 import {
   DomainAddField,
+  DomainExternalLink,
   DomainIconButton,
   DomainStep,
   DomainTextInput,
@@ -29,6 +30,15 @@ export function KakaoChannelInformationStep({
       <div className="domain-information-layout">
         <form className="domain-add-form kakao-channel-form" onSubmit={onRequestOtp}>
           {error ? <p className="kakao-channel-error" role="alert">{error}</p> : null}
+          <aside aria-label="카카오톡 채널 생성 안내" className="kakao-channel-creation-guide">
+            <p>발신 프로필을 등록하려면 카카오톡 채널이 생성되어야 합니다. 카카오톡 홈페이지에서 카카오톡 채널을 생성하세요.</p>
+            <DomainExternalLink href="https://center-pf.kakao.com/">
+              카카오톡 채널 생성 바로 가기
+            </DomainExternalLink>
+            <p className="kakao-channel-creation-guide-note">
+              <strong>(참고)</strong> 발신 프로필을 등록하려면 카카오톡 채널 등록 후 비즈니스 인증을 받아야 합니다.
+            </p>
+          </aside>
           <div className="kakao-channel-contact-grid">
             <DomainAddField htmlFor="kakao-plus-friend-id" label="카카오 채널 ID">
               <div className="domain-add-input-with-action">
