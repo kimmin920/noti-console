@@ -50,7 +50,7 @@
     "harness:test": "python3 -m unittest scripts/test_execute.py",
     "harness:review": "codex review --uncommitted \"Review changes against AGENTS.md, docs/ARCHITECTURE.md, docs/ADR.md, docs/UI_GUIDE.md, and docs/HARNESS.md. Prioritize bugs, regressions, architecture drift, missing verification, and harness state issues.\"",
     "start": "next start -H 0.0.0.0",
-    "worker": "node scripts/worker.js"
+    "worker": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/worker.js"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",
