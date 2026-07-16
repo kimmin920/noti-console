@@ -50,6 +50,25 @@ test('standalone sidebar survives repeated client navigation', async ({ context,
   expect(runtimeErrors).toEqual([]);
 });
 
+test('message composer fields do not retain focus rings', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-desktop', 'Desktop composer focus regression coverage.');
+
+  for (const { path: playgroundPath, senderLabel } of [
+    { path: '/playground/ui/sms-send-form', senderLabel: '발신번호 선택' },
+    { path: '/playground/ui/alimtalk-send-form', senderLabel: '발신 채널 선택' },
+    { path: '/playground/ui/nhn-brand-message-send-form', senderLabel: '발신 채널 선택' },
+  ]) {
+    await page.goto(playgroundPath);
+    const senderField = page.getByRole('button', { name: senderLabel, exact: true });
+
+    await senderField.click();
+    await page.keyboard.press('Escape');
+    await expect(senderField).toBeFocused();
+    await expect(senderField).toHaveCSS('box-shadow', 'none');
+    await expect(page.locator('.email-send-form-recipient-control')).toHaveCSS('box-shadow', 'none');
+  }
+});
+
 test('standalone embed tabs keep the canonical route and mounted sidebar', async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-desktop', 'Desktop fixed-sidebar regression coverage.');
 

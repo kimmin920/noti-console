@@ -3006,7 +3006,7 @@ button {
 .email-send-form-select:focus-visible,
 .email-send-form-recipient-control:focus-visible {
   outline: 0;
-  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 }
 
 .email-send-form-recipient-input:focus-visible {
@@ -4121,10 +4121,10 @@ button {
 }
 
 .alimtalk-send-form-empty {
-  color: var(--muted);
-  padding: 16px 18px;
-  font-size: 14px;
-  line-height: 20px;
+  color: color-mix(in srgb, var(--text-soft) 34%, transparent);
+  padding: 0;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .alimtalk-template-actions {
@@ -6873,7 +6873,7 @@ button {
 .message-template-variable-input:focus,
 .message-template-variable-select:focus {
   border-color: rgba(0, 0, 0, 0.28);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
   outline: 0;
 }
 

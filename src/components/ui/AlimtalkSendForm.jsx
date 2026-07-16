@@ -363,7 +363,9 @@ export function AlimtalkSendForm({
           </div>
         ) : (
           <div className="alimtalk-send-form-template">
-            <div className="alimtalk-send-form-empty">템플릿을 선택하세요.</div>
+            <div className="alimtalk-send-form-empty">
+              알림톡은 승인 완료된 템플릿으로만 발송할 수 있어요.
+            </div>
             <div className="alimtalk-template-actions">
               <EmailSendFormTemplateDialog
                 description="발송에 사용할 승인된 알림톡 템플릿을 선택하세요."
