@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type RowSelectionCheckedState = boolean | 'indeterminate';
 
@@ -17,6 +17,7 @@ type RowSelectionState = {
   readonly selectedRowIdsSet: ReadonlySet<string>;
   readonly setAllRowsChecked: (checked: RowSelectionCheckedState) => void;
   readonly setRowChecked: (rowId: string, checked: RowSelectionCheckedState) => void;
+  readonly setRowRangeChecked: (rowId: string, checked: RowSelectionCheckedState) => void;
 };
 
 function normalizeSelectedRowIds(rowIds: readonly string[], selectedRowIds: readonly string[]) {
@@ -36,6 +37,7 @@ function useRowSelection({
   rowIds,
   selectedRowIds,
 }: UseRowSelectionOptions): RowSelectionState {
+  const lastToggledRowIdRef = useRef<string | null>(null);
   const [internalSelectedRowIds, setInternalSelectedRowIds] = useState<readonly string[]>(
     () => normalizeSelectedRowIds(rowIds, defaultSelectedRowIds)
   );
@@ -66,6 +68,7 @@ function useRowSelection({
 
   const setAllRowsChecked = useCallback(
     (checked: RowSelectionCheckedState) => {
+      lastToggledRowIdRef.current = checked === true ? rowIds.at(-1) ?? null : null;
       commit(checked === true ? rowIds : []);
     },
     [commit, rowIds]
@@ -73,6 +76,7 @@ function useRowSelection({
 
   const setRowChecked = useCallback(
     (rowId: string, checked: RowSelectionCheckedState) => {
+      lastToggledRowIdRef.current = rowId;
       const nextSet = new Set(selectedRowIdsValue);
       if (checked === true) nextSet.add(rowId);
       else nextSet.delete(rowId);
@@ -81,12 +85,36 @@ function useRowSelection({
     [commit, rowIds, selectedRowIdsValue]
   );
 
+  const setRowRangeChecked = useCallback(
+    (rowId: string, checked: RowSelectionCheckedState) => {
+      const lastRowId = lastToggledRowIdRef.current;
+      const rowIndex = rowIds.indexOf(rowId);
+      const lastRowIndex = lastRowId === null ? -1 : rowIds.indexOf(lastRowId);
+      if (rowIndex === -1 || lastRowIndex === -1) {
+        setRowChecked(rowId, checked);
+        return;
+      }
+
+      const nextSet = new Set(selectedRowIdsValue);
+      const start = Math.min(rowIndex, lastRowIndex);
+      const end = Math.max(rowIndex, lastRowIndex);
+      for (const candidateRowId of rowIds.slice(start, end + 1)) {
+        if (checked === true) nextSet.add(candidateRowId);
+        else nextSet.delete(candidateRowId);
+      }
+      lastToggledRowIdRef.current = rowId;
+      commit(rowIds.filter((candidateRowId) => nextSet.has(candidateRowId)));
+    },
+    [commit, rowIds, selectedRowIdsValue, setRowChecked]
+  );
+
   return {
     allRowsCheckboxState: getAllRowsCheckboxState(rowIds, selectedRowIdsValue),
     selectedRowIds: selectedRowIdsValue,
     selectedRowIdsSet,
     setAllRowsChecked,
     setRowChecked,
+    setRowRangeChecked,
   };
 }
 

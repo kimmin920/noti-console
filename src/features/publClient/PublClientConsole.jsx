@@ -20,6 +20,7 @@ export function PublClientConsole({
       getPageHref={getPageHref}
       hideAccountControl
       mode="embed"
+      navigationSurface="publ-client"
       pageId={pageId}
       pageProps={pageProps}
     />

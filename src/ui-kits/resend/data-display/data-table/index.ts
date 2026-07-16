@@ -9,6 +9,11 @@ export {
   DataTableLoadingCell,
   DataTableRoot,
   DataTableRow,
+  DataTableSelectAll,
+  DataTableSelectionItem,
+  DataTableSelectionLabel,
+  DataTableSelectionRoot,
+  DataTableSelectionViewport,
 } from './data-table';
 export { useRowSelection } from './row-selection';
 export type {
@@ -19,6 +24,10 @@ export type {
   DataTableHeaderWidth,
   DataTableLoadingCellProps,
   DataTableRootProps,
+  DataTableSelectionControlProps,
+  DataTableSelectionLabelProps,
+  DataTableSelectionRootProps,
+  DataTableSelectionViewportProps,
 } from './data-table';
 export type {
   RowSelectionChangeHandler,

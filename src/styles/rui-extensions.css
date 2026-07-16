@@ -118,6 +118,14 @@
   z-index: 1;
 }
 
+.resend-ui-button.resend-ui-icon-button[aria-label='Close dialog'] {
+  justify-content: center;
+  min-width: calc(var(--rui-spacing) * 8);
+  padding: 0;
+  position: absolute;
+  width: calc(var(--rui-spacing) * 8);
+}
+
 @keyframes app-rui-dialog-overlay-in {
   from { opacity: 0; }
 }

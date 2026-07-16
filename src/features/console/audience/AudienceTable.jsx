@@ -1,81 +1,323 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Ban, Copy, MoreHorizontal, Pencil, Sparkles, Trash2 } from 'lucide-react';
+import { DropdownMenu as RadixDropdownMenu } from 'radix-ui';
+import { Ban, Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
-import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, ConfirmationDialog, DataTableV2, EmptyState, IconButton, SearchField, SegmentedControl, useToast } from '../../../components/ui/index.js';
+import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, ConfirmationDialog, DataTableV2, IconButton, SegmentedControl, useToast } from '../../../components/ui/index.js';
+import {
+  AudienceContactList,
+  AudienceManagementList,
+  DropdownMenu,
+  EmptyState,
+  PageHeaderActions,
+  PageHeaderPrimaryButton,
+} from '../../../ui-kits/resend/index.ts';
+import { AudienceAddContactsModal } from '../../../ui-kits/resend/domain/audience-contact-list/audience-add-contacts-modal.tsx';
+import { AudienceImportCsvModal } from '../../../ui-kits/resend/domain/audience-contact-list/audience-import-csv-modal.tsx';
 import { usePublMessageRecipients } from '../../publClient/usePublMessageRecipients.js';
+import { useStandaloneConsole } from '../StandaloneConsoleContext.jsx';
 
 const SELECTABLE_TABLE_PAGE_SIZE_OPTIONS = [40, 80, 120];
+const AUDIENCE_CONTACT_PAGE_SIZE = 40;
+const STATIC_AUDIENCE_DATE = '2026-07-14T00:00:00.000Z';
 
-export function PublAudiencePage() {
+export function AudiencePage({ meta: metaProp }) {
+  const standaloneConsole = useStandaloneConsole();
+  const meta = metaProp ?? standaloneConsole?.meta;
   const [activeTab, setActiveTab] = useState('contacts');
-  const [searchValue, setSearchValue] = useState('');
+  const [selectedContactIds, setSelectedContactIds] = useState([]);
+  const [selectedSegmentIds, setSelectedSegmentIds] = useState([]);
+  const { showToast } = useToast();
   const publRecipients = usePublMessageRecipients();
-  const contactsSourceState = publRecipients.contactsSourceState;
-  const normalizedSearch = searchValue.trim().toLocaleLowerCase('ko-KR');
-  const rows = publRecipients.contacts.filter((contact) => (
-    !normalizedSearch
-    || [contact.label, contact.detail, contact.externalId]
-      .filter(Boolean)
-      .join(' ')
-      .toLocaleLowerCase('ko-KR')
-      .includes(normalizedSearch)
-  ));
+  const configuredAudience = useMemo(
+    () => toConfiguredAudience(meta?.table?.rows ?? []),
+    [meta?.table?.rows]
+  );
+  const publContacts = useMemo(
+    () => toPublAudienceContacts(publRecipients.contacts),
+    [publRecipients.contacts]
+  );
+  const isPublEmbed = publRecipients.isPublEmbed;
+  const contacts = isPublEmbed ? publContacts : configuredAudience.contacts;
+  const visibleContacts = contacts.slice(0, AUDIENCE_CONTACT_PAGE_SIZE);
+  const segments = isPublEmbed ? [] : configuredAudience.segments;
+  const managementSegments = isPublEmbed ? [] : configuredAudience.managementSegments;
+  const publContactNotice = isPublEmbed
+    ? getPublContactNotice(publRecipients.contactsSourceState)
+    : null;
+  const contactState = getAudienceContactState({
+    contactCount: visibleContacts.length,
+    isPublEmbed,
+    sourceState: publRecipients.contactsSourceState,
+  });
+
+  function notifyUnavailable(label) {
+    showToast({
+      description: '이번 화면 이식에서는 UI만 연결했습니다.',
+      title: `${label} 기능 준비 중`,
+      variant: 'default',
+    });
+  }
+
+  function handleActiveTabChange(nextTab) {
+    setActiveTab(nextTab);
+    setSelectedContactIds([]);
+    setSelectedSegmentIds([]);
+  }
+
+  function handleDomainLinkClick(event) {
+    if (!event.target.closest('a')) return;
+    event.preventDefault();
+    notifyUnavailable(activeTab === 'contacts' ? '수신자 상세' : '세그먼트 상세');
+  }
 
   return (
-    <section className="page-frame publ-audience-page">
-      <PageHeader title="수신자" />
+    <section className={`page-frame console-audience-page${isPublEmbed ? ' is-publ' : ''}`}>
+      <PageHeader
+        actions={(
+          <AudiencePageHeaderActions
+            activeTab={activeTab}
+            isPublEmbed={isPublEmbed}
+            onUnavailable={notifyUnavailable}
+            segments={segments}
+          />
+        )}
+        title="수신자"
+      />
       <SegmentedControl
-        items={[
-          { label: 'Publ 수신자', value: 'contacts' },
-          { label: 'Publ 세그먼트', value: 'segments' },
-        ]}
-        onValueChange={setActiveTab}
+        items={getAudienceTabs(isPublEmbed)}
+        onValueChange={handleActiveTabChange}
         value={activeTab}
       />
 
       {activeTab === 'contacts' ? (
-        <>
-          <div className="publ-audience-toolbar">
-            <SearchField
-              aria-label="Publ 수신자 검색"
-              onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="이름, 전화번호, Publ ID 검색"
-              value={searchValue}
-            />
-          </div>
-          <DataTableV2
-            columns={[
-              { accessor: 'label', header: '수신자' },
-              { accessor: 'value', cell: ({ value }) => <code>{value}</code>, header: '휴대폰' },
-              { accessor: (row) => row.externalId || '-', cell: ({ value }) => <code>{value}</code>, header: 'Publ ID' },
-            ]}
-            data={rows}
-            empty={<span className="admin-empty-row">{getPublAudienceEmptyMessage(contactsSourceState, normalizedSearch)}</span>}
-            getRowId={(row) => row.externalId || row.value}
-            loading={contactsSourceState === 'loading'}
-            loadingSlot={<span className="admin-state-row">Publ 수신자를 불러오는 중입니다.</span>}
-            pagination
-            tableClassName="console-data-table-v2 publ-audience-data-table"
+        publContactNotice ? (
+          <AudienceSourceNotice {...publContactNotice} />
+        ) : (
+          <AudienceContactList
+            className="console-audience-domain"
+            contactColumnLabel="수신자"
+            contacts={visibleContacts}
+            isUserAdmin={!isPublEmbed}
+            onClickCapture={handleDomainLinkClick}
+            onExport={() => notifyUnavailable('수신자 내보내기')}
+            onSelectedContactIdsChange={setSelectedContactIds}
+            segments={segments}
+            segmentsColumnLabel="세그먼트"
+            selectedContactIds={selectedContactIds}
+            state={contactState}
+            statusColumnLabel="수신동의"
+            subscribedLabel="동의"
+            unsubscribedLabel="미동의"
           />
-        </>
-      ) : (
-        <EmptyState
-          copy="Publ 세그먼트 SDK 권한이 추가되면 이 화면에서 조회하고 발송 대상으로 선택할 수 있습니다."
-          icon={Sparkles}
+        )
+      ) : isPublEmbed ? (
+        <AudienceSourceNotice
+          description="Publ 세그먼트 SDK 권한이 추가되면 이 화면에서 조회하고 발송 대상으로 선택할 수 있습니다."
           title="Publ 세그먼트 연동 준비 중"
+        />
+      ) : (
+        <AudienceManagementList
+          className="console-audience-domain"
+          onAudienceManagementRowAction={(action) => notifyUnavailable(`세그먼트 ${action}`)}
+          onClickCapture={handleDomainLinkClick}
+          onSelectedAudienceManagementIdsChange={setSelectedSegmentIds}
+          segments={managementSegments}
+          selectedAudienceManagementIds={selectedSegmentIds}
+          state={managementSegments.length > 0 ? 'loaded' : 'empty'}
+          view="segments"
         />
       )}
     </section>
   );
 }
 
-function getPublAudienceEmptyMessage(state, searchValue) {
-  if (state === 'permission-denied') return 'Publ 수신자 조회 권한이 없습니다';
-  if (state === 'error') return 'Publ 수신자를 불러오지 못했습니다.';
-  if (searchValue) return '검색 조건에 맞는 Publ 수신자가 없습니다.';
-  return '전화번호가 등록된 Publ 수신자가 없습니다.';
+function AudienceSourceNotice({ description, title, variant = 'status' }) {
+  return (
+    <EmptyState.Root
+      className="console-audience-source-state"
+      role={variant === 'error' ? 'alert' : 'status'}
+    >
+      <EmptyState.Content>
+        <EmptyState.Title>{title}</EmptyState.Title>
+        <EmptyState.Description>{description}</EmptyState.Description>
+      </EmptyState.Content>
+    </EmptyState.Root>
+  );
+}
+
+export function PublAudiencePage({ meta }) {
+  return <AudiencePage meta={meta} />;
+}
+
+function AudiencePageHeaderActions({ activeTab, isPublEmbed, onUnavailable, segments }) {
+  const [manualOpen, setManualOpen] = useState(false);
+  const [csvOpen, setCsvOpen] = useState(false);
+
+  if (isPublEmbed) return null;
+
+  return (
+    <>
+      <PageHeaderActions>
+        {activeTab === 'contacts' ? (
+          <DropdownMenu.Root>
+            <RadixDropdownMenu.Trigger asChild>
+              <PageHeaderPrimaryButton>수신자 추가</PageHeaderPrimaryButton>
+            </RadixDropdownMenu.Trigger>
+            <DropdownMenu.Content align="end">
+              <DropdownMenu.Item onSelect={() => window.requestAnimationFrame(() => setManualOpen(true))}>
+                직접 추가
+              </DropdownMenu.Item>
+              <DropdownMenu.Item onSelect={() => window.requestAnimationFrame(() => setCsvOpen(true))}>
+                CSV 가져오기
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
+        ) : (
+          <PageHeaderPrimaryButton onClick={() => onUnavailable('세그먼트 만들기')}>
+            세그먼트 만들기
+          </PageHeaderPrimaryButton>
+        )}
+      </PageHeaderActions>
+      <AudienceAddContactsModal
+        onOpenChange={setManualOpen}
+        open={manualOpen}
+        segments={segments}
+      />
+      <AudienceImportCsvModal
+        canCreateSegment
+        onOpenChange={setCsvOpen}
+        open={csvOpen}
+        segments={segments}
+      />
+    </>
+  );
+}
+
+function getAudienceTabs(isPublEmbed) {
+  return isPublEmbed
+    ? [
+      { label: 'Publ 수신자', value: 'contacts' },
+      { label: 'Publ 세그먼트', value: 'segments' },
+    ]
+    : [
+      { label: '수신자', value: 'contacts' },
+      { label: '세그먼트', value: 'segments' },
+    ];
+}
+
+function getAudienceContactState({ contactCount, isPublEmbed, sourceState }) {
+  if (isPublEmbed && sourceState === 'loading') return 'loading';
+  return contactCount > 0 ? 'loaded' : 'empty';
+}
+
+function getPublContactNotice(sourceState) {
+  if (sourceState === 'permission-denied') {
+    return {
+      description: '현재 환경의 Publ 연락처 permission ID를 확인해 주세요.',
+      title: 'Publ 수신자 조회 권한이 없습니다',
+      variant: 'error',
+    };
+  }
+
+  if (sourceState === 'error') {
+    return {
+      description: 'Publ 연결 상태를 확인한 뒤 다시 열어 주세요.',
+      title: 'Publ 수신자를 불러오지 못했습니다',
+      variant: 'error',
+    };
+  }
+
+  if (sourceState === 'empty') {
+    return {
+      description: '전화번호가 등록된 Publ 수신자만 표시됩니다.',
+      title: '전화번호가 등록된 Publ 수신자가 없습니다.',
+    };
+  }
+
+  return null;
+}
+
+function toPublAudienceContacts(contacts) {
+  return contacts.map((contact, index) => {
+    const phone = contact.value || contact.detail || contact.label || '-';
+    const label = contact.label && contact.label !== phone ? contact.label : undefined;
+
+    return {
+      createdAtDateTime: STATIC_AUDIENCE_DATE,
+      createdAtLabel: '-',
+      email: phone,
+      ...(label ? { firstName: label } : {}),
+      id: `publ-contact-${contact.externalId || phone || index}`,
+      segments: [],
+      topics: [],
+      unsubscribed: false,
+    };
+  });
+}
+
+function toConfiguredAudience(rows) {
+  const segmentMap = new Map();
+
+  rows.forEach((cells) => {
+    const name = String(cells[4] ?? '').trim();
+    if (!name) return;
+
+    const current = segmentMap.get(name) ?? {
+      contactsCount: 0,
+      createdAtDateTime: STATIC_AUDIENCE_DATE,
+      createdAtLabel: '기존 데이터',
+      id: `segment-${segmentMap.size + 1}`,
+      name,
+      unsubscribedCount: 0,
+    };
+    current.contactsCount += 1;
+    if (cells[3] === '수신거부') current.unsubscribedCount += 1;
+    segmentMap.set(name, current);
+  });
+
+  const managementSegments = Array.from(segmentMap.values());
+  const contactSegments = new Map(managementSegments.map((segment) => [
+    segment.name,
+    {
+      contactsCount: segment.contactsCount,
+      id: segment.id,
+      name: segment.name,
+    },
+  ]));
+  const contacts = rows.map((cells, index) => {
+    const segment = contactSegments.get(String(cells[4] ?? '').trim());
+    const phone = String(cells[1] ?? cells[2] ?? '-');
+    const name = String(cells[0] ?? '').trim();
+    const createdAtLabel = String(cells[5] ?? '-');
+
+    return {
+      createdAtDateTime: getConfiguredCreatedAtDateTime(createdAtLabel),
+      createdAtLabel,
+      email: phone,
+      ...(name ? { firstName: name } : {}),
+      id: `contact-${index + 1}`,
+      segments: segment ? [segment] : [],
+      topics: [],
+      unsubscribed: cells[3] === '수신거부',
+    };
+  });
+
+  return {
+    contacts,
+    managementSegments,
+    segments: Array.from(contactSegments.values()),
+  };
+}
+
+function getConfiguredCreatedAtDateTime(label) {
+  if (label === '오늘') return STATIC_AUDIENCE_DATE;
+  if (label === '어제') return '2026-07-13T00:00:00.000Z';
+
+  const match = /^5월 (\d{1,2})일$/.exec(label);
+  if (!match) return STATIC_AUDIENCE_DATE;
+  return `2026-05-${match[1].padStart(2, '0')}T00:00:00.000Z`;
 }
 
 function getStatusTone(cell) {

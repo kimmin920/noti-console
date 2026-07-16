@@ -50,6 +50,39 @@ test('standalone sidebar survives repeated client navigation', async ({ context,
   expect(runtimeErrors).toEqual([]);
 });
 
+test('standalone embed tabs keep the canonical route and mounted sidebar', async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-desktop', 'Desktop fixed-sidebar regression coverage.');
+
+  const apiState = createApiFixtureState();
+  const runtimeErrors = [];
+  await context.addCookies([{
+    name: '__dev_auth_user_id',
+    url: 'http://127.0.0.1:3410',
+    value: 'e2e-user',
+  }]);
+  await installApiFixtures(page, apiState);
+  page.on('console', (message) => {
+    if (message.type() === 'error') runtimeErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => runtimeErrors.push(error.message));
+
+  await page.goto('/templates?mode=embed');
+  const sidebar = page.locator('.inspector-sidebar-root');
+  await expect(sidebar).toHaveCount(1);
+  await sidebar.evaluate((element) => {
+    element.dataset.navigationSentinel = 'mounted';
+  });
+
+  for (const tab of ['알림톡', '브랜드 메시지', 'SMS', '알림톡']) {
+    await page.getByRole('tab', { name: tab, exact: true }).click();
+    await expect(page).toHaveURL(/\/templates\?(?=.*mode=embed)(?=.*tab=)/u);
+    await expect(sidebar).toHaveAttribute('data-navigation-sentinel', 'mounted');
+    await expect(page.locator('.app-shell')).toHaveClass(/embed-mode/u);
+  }
+
+  expect(runtimeErrors).toEqual([]);
+});
+
 test('approved parent renders prefixed Publ console without overflow', async ({ page }, testInfo) => {
   const evidence = createEvidenceRecorder(page, testInfo);
   const apiState = createApiFixtureState();
@@ -211,6 +244,10 @@ test('fresh reload exchanges again, same-document navigation preserves session, 
 
   await activateFrameLink(frame, '템플릿');
   await expectFrameUrl(frame, /\/publ-client\/templates/u);
+  await frame.getByRole('tab', { name: '알림톡', exact: true }).click();
+  await expectFrameUrl(frame, /\/publ-client\/templates\?tab=alimtalk/u);
+  await frame.getByRole('tab', { name: 'SMS', exact: true }).click();
+  await expectFrameUrl(frame, /\/publ-client\/templates\?tab=sms/u);
   await expect(frame.getByText('E2E SMS template')).toBeVisible();
   await frame.getByRole('button', { name: 'E2E SMS template 작업 더보기' }).click();
   await frame.getByRole('menuitem', { name: '상세 보기' }).click();
@@ -288,14 +325,20 @@ test('permission denial renders recipient capability state without CSV access', 
   await page.goto(getParentFrameUrl(APPROVED_PARENT, '/publ-client/audience'));
   const frame = await getPublFrame(page);
 
+  await expect(frame.getByRole('tab', { name: 'Publ 수신자', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(frame.getByRole('tab', { name: 'Publ 세그먼트', exact: true })).toHaveAttribute('aria-selected', 'false');
   const permissionDeniedState = frame.getByText('Publ 수신자 조회 권한이 없습니다');
   await expect(permissionDeniedState).toBeVisible();
   await centerInHorizontalScrollport(permissionDeniedState);
   await expect.poll(() => getHorizontalContainment(permissionDeniedState)).toEqual({ contained: true });
   await expect(frame.getByRole('button', { name: 'CSV 내보내기' })).toHaveCount(0);
+  await expect(frame.getByRole('button', { name: 'Export contacts' })).toHaveCount(0);
   expect(hasCsvExportRequest(apiState)).toBe(false);
   evidence.assertNoPublAuthBoundaryTraffic();
   await evidence.capture({ apiState, frame, label: 'permission-denied' });
+
+  await frame.getByRole('tab', { name: 'Publ 세그먼트', exact: true }).click();
+  await expect(frame.getByRole('heading', { name: 'Publ 세그먼트 연동 준비 중' })).toBeVisible();
 
   await activateFrameLink(frame, '발송기록');
   await expectFrameUrl(frame, /\/publ-client\/logs/u);
@@ -640,11 +683,13 @@ async function centerInHorizontalScrollport(locator) {
 async function getHorizontalContainment(locator) {
   return locator.evaluate((element) => {
     const scrollport = element.closest('.resend-email-table-scroll');
-    if (!scrollport) return { contained: false };
     const range = document.createRange();
     range.selectNodeContents(element);
     const elementRect = range.getBoundingClientRect();
-    const scrollportRect = scrollport.getBoundingClientRect();
+    const scrollportRect = scrollport?.getBoundingClientRect() ?? {
+      left: 0,
+      right: document.documentElement.clientWidth,
+    };
     return {
       contained: elementRect.left >= scrollportRect.left
         && elementRect.right <= scrollportRect.right,

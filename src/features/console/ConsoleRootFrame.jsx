@@ -36,7 +36,7 @@ export function ConsoleRootFrame({ children }) {
   };
 
   return (
-    <ConsoleNavigationProvider mode={shellMode}>
+    <ConsoleNavigationProvider mode={shellMode} surface="standalone">
       {shellMode === 'embed' ? (
         <EmbedShell {...shellProps}>{children}</EmbedShell>
       ) : (

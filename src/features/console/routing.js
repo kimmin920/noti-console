@@ -105,7 +105,7 @@ export function getPublStandaloneHref(routeMatchResult) {
   return appendRouteQuery(routeMatchResult.canonicalPathname, routeMatchResult.queryString);
 }
 
-export function transformConsoleHref(href, { mode } = {}) {
+export function transformConsoleHref(href, { mode, surface } = {}) {
   if (!shouldTransformConsoleHref(href)) return href;
 
   const shellMode = normalizeShellMode(mode);
@@ -115,6 +115,12 @@ export function transformConsoleHref(href, { mode } = {}) {
   if (!routeResult.ok) return href;
 
   const standaloneHref = getPublStandaloneHref(routeResult);
+  if (surface === 'standalone' && shellMode === 'embed') {
+    const query = new URLSearchParams(routeResult.queryString);
+    query.set('mode', 'embed');
+    return appendRouteQuery(routeResult.canonicalPathname, query.toString());
+  }
+
   return shellMode === 'embed' ? `${PUBL_CLIENT_PREFIX}${standaloneHref}` : standaloneHref;
 }
 

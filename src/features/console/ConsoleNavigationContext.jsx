@@ -12,10 +12,13 @@ import { normalizeShellMode, transformConsoleHref } from './routing.js';
 
 const ConsoleNavigationContext = createContext(null);
 
-export function ConsoleNavigationProvider({ children, mode = 'app' }) {
+export function ConsoleNavigationProvider({ children, mode = 'app', surface = 'standalone' }) {
   const router = useRouter();
   const shellMode = normalizeShellMode(mode);
-  const href = useCallback((value) => transformConsoleHref(value, { mode: shellMode }), [shellMode]);
+  const href = useCallback(
+    (value) => transformConsoleHref(value, { mode: shellMode, surface }),
+    [shellMode, surface]
+  );
   const push = useCallback((value, options) => router.push(href(value), options), [href, router]);
   const replace = useCallback((value, options) => router.replace(href(value), options), [href, router]);
   const value = useMemo(() => ({

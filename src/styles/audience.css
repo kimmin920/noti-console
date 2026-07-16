@@ -1,0 +1,17 @@
+.console-audience-page .console-audience-domain > .resend-ui-audience-contact-list__header,
+.console-audience-page .console-audience-domain > .resend-ui-audience-contact-list__tabs {
+  display: none;
+}
+
+.console-audience-page .console-audience-domain {
+  min-width: 0;
+}
+
+.console-audience-page .resend-ui-audience-contact-list__table-scroll,
+.console-audience-page .resend-ui-audience-management-list__table-scroll {
+  scrollbar-gutter: stable;
+}
+
+.console-audience-page.is-publ .resend-ui-audience-contact-list__export {
+  display: none;
+}

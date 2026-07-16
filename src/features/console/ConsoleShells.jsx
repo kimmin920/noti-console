@@ -95,6 +95,7 @@ function EmbedSidebar({ activePage, getPageHref, hideAccountControl, onOpenChang
     >
       <SidebarContent
         activePage={activePage}
+        embedMode
         getPageHref={getPageHref}
         hideAccountControl={hideAccountControl}
       />
@@ -116,6 +117,7 @@ function FixedSidebar({ activePage, getPageHref, hideAccountControl }) {
 
 function SidebarContent({
   activePage,
+  embedMode = false,
   getPageHref,
   hideAccountControl = false,
 }) {
@@ -123,7 +125,7 @@ function SidebarContent({
 
   return (
     <aside className="sidebar-menu">
-      <SidebarProductHeader href={getPageHref('emails')} />
+      <SidebarProductHeader href={getPageHref('emails')} showVersion={embedMode} />
 
       <nav className="sidebar-nav" aria-label="주 메뉴">
         {visibleNavItems.map(({ id, label }) => (
@@ -140,14 +142,14 @@ function SidebarContent({
       <div className="sidebar-bottom-stack">
         {hideAccountControl ? null : <SidebarAccountControl />}
 
-        <BuildVersionBadge />
+        {embedMode ? null : <BuildVersionBadge />}
       </div>
     </aside>
   );
 }
 
-function SidebarProductHeader({ href }) {
-  return (
+function SidebarProductHeader({ href, showVersion = false }) {
+  const productLink = (
     <Link aria-label="NOTI 홈" className="sidebar-product" href={href}>
       <span className="sidebar-product-mark" aria-hidden="true">
         <Image
@@ -164,6 +166,17 @@ function SidebarProductHeader({ href }) {
         <span className="sidebar-product-subtitle">SMS · 알림톡 · 브랜드 메시지</span>
       </span>
     </Link>
+  );
+
+  if (!showVersion) return productLink;
+
+  return (
+    <div className="sidebar-product-header">
+      {productLink}
+      <div className="sidebar-product-version">
+        <BuildVersionBadge />
+      </div>
+    </div>
   );
 }
 

@@ -141,6 +141,21 @@ button {
   line-height: 16px;
 }
 
+.app-shell.embed-mode .sidebar-product-subtitle {
+  visibility: hidden;
+}
+
+.sidebar-product-header {
+  position: relative;
+}
+
+.sidebar-product-version {
+  position: absolute;
+  top: 27px;
+  left: 42px;
+  z-index: 1;
+}
+
 .workspace-switcher,
 .account-button,
 .nav-item {
@@ -333,39 +348,6 @@ button {
   border-radius: var(--radius-sm);
   outline: 2px solid var(--ring-accent);
   outline-offset: 2px;
-}
-
-.build-version-badge::after {
-  content: attr(data-build-details);
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 8px);
-  z-index: var(--layer-tooltip);
-  width: max-content;
-  max-width: min(280px, calc(100vw - 32px));
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--card);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 14px;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(2px);
-  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
-  visibility: hidden;
-}
-
-.build-version-badge:hover::after {
-  opacity: 1;
-  transform: translateY(0);
-  visibility: visible;
 }
 
 .build-version-badge-version {
@@ -15511,6 +15493,11 @@ body.is-brand-message-button-dragging {
   right: 16px;
   display: flex;
   gap: 4px;
+}
+
+.app-shell.embed-mode .inspector-sidebar-actions {
+  top: 15px;
+  right: 6px;
 }
 
 .inspector-sidebar-pin-button {

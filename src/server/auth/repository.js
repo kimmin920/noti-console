@@ -7,9 +7,13 @@ import {
   users,
 } from '../../db/schema.js';
 
+const UUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
 export function createAuthRepository(db) {
   return {
     async getUserById(userId) {
+      if (!UUID_PATTERN.test(userId)) return null;
+
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       return user ?? null;
     },

@@ -203,14 +203,6 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
     return getRecipientSummary(smsMessage.recipient);
   }
 
-  function saveMessageDraft() {
-    showToast({
-      description: `현재 입력한 ${activeTab} 내용이 초안으로 저장되었습니다.`,
-      title: '임시저장 완료',
-      variant: 'success',
-    });
-  }
-
   function openBrandTemplateRegistrationDialog() {
     setBrandTemplateRegistrationNameError('');
     setBrandTemplateRegistrationOpen(true);
@@ -543,7 +535,9 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
       <PageHeader title={meta.title} />
       <div className="message-send-tabs-row">
         <SegmentedControl
-          items={meta.tabs}
+          items={meta.tabs.map((tab) => (
+            tab === 'SMS' ? { label: '문자', value: tab } : tab
+          ))}
           onValueChange={handleActiveTabChange}
           value={activeTab}
         />
@@ -552,9 +546,6 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
             {messageSendTypeStatus ? (
               <span className="message-send-type-status">{messageSendTypeStatus}</span>
             ) : null}
-            <Button onClick={saveMessageDraft}>
-              임시저장
-            </Button>
             {activeTab === '브랜드 메시지' ? (
               <Button
                 disabled={brandTemplateRegistrationDisabled}

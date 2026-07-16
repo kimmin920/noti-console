@@ -35,6 +35,25 @@ describe('console navigation href transformation', () => {
     expect(transformConsoleHref('/docs', { mode: 'embed' })).toBe('/publ-client/docs');
   });
 
+  it('keeps standalone embed hrefs canonical and merges the embed mode query exactly once', () => {
+    expect(transformConsoleHref('/templates?tab=alimtalk', {
+      mode: 'embed',
+      surface: 'standalone',
+    })).toBe('/templates?tab=alimtalk&mode=embed');
+    expect(transformConsoleHref('/settings?mode=embed&tab=usage', {
+      mode: 'embed',
+      surface: 'standalone',
+    })).toBe('/settings?mode=embed&tab=usage');
+    expect(transformConsoleHref('/logs?mode=app&channel=sms&mode=embed', {
+      mode: 'embed',
+      surface: 'standalone',
+    })).toBe('/logs?mode=embed&channel=sms');
+    expect(transformConsoleHref('/publ-client/automations/publ-events/ORDER_READY?editor=edit', {
+      mode: 'embed',
+      surface: 'standalone',
+    })).toBe('/automations/publ-events/ORDER_READY?editor=edit&mode=embed');
+  });
+
   it('preserves authoring and admin route queries in Publ embed mode', () => {
     expect(transformConsoleHref('/templates/alimtalk/new?senderResourceId=sender-1', { mode: 'embed' })).toBe(
       '/publ-client/templates/alimtalk/new?senderResourceId=sender-1'

@@ -4,6 +4,7 @@ import './globals.css';
 import '../styles/components.css';
 import '../styles/data-table-v2.css';
 import '../styles/domain-detail.css';
+import '../styles/audience.css';
 import '../styles/resend-automation.css';
 import '../styles/template-detail.css';
 import '../styles/publ-event-detail.css';

@@ -102,6 +102,48 @@
   border-bottom-width: 0;
 }
 
+.resend-ui-data-table__selection-root {
+  container: bulk-actions / inline-size;
+  min-height: 0;
+  width: 100%;
+}
+
+.resend-ui-data-table__selection-viewport {
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+  transform: translateZ(0);
+  width: 100%;
+}
+
+.resend-ui-data-table__selection-anchor {
+  position: relative;
+}
+
+.resend-ui-data-table__selection-label[data-resend-data-table-selection-label] {
+  align-items: center;
+  display: flex;
+  gap: 0;
+}
+
+.resend-ui-data-table__selection-control {
+  align-items: center;
+  display: flex;
+}
+
+.resend-ui-data-table__select-all {
+  height: calc(var(--rui-spacing) * 7);
+  left: -1px;
+  margin-left: calc(var(--rui-spacing) * -1.5);
+  position: relative;
+  width: calc(var(--rui-spacing) * 8);
+}
+
+.resend-ui-data-table__selection-item {
+  margin-left: calc(var(--rui-spacing) * -1.5);
+}
+
 .resend-ui-copy-record {
   align-items: center;
   cursor: pointer;
@@ -125,5 +167,45 @@
 @media (min-width: 48rem) {
   .resend-ui-data-table {
     width: 100%;
+  }
+}
+
+@container bulk-actions (min-width: 48rem) {
+  .resend-ui-data-table__selection-root .resend-ui-data-table__selection-viewport {
+    overflow: visible;
+  }
+}
+
+@container bulk-actions (min-width: 68.6rem) {
+  .resend-ui-data-table__selection-item {
+    height: 100%;
+    left: calc(var(--rui-spacing) * -8);
+    margin-left: 0;
+    opacity: 0;
+    position: absolute;
+    width: calc(var(--rui-spacing) * 9);
+  }
+
+  .resend-ui-data-table__select-all {
+    left: calc(var(--rui-spacing) * -8);
+    margin-left: 0;
+    opacity: 0;
+    position: absolute;
+    top: 0;
+  }
+
+  .resend-ui-data-table__selection-anchor:focus-within
+    .resend-ui-data-table__selection-control,
+  .resend-ui-data-table__selection-control[data-selected] {
+    opacity: 1;
+  }
+}
+
+@media (hover: hover) {
+  @container bulk-actions (min-width: 68.6rem) {
+    .resend-ui-data-table__selection-anchor:hover
+      .resend-ui-data-table__selection-control {
+      opacity: 1;
+    }
   }
 }

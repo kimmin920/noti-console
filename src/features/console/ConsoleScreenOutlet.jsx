@@ -3,7 +3,7 @@
 import { AutomationRuleDetailPage } from './automations/AutomationRuleDetailPage.jsx';
 import { AutomationRuleEditorPage } from './automations/AutomationRuleEditorPage.jsx';
 import { AdminSenderResourceApplicationsPage } from './admin/SenderResourceApplicationsPage.jsx';
-import { PublAudiencePage } from './audience/AudienceTable.jsx';
+import { AudiencePage, PublAudiencePage } from './audience/AudienceTable.jsx';
 import { ConfiguredConsolePage } from './ConfiguredConsolePage.jsx';
 import { DocsPage } from './docs/DocsPage.jsx';
 import { MessageLogGroupDetailPage } from './messageLogs/MessageLogGroupDetailPage.jsx';
@@ -39,6 +39,8 @@ export function ConsoleScreenOutlet({ activePage, meta, onDocs, pageProps }) {
     page = <MessageSendPage meta={meta} onDocs={onDocs} />;
   } else if (activePage === 'audience' && publClient.isPublEmbed) {
     page = <PublAudiencePage />;
+  } else if (activePage === 'audience') {
+    page = <AudiencePage meta={meta} />;
   } else if (activePage === 'settings') {
     page = <SettingsPage />;
   } else if (activePage === 'settings-sender-sms-new') {

@@ -44,6 +44,7 @@ html:not([data-resend-ui-theme="dark"]),
   --rui-slate-a10: #00071b7f;
   --rui-slate-a11: #0007149f;
   --rui-violet-a11: #1f0099af;
+  --rui-amber-a9: #ffb300c2;
   --rui-amber-a11: #ab6400;
   --rui-orange-a9: #f65e00ea;
   --rui-orange-a11: #cc4e00;
@@ -93,6 +94,7 @@ html:is(.dark, [data-resend-ui-theme="dark"]),
   --rui-slate-a10: #e5edfd7b;
   --rui-slate-a11: #f1f7feb5;
   --rui-violet-a11: #baa7ff;
+  --rui-amber-a9: #ffc53d;
   --rui-amber-a11: #ffca16;
   --rui-orange-a9: #fe6d15f7;
   --rui-orange-a11: #ffa057;

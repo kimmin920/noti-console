@@ -18,7 +18,6 @@ import {
 
 export function BuildVersionBadge({ info = resolveBuildInfo() }) {
   const title = formatBuildInfoTitle(info);
-  const details = formatBuildDetails(info);
   const buildSubject = formatBuildSubjectDisplay(info.buildSubject);
   const buildTime = formatBuildTime(info.buildTime);
 
@@ -27,7 +26,6 @@ export function BuildVersionBadge({ info = resolveBuildInfo() }) {
       <DialogTrigger
         aria-label={`${title}. 자세히 보기`}
         asChild
-        data-build-details={details}
       >
         <button className="build-version-badge" type="button">
           <span className="build-version-badge-version">v{info.version}</span>
@@ -63,18 +61,4 @@ export function BuildVersionBadge({ info = resolveBuildInfo() }) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function formatBuildDetails(info) {
-  const parts = [`build ${info.shortSha}`];
-  const buildSubject = formatBuildSubjectDisplay(info.buildSubject);
-  const buildTime = formatBuildTime(info.buildTime);
-
-  parts.push(`commit ${buildSubject}`);
-
-  if (buildTime) {
-    parts.push(`built ${buildTime}`);
-  }
-
-  return parts.join(', ');
 }

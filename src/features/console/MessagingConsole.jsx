@@ -17,6 +17,7 @@ export function MessagingConsole({
   getPageHref: getPageHrefOverride,
   hideAccountControl = false,
   mode = 'app',
+  navigationSurface = 'standalone',
   pageId = DEFAULT_CONSOLE_PAGE_ID,
   pageProps,
 }) {
@@ -55,7 +56,7 @@ export function MessagingConsole({
   );
 
   return (
-    <ConsoleNavigationProvider mode={shellMode}>
+    <ConsoleNavigationProvider mode={shellMode} surface={navigationSurface}>
       {shellMode === 'embed'
         ? <EmbedShell {...shellProps}>{screen}</EmbedShell>
         : <AppShell {...shellProps}>{screen}</AppShell>}
