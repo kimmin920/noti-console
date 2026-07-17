@@ -7,15 +7,15 @@ import type {
 } from './types';
 
 const sourcePresetDefinitions = [
-  { daysBack: 0, label: 'Today' },
-  { daysBack: 1, isYesterday: true, label: 'Yesterday' },
-  { daysBack: 2, label: 'Last 3 days' },
-  { daysBack: 6, label: 'Last 7 days' },
-  { daysBack: 14, label: 'Last 15 days' },
-  { daysBack: 29, label: 'Last 30 days' },
+  { daysBack: 0, label: '오늘' },
+  { daysBack: 1, isYesterday: true, label: '어제' },
+  { daysBack: 2, label: '최근 3일' },
+  { daysBack: 6, label: '최근 7일' },
+  { daysBack: 14, label: '최근 15일' },
+  { daysBack: 29, label: '최근 30일' },
 ] as const;
 
-const weekdayInitials = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+const weekdayInitials = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
 function getEffectiveRetentionDays(maxDays = 30) {
   return Math.max(2, maxDays);
@@ -185,11 +185,11 @@ function isMatchingRange(left: DatePickerRange, right: DatePickerRange) {
 }
 
 function formatShortDate(date: Date) {
-  return new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).format(date);
+  return new Intl.DateTimeFormat('ko-KR', { day: 'numeric', month: 'short' }).format(date);
 }
 
 function formatMonthTitle(date: Date) {
-  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat('ko-KR', { month: 'long', year: 'numeric' }).format(date);
 }
 
 function toIsoDate(date: Date) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Calendar, CalendarX2, Check, ChevronDown, Clock, LoaderCircle, Plus, Search, TriangleAlert } from 'lucide-react';
+import { Calendar, CalendarX2, Check, ChevronDown, Clock, Info, LoaderCircle, Plus, Search, TriangleAlert } from 'lucide-react';
 import lottie from 'lottie-web';
 import templatesAnimation from '../../nav-lotties/templates.json';
 import {
@@ -449,27 +449,25 @@ export function EmailSendForm({
           />
         </EmailSendFormRow>
 
-        {visibleFields.replyTo ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow>
-              <EmailSendFormLabel htmlFor="email-send-form-reply-to" warnings={replyToWarnings}>
-                답장 주소
-              </EmailSendFormLabel>
-              <EmailSendFormInput
-                aria-invalid={replyToWarnings.length ? 'true' : undefined}
-                className={replyToWarnings.length ? 'review-error' : ''}
-                id="email-send-form-reply-to"
-                onBlur={() => hideEmptyField('replyTo', 'replyTo')}
-                onChange={(event) => updateMessage({ replyTo: event.target.value })}
-                onKeyDown={(event) => hideOnEmptyBackspace(event, 'replyTo', 'replyTo')}
-                placeholder="reply@example.com"
-                spellCheck={false}
-                type="text"
-                value={message.replyTo}
-              />
-            </EmailSendFormRow>
-          </EmailSendFormDisclosure>
-        ) : null}
+        <EmailSendFormDisclosure open={visibleFields.replyTo}>
+          <EmailSendFormRow>
+            <EmailSendFormLabel htmlFor="email-send-form-reply-to" warnings={replyToWarnings}>
+              답장 주소
+            </EmailSendFormLabel>
+            <EmailSendFormInput
+              aria-invalid={replyToWarnings.length ? 'true' : undefined}
+              className={replyToWarnings.length ? 'review-error' : ''}
+              id="email-send-form-reply-to"
+              onBlur={() => hideEmptyField('replyTo', 'replyTo')}
+              onChange={(event) => updateMessage({ replyTo: event.target.value })}
+              onKeyDown={(event) => hideOnEmptyBackspace(event, 'replyTo', 'replyTo')}
+              placeholder="reply@example.com"
+              spellCheck={false}
+              type="text"
+              value={message.replyTo}
+            />
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
 
         <EmailSendFormRow
           action={!visibleFields.schedule ? (
@@ -500,52 +498,48 @@ export function EmailSendForm({
           />
         </EmailSendFormRow>
 
-        {visibleFields.schedule ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow>
-              <EmailSendFormLabel htmlFor="email-send-form-when" warnings={scheduleWarnings}>
-                언제
-              </EmailSendFormLabel>
-              <EmailSendFormScheduleField
-                id="email-send-form-when"
-                onCollapseEmpty={() => hideEmptyField('schedule', 'scheduledAt')}
-                onEmptyBackspace={(event) => hideOnEmptyBackspace(event, 'schedule', 'scheduledAt')}
-                onReviewMessageChange={setScheduleReviewMessage}
-                onNowSelect={() => {
-                  setScheduleReviewMessage('');
-                  updateMessage({ scheduledAt: '' });
-                  setVisibleFields((current) => ({ ...current, schedule: false }));
-                }}
-                onValueChange={(scheduledAt) => updateMessage({ scheduledAt })}
-                options={scheduleOptions}
-                placeholder="Enter a date or time..."
-                value={message.scheduledAt}
-              />
-            </EmailSendFormRow>
-          </EmailSendFormDisclosure>
-        ) : null}
+        <EmailSendFormDisclosure open={visibleFields.schedule}>
+          <EmailSendFormRow>
+            <EmailSendFormLabel htmlFor="email-send-form-when" warnings={scheduleWarnings}>
+              언제
+            </EmailSendFormLabel>
+            <EmailSendFormScheduleField
+              id="email-send-form-when"
+              onCollapseEmpty={() => hideEmptyField('schedule', 'scheduledAt')}
+              onEmptyBackspace={(event) => hideOnEmptyBackspace(event, 'schedule', 'scheduledAt')}
+              onReviewMessageChange={setScheduleReviewMessage}
+              onNowSelect={() => {
+                setScheduleReviewMessage('');
+                updateMessage({ scheduledAt: '' });
+                setVisibleFields((current) => ({ ...current, schedule: false }));
+              }}
+              onValueChange={(scheduledAt) => updateMessage({ scheduledAt })}
+              options={scheduleOptions}
+              placeholder="Enter a date or time..."
+              value={message.scheduledAt}
+            />
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
 
-        {visibleFields.previewText ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow className="email-send-form-preview-row">
-              <EmailSendFormLabel htmlFor="email-send-form-preview" warnings={previewTextWarnings}>
-                미리보기 문구
-              </EmailSendFormLabel>
-              <EmailSendFormInput
-                aria-invalid={previewTextWarnings.length ? 'true' : undefined}
-                className={previewTextWarnings.length ? 'review-error' : ''}
-                id="email-send-form-preview"
-                maxLength={150}
-                onBlur={() => hideEmptyField('previewText', 'previewText')}
-                onChange={(event) => updateMessage({ previewText: event.target.value })}
-                onKeyDown={(event) => hideOnEmptyBackspace(event, 'previewText', 'previewText')}
-                placeholder="수신함에서 제목 옆에 표시됩니다..."
-                type="text"
-                value={message.previewText}
-              />
-            </EmailSendFormRow>
-          </EmailSendFormDisclosure>
-        ) : null}
+        <EmailSendFormDisclosure open={visibleFields.previewText}>
+          <EmailSendFormRow className="email-send-form-preview-row">
+            <EmailSendFormLabel htmlFor="email-send-form-preview" warnings={previewTextWarnings}>
+              미리보기 문구
+            </EmailSendFormLabel>
+            <EmailSendFormInput
+              aria-invalid={previewTextWarnings.length ? 'true' : undefined}
+              className={previewTextWarnings.length ? 'review-error' : ''}
+              id="email-send-form-preview"
+              maxLength={150}
+              onBlur={() => hideEmptyField('previewText', 'previewText')}
+              onChange={(event) => updateMessage({ previewText: event.target.value })}
+              onKeyDown={(event) => hideOnEmptyBackspace(event, 'previewText', 'previewText')}
+              placeholder="수신함에서 제목 옆에 표시됩니다..."
+              type="text"
+              value={message.previewText}
+            />
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
 
         <EmailSendFormRow
           action={!visibleFields.previewText ? (
@@ -644,10 +638,34 @@ export const EmailSendFormRow = forwardRef(function EmailSendFormRow(
   );
 });
 
-export function EmailSendFormDisclosure({ children, className = '', ...props }) {
+export function EmailSendFormDisclosure({
+  children,
+  className = '',
+  onTransitionEnd,
+  open = true,
+  ...props
+}) {
+  const [settledOpen, setSettledOpen] = useState(open);
+
   return (
-    <div className={['email-send-form-disclosure', className].filter(Boolean).join(' ')} {...props}>
-      {children}
+    <div
+      {...props}
+      aria-hidden={open ? undefined : true}
+      className={['email-send-form-disclosure', className].filter(Boolean).join(' ')}
+      data-clipping={settledOpen !== open ? 'true' : undefined}
+      data-open={open ? 'true' : 'false'}
+      inert={!open}
+      onTransitionEnd={(event) => {
+        if (event.target === event.currentTarget && event.propertyName === 'grid-template-rows') {
+          setSettledOpen(open);
+        }
+
+        onTransitionEnd?.(event);
+      }}
+    >
+      <div className="email-send-form-disclosure-content">
+        {children}
+      </div>
     </div>
   );
 }
@@ -655,6 +673,7 @@ export function EmailSendFormDisclosure({ children, className = '', ...props }) 
 export function EmailSendFormLabel({
   children,
   className = '',
+  description = '',
   warning = '',
   warnings = [],
   ...props
@@ -666,6 +685,26 @@ export function EmailSendFormLabel({
     <LabelElement className={['email-send-form-label', className].filter(Boolean).join(' ')} {...props}>
       <EmailSendFormFieldWarningIcon warnings={reviewWarnings} />
       <span className="email-send-form-label-text">{children}</span>
+      {description ? (
+        <Tooltip
+          className="email-send-form-label-description-tooltip"
+          content={description}
+          contentClassName="email-send-form-label-description-tooltip-content"
+          delay={0}
+          maxWidth="18rem"
+          side="top"
+          type="description"
+        >
+          <span
+            aria-label={description}
+            className="email-send-form-label-description-icon"
+            role="img"
+            tabIndex={0}
+          >
+            <Info aria-hidden="true" size={14} strokeWidth={2} />
+          </span>
+        </Tooltip>
+      ) : null}
     </LabelElement>
   );
 }
@@ -980,6 +1019,8 @@ export const EmailSendFormTextarea = forwardRef(function EmailSendFormTextarea(
 
 export function EmailSendFormEmptyState({
   className = '',
+  emptyActionHref,
+  emptyActionLabel,
   initialSelectedTemplateId,
   onOpenTemplateDialog,
   onTemplateDialogOpenChange,
@@ -1001,6 +1042,8 @@ export function EmailSendFormEmptyState({
     >
       <div className="email-send-form-empty-state-actions">
         <EmailSendFormTemplateDialog
+          emptyActionHref={emptyActionHref}
+          emptyActionLabel={emptyActionLabel}
           initialSelectedTemplateId={initialSelectedTemplateId}
           onOpenChange={onTemplateDialogOpenChange}
           onSelectedTemplateChange={onSelectedTemplateChange}
@@ -1105,7 +1148,7 @@ export const EmailSendFormTemplateButton = forwardRef(function EmailSendFormTemp
 });
 
 function getTemplateDialogCardMeta(template) {
-  const templateName = template.name ?? template.title ?? 'Untitled template';
+  const templateName = template.name ?? template.title ?? '제목 없는 템플릿';
   const templateSubject = template.subject ?? templateName;
   const templatePreviewText = template.previewText ?? template.preview_text;
   const cardKey = template.id ?? `${templateName}-${templateSubject}`;
@@ -1148,7 +1191,9 @@ function filterTemplateDialogItems(templates, query) {
 
 export function EmailSendFormTemplateDialog({
   beforePicker,
-  description = 'Search and choose a published template to import into the editor.',
+  description = '발송에 사용할 템플릿을 검색하고 선택하세요.',
+  emptyActionHref,
+  emptyActionLabel,
   emptyCopy,
   emptyTitle,
   initialSelectedTemplateId = '',
@@ -1163,7 +1208,7 @@ export function EmailSendFormTemplateDialog({
   selectedTemplateId: controlledSelectedTemplateId,
   selectionMode = 'immediate',
   templates = defaultEmailSendFormTemplates,
-  title = 'Choose a Template',
+  title = '템플릿 선택',
   trigger,
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
@@ -1282,6 +1327,8 @@ export function EmailSendFormTemplateDialog({
         <DialogBody className="email-send-form-template-dialog-body">
           {beforePicker}
           <EmailSendFormTemplatePicker
+            emptyActionHref={emptyActionHref}
+            emptyActionLabel={emptyActionLabel}
             emptyCopy={emptyCopy}
             emptyTitle={emptyTitle}
             onTemplateSelect={selectTemplate}
@@ -1303,14 +1350,16 @@ export function EmailSendFormTemplateDialog({
 
 export function EmailSendFormTemplatePicker({
   className = '',
+  emptyActionHref,
+  emptyActionLabel,
   emptyCopy,
   emptyTitle,
   onQueryChange,
   onTemplateSelect,
   query,
   renderTemplateCard,
-  searchLabel = 'Search templates',
-  searchPlaceholder = 'Search templates...',
+  searchLabel = '템플릿 검색',
+  searchPlaceholder = '템플릿 검색...',
   selectedTemplateId = '',
   templates = defaultEmailSendFormTemplates,
   toolbarAction,
@@ -1407,6 +1456,8 @@ export function EmailSendFormTemplatePicker({
         </div>
       ) : (
         <EmailSendFormTemplateEmptyState
+          emptyActionHref={emptyActionHref}
+          emptyActionLabel={emptyActionLabel}
           emptyCopy={emptyCopy}
           emptyTitle={emptyTitle}
           hasQuery={Boolean(normalizedQuery)}
@@ -1416,18 +1467,29 @@ export function EmailSendFormTemplatePicker({
   );
 }
 
-export function EmailSendFormTemplateEmptyState({ emptyCopy, emptyTitle, hasQuery }) {
-  const title = emptyTitle ?? (hasQuery ? 'No templates found' : 'No published templates yet');
+export function EmailSendFormTemplateEmptyState({
+  emptyActionHref,
+  emptyActionLabel,
+  emptyCopy,
+  emptyTitle,
+  hasQuery,
+}) {
+  const title = emptyTitle ?? (hasQuery ? '검색 결과가 없습니다' : '등록된 템플릿이 없습니다');
   const copy = emptyCopy ?? (
     hasQuery
-      ? 'Try searching for a different term or contact support.'
-      : 'Published templates from your team will appear here. Create and publish templates to use them in your messages.'
+      ? '다른 검색어를 입력해 보세요.'
+      : '등록된 템플릿이 있으면 여기에 표시됩니다.'
   );
 
   return (
     <div className="email-send-form-template-empty">
       <strong>{title}</strong>
       <p>{copy}</p>
+      {!hasQuery && emptyActionHref && emptyActionLabel ? (
+        <a className="email-send-form-template-empty-action" href={emptyActionHref}>
+          {emptyActionLabel}
+        </a>
+      ) : null}
     </div>
   );
 }

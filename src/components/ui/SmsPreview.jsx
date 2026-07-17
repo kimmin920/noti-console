@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   defaultSmsSendFormSenderNumbers,
   defaultSmsSendFormValue,
@@ -8,7 +9,37 @@ import { getMessageTemplateVariableValue } from './MessageTemplateVariables.jsx'
 
 const SMS_ADVERTISEMENT_PREFIX = '(광고)';
 const SMS_ADVERTISEMENT_OPT_OUT_PREFIX = '무료수신거부';
-const SMS_ADVERTISEMENT_FALLBACK_OPT_OUT_NUMBER = '080-500-4233';
+const SMS_ADVERTISEMENT_FALLBACK_OPT_OUT_NUMBER = 'NOTI 공통 080';
+
+function isSameDate(left, right) {
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate();
+}
+
+export function formatSmsPreviewTime(value, referenceDate = new Date()) {
+  const scheduledDate = value ? new Date(value) : null;
+  const date = scheduledDate && !Number.isNaN(scheduledDate.getTime())
+    ? scheduledDate
+    : referenceDate;
+  const tomorrow = new Date(referenceDate);
+
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const dateLabel = isSameDate(date, referenceDate)
+    ? '오늘'
+    : isSameDate(date, tomorrow)
+      ? '내일'
+      : date.getFullYear() === referenceDate.getFullYear()
+        ? `${date.getMonth() + 1}월 ${date.getDate()}일`
+        : `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+  const hour = date.getHours();
+  const meridiem = hour < 12 ? '오전' : '오후';
+  const displayHour = hour % 12 || 12;
+  const minute = String(date.getMinutes()).padStart(2, '0');
+
+  return `${dateLabel} ${meridiem} ${displayHour}:${minute}`;
+}
 
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -135,14 +166,16 @@ function renderSmsPreviewText(text, variables) {
 export function SmsPreview({
   className = '',
   senderNumbers = defaultSmsSendFormSenderNumbers,
-  timeLabel = '오늘 오후 2:30',
+  timeLabel,
   value,
   ...props
 }) {
+  const [initialPreviewDate] = useState(() => new Date());
   const message = getSmsPreviewValue(value);
   const body = formatSmsPreviewBody(message);
   const senderNumber = getSmsPreviewSenderNumber(message, senderNumbers);
   const previewImages = message.imageAttachments.filter((image) => image.previewUrl);
+  const resolvedTimeLabel = timeLabel ?? formatSmsPreviewTime(message.scheduledAt, initialPreviewDate);
 
   return (
     <aside
@@ -152,7 +185,7 @@ export function SmsPreview({
     >
       <div className="sms-preview-title">미리보기</div>
       <div className="sms-preview-phone">
-        <div className="sms-preview-time">{timeLabel}</div>
+        <div className="sms-preview-time">{resolvedTimeLabel}</div>
         <div className="sms-preview-scroll">
           {previewImages.length ? (
             <div className="sms-preview-images">

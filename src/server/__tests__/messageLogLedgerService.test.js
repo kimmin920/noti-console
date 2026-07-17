@@ -953,6 +953,83 @@ describe('message log ledger service', () => {
     expect(JSON.stringify(repository.mergeCalls)).not.toContain('Sensitive kakao body');
   });
 
+  it('keeps polling an open SMS fallback after the primary Kakao result is finalized', async () => {
+    const openedAt = new Date(FIXED_NOW.getTime() - 31 * 60 * 1000);
+    const group = createGroup({
+      channel: CHANNELS.ALIMTALK,
+      id: 'ledger_group_fallback_open',
+      pendingCount: 0,
+      resultFinalizedAt: openedAt,
+      resultState: 'synced',
+      senderResourceId: 'kakao_resource_1',
+      successCount: 0,
+      totalRecipientCount: 1,
+    });
+    const request = createRequest({
+      failedCount: 1,
+      groupId: group.id,
+      id: 'ledger_request_fallback_open',
+      pendingCount: 0,
+      providerRequestId: 'alimtalk-fallback-provider-1',
+      recipientCount: 1,
+      resultFinalizedAt: openedAt,
+      resultSnapshotJson: { states: ['F'], resultCodes: ['MRC04'] },
+      resultState: 'synced',
+    });
+    const fallbackReservation = {
+      consumedCount: 0,
+      fallbackOpenedAt: openedAt,
+      releasedCount: 0,
+      reservedCount: 1,
+      resultFinalizedAt: null,
+      resultSyncedAt: null,
+    };
+    const repository = createLedgerRepository({ groups: [group], requests: [request] });
+    repository.leaseMessageResultCorrectionRequests = vi.fn(async () => ([{
+      fallbackReservation,
+      group,
+      providerRequest: request,
+    }]));
+    repository.mergeProviderRequestResultSnapshotByProviderRequestId = vi.fn(async () => ({
+      group,
+      providerRequest: request,
+    }));
+    const kakaoClient = createKakaoClient({
+      listAlimtalkMessages: vi.fn(async (query) =>
+        kakaoResultPage([
+          createKakaoProviderMessage({
+            messageStatus: 'FAILED',
+            requestId: request.providerRequestId,
+            requestRef: 'reqfallback1',
+            resendResultCode: '1000',
+            resendStatus: 'RSC04',
+            resultCode: 'MRC04',
+          }),
+        ], { pageSize: query.pageSize, totalCount: 1 })),
+    });
+    const service = createMessageLogService({
+      repository,
+      smsClient: createSmsClient(),
+      kakaoClient,
+      now: () => FIXED_NOW,
+    });
+
+    const result = await service.correctDueMessageResults({ limit: 10, workerId: 'worker-fallback' });
+
+    expect(result).toMatchObject({ correctedCount: 1, errorCount: 0, processedCount: 1 });
+    expect(repository.mergeProviderRequestResultSnapshotByProviderRequestId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authoritative: true,
+        fallbackResults: [
+          { recipientSeq: 1, resendResultCode: '1000', resendStatus: 'RSC04' },
+        ],
+        finalize: false,
+        finalizeFallback: false,
+        providerRequestId: request.providerRequestId,
+      })
+    );
+  });
+
   it('does not count Kakao completed rows with non-success result codes as successful', async () => {
     const createdAt = new Date(FIXED_NOW.getTime() - 31 * 60 * 1000);
     const repository = createLedgerRepository({
@@ -2106,6 +2183,8 @@ function createKakaoProviderMessage({
   recipientSeq = 1,
   requestId,
   requestRef,
+  resendResultCode,
+  resendStatus,
   resultCode = 'MRC01',
 } = {}) {
   const senderGroupingKey = buildSenderGroupingKey({
@@ -2126,6 +2205,8 @@ function createKakaoProviderMessage({
     requestId,
     resultCode,
     resultMessage: resultCode === 'MRC01' ? 'SUCCESS' : 'FAILED',
+    ...(resendResultCode ? { resendResultCode } : {}),
+    ...(resendStatus ? { resendStatus } : {}),
     senderGroupingKey,
     templateCode: 'ORDER_READY',
   };

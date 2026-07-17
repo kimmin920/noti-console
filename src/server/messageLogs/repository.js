@@ -5,11 +5,20 @@ import {
   billingAccounts,
   messageSendGroups,
   messageSendProviderRequests,
+  senderResourceQuotaReservations,
   senderResources,
   userSenderResources,
   users,
 } from '../../db/schema.js';
 import { sanitizeAuditMetadata } from '../audit/service.js';
+import {
+  releaseProviderRequestQuotaReservationsTx,
+  releaseFallbackQuotaForPrimaryRejectionsTx,
+  reserveSenderResourceQuotasTx,
+  mergeFallbackQuotaResultsTx,
+  settlePrimaryQuotaForProviderRequestTx,
+  syncFallbackQuotaFromPrimarySnapshotTx,
+} from '../messages/quotaRepository.js';
 import { parseRecipientGroupingKey } from '../relay/groupingKeys.js';
 
 export const LEDGER_MANAGEMENT_TITLE_MAX_LENGTH = 160;
@@ -252,6 +261,154 @@ export function createMessageSendLedgerRepository(db) {
           group: createdGroup,
           providerRequests: createdProviderRequests,
         };
+      });
+    },
+
+    async prepareGroupWithProviderRequestsAndQuota({
+      group,
+      providerRequests = [],
+      quotaReservations = [],
+      now = new Date(),
+    }) {
+      const clientRequestIds = providerRequests.map((request) => request.clientRequestId).filter(Boolean);
+      const existing = clientRequestIds.length === 1
+        ? await findLedgerRequestByClientRequestId(db, clientRequestIds[0])
+        : null;
+
+      if (existing) return { ...existing, deduplicated: true, quotaReservations: [] };
+
+      try {
+        return await db.transaction(async (tx) => {
+          const [createdGroup] = await tx
+            .insert(messageSendGroups)
+            .values(toLedgerGroupInsert({
+              providerRequestCount: providerRequests.length,
+              ...group,
+            }, now))
+            .returning();
+          const createdProviderRequests = await tx
+            .insert(messageSendProviderRequests)
+            .values(
+              providerRequests.map((request) => toLedgerProviderRequestInsert({
+                ...request,
+                groupId: createdGroup.id,
+              }, now))
+            )
+            .returning();
+          const createdQuotaReservations = await reserveSenderResourceQuotasTx(tx, {
+            now,
+            providerRequests: createdProviderRequests,
+            reservations: quotaReservations,
+          });
+
+          return {
+            deduplicated: false,
+            group: createdGroup,
+            providerRequests: createdProviderRequests,
+            quotaReservations: createdQuotaReservations,
+          };
+        });
+      } catch (error) {
+        if (clientRequestIds.length === 1 && isUniqueViolation(error)) {
+          const duplicate = await findLedgerRequestByClientRequestId(db, clientRequestIds[0]);
+          if (duplicate) return { ...duplicate, deduplicated: true, quotaReservations: [] };
+        }
+        throw error;
+      }
+    },
+
+    async updatePreparedProviderRequestOutcome({
+      clientRequestId,
+      now = new Date(),
+      providerRequestId = null,
+      providerState,
+      recipientResults = [],
+    }) {
+      return db.transaction(async (tx) => {
+        const [request] = await tx
+          .select()
+          .from(messageSendProviderRequests)
+          .where(eq(messageSendProviderRequests.clientRequestId, clientRequestId))
+          .limit(1)
+          .for('update');
+
+        if (!request) return null;
+
+        const accepted = providerState === 'accepted' && Boolean(providerRequestId);
+        const canceled = providerState === 'canceled';
+        const rejected = providerState === 'rejected' || providerState === 'failed';
+        const terminalWithoutSend = rejected || canceled;
+        const effectiveProviderState = accepted
+          ? 'accepted'
+          : terminalWithoutSend
+            ? providerState
+            : 'unknown';
+        const initialResultMerge = accepted
+          ? mergeResultSnapshotEntries({
+              entries: recipientResults,
+              recipientCount: request.recipientCount,
+              snapshot: request.resultSnapshotJson,
+            })
+          : null;
+        const snapshot = terminalWithoutSend
+          ? createTerminalResultSnapshot(
+              request.recipientCount,
+              canceled ? 'C' : 'F',
+              canceled ? 'LOCAL_CANCELED' : 'PROVIDER_REJECTED'
+            )
+          : initialResultMerge?.snapshot
+            ?? request.resultSnapshotJson
+            ?? createInitialResultSnapshot(request.recipientCount);
+        const counts = countResultSnapshotStates(snapshot, request.recipientCount);
+        const resultFinalizedAt = terminalWithoutSend || counts.pendingCount === 0
+          ? (request.resultFinalizedAt ?? now)
+          : null;
+        const [updatedRequest] = await tx
+          .update(messageSendProviderRequests)
+          .set({
+            ...counts,
+            firstResultReceivedAt: request.firstResultReceivedAt
+              ?? (initialResultMerge?.firstTerminalChanged ? now : null),
+            providerRequestId: accepted ? providerRequestId : null,
+            providerState: effectiveProviderState,
+            resultFinalizedAt,
+            resultSnapshotJson: snapshot,
+            resultSnapshotVersion: terminalWithoutSend
+              ? Number(request.resultSnapshotVersion ?? 0) + 1
+              : Number(request.resultSnapshotVersion ?? 0) + (initialResultMerge?.changedCount ?? 0),
+            resultState: terminalWithoutSend
+              ? 'synced'
+              : effectiveProviderState === 'unknown'
+                ? 'stale'
+                : getSnapshotResultState(counts, { finalized: Boolean(resultFinalizedAt) }),
+            resultSyncedAt: initialResultMerge?.changedCount ? now : request.resultSyncedAt,
+            updatedAt: now,
+          })
+          .where(eq(messageSendProviderRequests.id, request.id))
+          .returning();
+
+        if (terminalWithoutSend) {
+          await releaseProviderRequestQuotaReservationsTx(tx, {
+            now,
+            providerRequestId: request.id,
+          });
+        } else if (accepted && initialResultMerge?.changedCount) {
+          await settlePrimaryQuotaForProviderRequestTx(tx, {
+            now,
+            providerRequestId: request.id,
+            resultCounts: counts,
+          });
+          await releaseFallbackQuotaForPrimaryRejectionsTx(tx, {
+            now,
+            providerRequestId: request.id,
+            recipientCount: request.recipientCount,
+            recipientSequences: recipientResults.map((entry) => entry.recipientSeq),
+          });
+        }
+
+        const updatedGroup = await rollupLedgerGroupFromRequestsTx(tx, request.groupId, now);
+
+        return { group: updatedGroup, providerRequest: updatedRequest ?? request };
       });
     },
 
@@ -533,7 +690,9 @@ export function createMessageSendLedgerRepository(db) {
     async mergeProviderRequestResultSnapshot({
       authoritative = false,
       entries = [],
+      fallbackResults = [],
       finalize = false,
+      finalizeFallback = false,
       now = new Date(),
       requestId,
       clearSyncLease = false,
@@ -554,7 +713,9 @@ export function createMessageSendLedgerRepository(db) {
           authoritative,
           clearSyncLease,
           entries,
+          fallbackResults,
           finalize,
+          finalizeFallback,
           nextSyncAtWhenPending,
           now,
           request,
@@ -567,7 +728,9 @@ export function createMessageSendLedgerRepository(db) {
       authoritative = false,
       channel,
       clearSyncLease = false,
+      fallbackResults = [],
       finalize = false,
+      finalizeFallback = false,
       includeArchived = false,
       nextSyncAtWhenPending,
       now = new Date(),
@@ -608,7 +771,9 @@ export function createMessageSendLedgerRepository(db) {
           authoritative,
           clearSyncLease,
           entries: results,
+          fallbackResults,
           finalize,
+          finalizeFallback,
           nextSyncAtWhenPending,
           now,
           request: row.providerRequest,
@@ -743,39 +908,72 @@ export function createMessageSendLedgerRepository(db) {
         const firstCorrectionCutoff = timestampSql(firstCorrectionDueBefore);
         const finalCorrectionCutoff = timestampSql(finalCorrectionDueBefore);
         const nowCutoff = timestampSql(now);
+        const primaryOpen = and(
+          isNull(messageSendProviderRequests.resultFinalizedAt),
+          gt(messageSendProviderRequests.pendingCount, 0)
+        );
+        const fallbackOpen = and(
+          isNotNull(senderResourceQuotaReservations.id),
+          isNotNull(senderResourceQuotaReservations.fallbackOpenedAt),
+          isNull(senderResourceQuotaReservations.resultFinalizedAt),
+          sql`${senderResourceQuotaReservations.reservedCount} - ${senderResourceQuotaReservations.consumedCount} - ${senderResourceQuotaReservations.releasedCount} > 0`
+        );
+        const primaryDue = and(
+          primaryOpen,
+          or(
+            and(
+              eq(messageSendProviderRequests.syncAttempts, 0),
+              lte(effectiveAt, firstCorrectionCutoff)
+            ),
+            lte(effectiveAt, finalCorrectionCutoff)
+          ),
+          lte(effectiveAt, nowCutoff)
+        );
+        const fallbackDue = and(
+          fallbackOpen,
+          or(
+            and(
+              isNull(senderResourceQuotaReservations.resultSyncedAt),
+              lte(senderResourceQuotaReservations.fallbackOpenedAt, firstCorrectionCutoff)
+            ),
+            lte(senderResourceQuotaReservations.fallbackOpenedAt, finalCorrectionCutoff)
+          ),
+          lte(senderResourceQuotaReservations.fallbackOpenedAt, nowCutoff)
+        );
         const candidates = await tx
           .select({
+            fallbackReservation: senderResourceQuotaReservations,
             group: messageSendGroups,
             providerRequest: messageSendProviderRequests,
           })
           .from(messageSendProviderRequests)
           .innerJoin(messageSendGroups, eq(messageSendProviderRequests.groupId, messageSendGroups.id))
+          .leftJoin(
+            senderResourceQuotaReservations,
+            and(
+              eq(senderResourceQuotaReservations.providerRequestId, messageSendProviderRequests.id),
+              eq(senderResourceQuotaReservations.kind, 'fallback')
+            )
+          )
           .where(
             and(
               inArray(messageSendGroups.channel, ['sms', 'lms', 'mms', 'alimtalk', 'brand-message']),
               isNull(messageSendGroups.archivedAt),
-              isNull(messageSendGroups.resultFinalizedAt),
               inArray(messageSendGroups.providerState, ['accepted', 'partial']),
               eq(messageSendProviderRequests.providerState, 'accepted'),
               isNotNull(messageSendProviderRequests.providerRequestId),
               isNotNull(messageSendProviderRequests.resultSnapshotJson),
-              isNull(messageSendProviderRequests.resultFinalizedAt),
-              gt(messageSendProviderRequests.pendingCount, 0),
-              or(
-                and(
-                  eq(messageSendProviderRequests.syncAttempts, 0),
-                  lte(effectiveAt, firstCorrectionCutoff)
-                ),
-                lte(effectiveAt, finalCorrectionCutoff)
-              ),
-              lte(effectiveAt, nowCutoff),
+              or(primaryDue, fallbackDue),
               or(
                 isNull(messageSendProviderRequests.syncLeaseExpiresAt),
                 lte(messageSendProviderRequests.syncLeaseExpiresAt, now)
               )
             )
           )
-          .orderBy(asc(effectiveAt), asc(messageSendProviderRequests.id))
+          .orderBy(
+            asc(sql`coalesce(${senderResourceQuotaReservations.fallbackOpenedAt}, ${effectiveAt})`),
+            asc(messageSendProviderRequests.id)
+          )
           .limit(limit)
           .for('update', { skipLocked: true });
 
@@ -796,6 +994,7 @@ export function createMessageSendLedgerRepository(db) {
         const updatedById = new Map(updatedRequests.map((request) => [request.id, request]));
 
         return candidates.map((candidate) => ({
+          fallbackReservation: candidate.fallbackReservation,
           group: candidate.group,
           providerRequest: updatedById.get(candidate.providerRequest.id) ?? candidate.providerRequest,
         }));
@@ -1070,7 +1269,9 @@ async function mergeProviderRequestSnapshotRowTx(tx, options) {
     authoritative,
     clearSyncLease,
     entries,
+    fallbackResults,
     finalize,
+    finalizeFallback,
     nextSyncAtWhenPending,
     now,
     request,
@@ -1126,6 +1327,25 @@ async function mergeProviderRequestSnapshotRowTx(tx, options) {
     .where(eq(messageSendProviderRequests.id, request.id))
     .returning();
 
+  await settlePrimaryQuotaForProviderRequestTx(tx, {
+    now,
+    providerRequestId: request.id,
+    resultCounts: merge.counts,
+  });
+  await syncFallbackQuotaFromPrimarySnapshotTx(tx, {
+    now,
+    primarySnapshot: merge.snapshot,
+    providerRequestId: request.id,
+    recipientCount: request.recipientCount,
+  });
+  await mergeFallbackQuotaResultsTx(tx, {
+    entries: fallbackResults,
+    finalize: finalizeFallback,
+    now,
+    providerRequestId: request.id,
+    recipientCount: request.recipientCount,
+  });
+
   const group = await rollupLedgerGroupFromRequestsTx(tx, request.groupId, now);
 
   return {
@@ -1134,6 +1354,35 @@ async function mergeProviderRequestSnapshotRowTx(tx, options) {
     group,
     providerRequest: updatedRequest ?? null,
   };
+}
+
+async function findLedgerRequestByClientRequestId(db, clientRequestId) {
+  const [row] = await db
+    .select({
+      group: messageSendGroups,
+      providerRequest: messageSendProviderRequests,
+    })
+    .from(messageSendProviderRequests)
+    .innerJoin(messageSendGroups, eq(messageSendProviderRequests.groupId, messageSendGroups.id))
+    .where(eq(messageSendProviderRequests.clientRequestId, clientRequestId))
+    .limit(1);
+
+  return row
+    ? { group: row.group, providerRequests: [row.providerRequest] }
+    : null;
+}
+
+function createTerminalResultSnapshot(recipientCount, state, resultCode) {
+  const length = normalizeSnapshotLength(recipientCount);
+
+  return {
+    states: Array.from({ length }, () => state),
+    resultCodes: Array.from({ length }, () => resultCode),
+  };
+}
+
+function isUniqueViolation(error) {
+  return error?.code === '23505' || error?.cause?.code === '23505';
 }
 
 function normalizeSnapshotLength(value) {

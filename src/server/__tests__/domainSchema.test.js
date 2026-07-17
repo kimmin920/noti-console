@@ -29,6 +29,10 @@ import {
   publEventPropDefinitions,
   senderResourceApplicationEvidenceFiles,
   senderResourceApplications,
+  senderResourceQuotaBuckets,
+  senderResourceQuotaChannelEnum,
+  senderResourceQuotaReservationKindEnum,
+  senderResourceQuotaReservations,
   senderResourceTypeEnum,
   senderResources,
   settlementChannelEnum,
@@ -70,6 +74,8 @@ const domainTables = [
   smsQuotaReservations,
   messageSendGroups,
   messageSendProviderRequests,
+  senderResourceQuotaBuckets,
+  senderResourceQuotaReservations,
   automationEventDeliveries,
   auditLogs,
 ];
@@ -149,6 +155,8 @@ describe('relay domain schema', () => {
       'sms_quota_reservations',
       'message_send_groups',
       'message_send_provider_requests',
+      'sender_resource_quota_buckets',
+      'sender_resource_quota_reservations',
       'automation_event_deliveries',
       'audit_logs',
     ]);
@@ -167,6 +175,7 @@ describe('relay domain schema', () => {
     expect(senderResourceTypeEnum.enumValues).toEqual(['sms_send_no', 'kakao_sender_key']);
     expect(userSenderResourceStatusEnum.enumValues).toEqual(['pending', 'active', 'rejected', 'suspended']);
 
+    expect(tableColumnNames(senderResources)).toEqual(expect.arrayContaining(['quotaLimit']));
     expect(tableColumnNames(senderResources)).not.toEqual(expect.arrayContaining(['userId', 'billingAccountId']));
     expect(tableColumnNames(externalAuthAccounts)).toEqual(
       expect.arrayContaining(['userId', 'provider', 'providerAccountId', 'email', 'displayName'])
@@ -379,7 +388,7 @@ describe('relay domain schema', () => {
       'failed',
       'canceled',
     ]);
-    expect(smsQuotaScopeEnum.enumValues).toEqual(['user_period']);
+    expect(smsQuotaScopeEnum.enumValues).toEqual(['user_period', 'sender_resource_period']);
     expect(smsQuotaReservationStatusEnum.enumValues).toEqual(['reserved', 'consumed', 'released']);
 
     expect(tableColumnNames(smsBulkSendRuns)).toEqual(
@@ -417,7 +426,15 @@ describe('relay domain schema', () => {
       ])
     );
     expect(tableColumnNames(smsQuotaBuckets)).toEqual(
-      expect.arrayContaining(['userId', 'channel', 'quotaScope', 'quotaLimit', 'reservedCount', 'consumedCount'])
+      expect.arrayContaining([
+        'userId',
+        'senderResourceId',
+        'channel',
+        'quotaScope',
+        'quotaLimit',
+        'reservedCount',
+        'consumedCount',
+      ])
     );
     expect(tableColumnNames(smsQuotaReservations)).toEqual(
       expect.arrayContaining(['bucketId', 'runId', 'reservedCount', 'consumedCount', 'releasedCount', 'status'])
@@ -431,7 +448,10 @@ describe('relay domain schema', () => {
         'sms_bulk_send_batches_provider_request_idx',
       ])
     );
-    expect(indexNames(smsQuotaBuckets)).toEqual(expect.arrayContaining(['sms_quota_buckets_lookup_idx']));
+    expect(indexNames(smsQuotaBuckets)).toEqual(expect.arrayContaining([
+      'sms_quota_buckets_lookup_idx',
+      'sms_quota_buckets_sender_resource_lookup_idx',
+    ]));
 
     expect(tableColumnNames(smsBulkSendRuns)).not.toEqual(
       expect.arrayContaining(['recipientNo', 'messageBody', 'templateParameter', 'nhnResultPayload'])
@@ -535,7 +555,7 @@ describe('relay domain schema', () => {
     expect(indexNames(messageSendProviderRequests)).toEqual(
       expect.arrayContaining([
         'message_send_provider_requests_group_sequence_unique',
-        'message_send_provider_requests_client_request_idx',
+        'message_send_provider_requests_client_request_unique',
         'message_send_provider_requests_provider_request_idx',
         'message_send_provider_requests_sync_claim_idx',
       ])
@@ -557,6 +577,49 @@ describe('relay domain schema', () => {
     expect(foreignKeyNames(messageSendGroups)).not.toEqual(
       expect.arrayContaining(['message_send_groups_source_automation_delivery_id_automation_event_deliveries_id_fk'])
     );
+  });
+
+  it('defines sender-resource quota buckets and aggregate reservations without recipient data', () => {
+    expect(senderResourceQuotaChannelEnum.enumValues).toEqual(['sms', 'alimtalk', 'brand-message']);
+    expect(senderResourceQuotaReservationKindEnum.enumValues).toEqual(['primary', 'fallback']);
+    expect(tableColumnNames(senderResourceQuotaBuckets)).toEqual(
+      expect.arrayContaining([
+        'senderResourceId',
+        'quotaChannel',
+        'periodStartAt',
+        'periodEndAt',
+        'quotaLimit',
+        'reservedCount',
+        'consumedCount',
+      ])
+    );
+    expect(tableColumnNames(senderResourceQuotaBuckets)).not.toContain('userId');
+    expect(tableColumnNames(senderResourceQuotaReservations)).toEqual(
+      expect.arrayContaining([
+        'bucketId',
+        'providerRequestId',
+        'kind',
+        'reservedCount',
+        'consumedCount',
+        'releasedCount',
+        'settlementSnapshotJson',
+        'fallbackOpenedAt',
+        'resultSyncedAt',
+        'resultFinalizedAt',
+        'settledAt',
+      ])
+    );
+    expect(tableColumnNames(senderResourceQuotaReservations)).not.toEqual(
+      expect.arrayContaining(['userId', 'recipientNo', 'content', 'rawPayload'])
+    );
+    expect(indexNames(senderResourceQuotaBuckets)).toContain('sender_resource_quota_buckets_period_unique');
+    expect(indexNames(senderResourceQuotaReservations)).toContain(
+      'sender_resource_quota_reservations_request_kind_unique'
+    );
+    expect(checkNames(senderResourceQuotaReservations)).toContain(
+      'sender_resource_quota_reservations_settlement_lte_reserved'
+    );
+    expect(foreignKeyDeleteActions(senderResourceQuotaReservations)).toEqual(['cascade', 'set null']);
   });
 
   it('defines Publ PApp sessions with hashed refresh-token storage only', () => {

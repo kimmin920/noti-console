@@ -20,8 +20,9 @@ export function getSettingsSenderResourceRows(data, type) {
       return {
         isDefault: Boolean(item.isDefault),
         label,
-        limitLabel: getSettingsSenderResourceLimitLabel(resource),
         linkId: item.id,
+        quotaLimit: resource.quotaLimit,
+        senderResourceId: item.senderResourceId,
         statusLabel: getSettingsSenderResourceStatusLabel(item),
       };
     });
@@ -78,21 +79,6 @@ function getSettingsSenderResourceStatusLabel(item) {
   }
 
   return Array.from(new Set(labels.map(getSettingsSenderResourceStatusText))).join(' · ');
-}
-
-function getSettingsSenderResourceLimitLabel(resource) {
-  const metadata = resource.metadataJson ?? {};
-  const limit = metadata.dailyLimit ?? metadata.monthlyLimit ?? metadata.limit;
-
-  if (!limit) {
-    return '한도 정보 없음';
-  }
-
-  if (typeof limit === 'number') {
-    return limit.toLocaleString();
-  }
-
-  return String(limit);
 }
 
 function getSettingsSenderResourceStatusText(value) {

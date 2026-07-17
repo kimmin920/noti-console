@@ -3,10 +3,18 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Show, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/nextjs';
+import { Show, SignInButton, SignOutButton, SignUpButton, useUser } from '@clerk/nextjs';
+import { Home, LogOut, MoreHorizontal, UserRound } from 'lucide-react';
 import lottie from 'lottie-web';
 import { BuildVersionBadge } from '../../components/layout/BuildVersionBadge.jsx';
 import { InspectorSidebar } from '../../components/layout/index.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../components/ui/index.js';
 import audienceAnimation from '../../nav-lotties/audience.json';
 import automationsAnimation from '../../nav-lotties/automations.json';
 import emailsAnimation from '../../nav-lotties/emails.json';
@@ -183,27 +191,81 @@ function SidebarProductHeader({ href, showVersion = false }) {
 function SidebarAccountControl() {
   const { user } = useUser();
   const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? '계정';
+  const accountInitial = (user?.firstName ?? email).trim().charAt(0).toUpperCase() || '?';
 
   return (
-    <div className="account-button account-control">
+    <>
       <Show when="signed-in">
-        <UserButton userProfileMode="modal" />
-        <div aria-label="계정 이메일" className="account-details">
-          <span className="account-email">{email}</span>
-          <span className="ellipsis">...</span>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={`${email} 계정 메뉴`}
+              className="account-button account-control account-menu-trigger"
+              type="button"
+            >
+              <span aria-hidden="true" className="account-menu-avatar">
+                {user?.imageUrl ? (
+                  <span
+                    className="account-menu-avatar-image"
+                    style={{ backgroundImage: `url(${user.imageUrl})` }}
+                  />
+                ) : accountInitial}
+              </span>
+              <span className="account-details">
+                <span className="account-email">{email}</span>
+                <MoreHorizontal aria-hidden="true" className="ellipsis" size={16} strokeWidth={1.8} />
+              </span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="sidebar-account-menu-content"
+            matchTriggerWidth={false}
+            side="top"
+            sideOffset={8}
+          >
+            <DropdownMenuItem asChild className="sidebar-account-menu-item">
+              <Link href="/settings?tab=profile">
+                <span className="sidebar-account-menu-item-main">
+                  <UserRound aria-hidden="true" size={18} strokeWidth={1.7} />
+                  <span>내 프로필</span>
+                </span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="sidebar-account-menu-item">
+              <Link href="/message-send">
+                <span className="sidebar-account-menu-item-main">
+                  <Home aria-hidden="true" size={18} strokeWidth={1.7} />
+                  <span>홈페이지</span>
+                </span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <SignOutButton redirectUrl="/">
+              <DropdownMenuItem className="sidebar-account-menu-item">
+                <span className="sidebar-account-menu-item-main">
+                  <LogOut aria-hidden="true" size={18} strokeWidth={1.7} />
+                  <span>로그아웃</span>
+                </span>
+              </DropdownMenuItem>
+            </SignOutButton>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </Show>
       <Show when="signed-out" treatPendingAsSignedOut>
-        <div className="account-auth-actions">
-          <SignInButton fallbackRedirectUrl="/message-send" mode="modal">
-            <button className="account-auth-button" type="button">로그인</button>
-          </SignInButton>
-          <SignUpButton fallbackRedirectUrl="/message-send" mode="modal">
-            <button className="account-auth-button primary" type="button">가입</button>
-          </SignUpButton>
+        <div className="account-button account-control">
+          <div className="account-auth-actions">
+            <SignInButton fallbackRedirectUrl="/message-send" mode="modal">
+              <button className="account-auth-button" type="button">로그인</button>
+            </SignInButton>
+            <SignUpButton fallbackRedirectUrl="/message-send" mode="modal">
+              <button className="account-auth-button primary" type="button">가입</button>
+            </SignUpButton>
+          </div>
         </div>
       </Show>
-    </div>
+    </>
   );
 }
 

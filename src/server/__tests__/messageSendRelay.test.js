@@ -144,6 +144,79 @@ describe('message send relay service', () => {
     });
   });
 
+  it('uses the advertising SMS endpoint with server-owned opt-out notices', async () => {
+    const repository = createMemoryRepository();
+    const smsClient = createSmsClient({
+      sendAdSms: vi.fn(async () => ({
+        header: { isSuccessful: true, resultCode: 0, resultMessage: 'SUCCESS' },
+        body: {
+          data: {
+            requestId: 'ad-sms-request-1',
+            statusCode: '2',
+            sendResultList: [{ recipientSeq: 1, resultCode: 0, resultMessage: 'SUCCESS' }],
+          },
+        },
+      })),
+    });
+    const service = createTestService({ repository, smsClient });
+
+    await service.sendSms({
+      actorUserId: 'user_1',
+      payload: {
+        body: '(광고)\n혜택 안내\n[무료 수신 거부]0809999999',
+        clientRequestId: CLIENT_REQUEST_ID,
+        isAdvertisement: true,
+        recipients: [{ recipientNo: '01012345678' }],
+        senderResourceId: 'sms_resource_1',
+      },
+    });
+
+    expect(smsClient.sendSms).not.toHaveBeenCalled();
+    expect(smsClient.sendAdSms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: '(광고)\n혜택 안내\n무료수신거부 0801234567',
+        sendNo: '15446859',
+      })
+    );
+  });
+
+  it('promotes advertising SMS to the advertising MMS endpoint after adding notices', async () => {
+    const repository = createMemoryRepository();
+    const smsClient = createSmsClient({
+      sendAdMms: vi.fn(async () => ({
+        header: { isSuccessful: true, resultCode: 0, resultMessage: 'SUCCESS' },
+        body: {
+          data: {
+            requestId: 'ad-lms-request-1',
+            statusCode: '2',
+            sendResultList: [{ recipientSeq: 1, resultCode: 0, resultMessage: 'SUCCESS' }],
+          },
+        },
+      })),
+    });
+    const service = createTestService({ repository, smsClient });
+
+    const result = await service.sendSms({
+      actorUserId: 'user_1',
+      payload: {
+        body: '가'.repeat(35),
+        clientRequestId: CLIENT_REQUEST_ID,
+        isAdvertisement: true,
+        recipients: [{ recipientNo: '01012345678' }],
+        senderResourceId: 'sms_resource_1',
+      },
+    });
+
+    expect(smsClient.sendAdSms).not.toHaveBeenCalled();
+    expect(smsClient.sendAdMms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: `(광고)\n${'가'.repeat(35)}\n무료수신거부 0801234567`,
+        title: '광고',
+      })
+    );
+    expect(result.channel).toBe(CHANNELS.LMS);
+  });
+
   it('writes a minimal ledger row for direct SMS without storing content or recipients', async () => {
     const repository = createMemoryRepository();
     const ledgerRepository = createMemoryLedgerRepository();
@@ -413,7 +486,7 @@ describe('message send relay service', () => {
           enabled: true,
           smsSenderResourceId: 'sms_resource_1',
           resendType: 'SMS',
-          resendUnsubscribeNo: '080-123-4567',
+          resendUnsubscribeNo: '080-999-9999',
         },
       },
     });
@@ -1284,6 +1357,7 @@ describe('message send relay service', () => {
 
 function createTestService({ repository, ledgerRepository, smsClient, kakaoClient, now } = {}) {
   return createMessageSendService({
+    commonSmsUnsubscribeNo: '080-123-4567',
     ledgerRepository,
     repository,
     smsClient: smsClient || createSmsClient(),
@@ -1294,6 +1368,8 @@ function createTestService({ repository, ledgerRepository, smsClient, kakaoClien
 
 function createSmsClient(overrides = {}) {
   return {
+    sendAdMms: overrides.sendAdMms || vi.fn(),
+    sendAdSms: overrides.sendAdSms || vi.fn(),
     sendSms: overrides.sendSms || vi.fn(),
     sendMms: overrides.sendMms || vi.fn(),
   };

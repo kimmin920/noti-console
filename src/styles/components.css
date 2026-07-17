@@ -278,6 +278,50 @@ button {
   min-width: 0;
 }
 
+.account-menu-trigger {
+  cursor: pointer;
+}
+
+.account-menu-trigger:focus,
+.account-menu-trigger:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
+.account-menu-trigger:focus-visible {
+  background: var(--control);
+}
+
+.account-menu-trigger[data-state="open"] {
+  background: var(--control);
+}
+
+.account-menu-avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.account-menu-avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
 .account-details {
   min-width: 0;
   flex: 1;
@@ -311,6 +355,33 @@ button {
   background: var(--black);
   color: var(--white);
   padding: 0 10px;
+}
+
+.sidebar-account-menu-content {
+  width: 218px;
+  min-width: 218px;
+  scrollbar-width: none;
+}
+
+.sidebar-account-menu-content::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-account-menu-item {
+  justify-content: space-between;
+  text-decoration: none;
+}
+
+.sidebar-account-menu-item-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-account-menu-item-main svg {
+  flex: 0 0 auto;
+  color: var(--text-soft);
 }
 
 .sidebar-bottom-stack {
@@ -2812,6 +2883,17 @@ button {
   color: #7a5b23;
 }
 
+.message-send-api-status-link {
+  color: inherit;
+  font-weight: 500;
+  margin-left: 6px;
+  text-underline-offset: 3px;
+}
+
+.message-send-api-status-link:hover {
+  color: var(--text);
+}
+
 .email-send-form-root {
   width: 100%;
   border: 1px solid var(--line);
@@ -2881,10 +2963,34 @@ button {
 
 .email-send-form-disclosure {
   position: relative;
-  overflow: visible;
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
   transform-origin: top;
-  will-change: opacity, transform, clip-path;
-  animation: email-send-form-disclosure-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease-out,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: grid-template-rows, opacity, transform;
+}
+
+.email-send-form-disclosure[data-open="true"] {
+  grid-template-rows: 1fr;
+  overflow: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.email-send-form-disclosure[data-clipping="true"] {
+  overflow: hidden;
+}
+
+.email-send-form-disclosure-content {
+  min-height: 0;
 }
 
 .email-send-form-row:has(.dropdown-menu-root[data-state="open"]),
@@ -2893,20 +2999,6 @@ button {
 .email-send-form-row:has(.email-send-form-recipient-menu) {
   position: relative;
   z-index: var(--layer-local-floating);
-}
-
-@keyframes email-send-form-disclosure-in {
-  0% {
-    clip-path: inset(0 0 100% 0);
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-
-  100% {
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .email-send-form-label {
@@ -2923,6 +3015,38 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.email-send-form-label-description-tooltip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  margin-left: 4px;
+}
+
+.email-send-form-label-description-tooltip-content {
+  z-index: var(--layer-tooltip);
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 24px));
+  line-height: 18px;
+  overflow-wrap: break-word;
+  text-align: left;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.email-send-form-label-description-icon {
+  width: 16px;
+  height: 20px;
+  color: var(--placeholder);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  outline: 0;
+}
+
+.email-send-form-label-description-icon svg {
+  display: block;
 }
 
 .email-send-form-field-warning-tooltip {
@@ -3797,6 +3921,307 @@ button {
   color: var(--red);
   font-size: 12px;
   line-height: 16px;
+}
+
+.sms-advertisement-guide-body {
+  display: grid;
+  gap: 30px;
+}
+
+.dialog-content.sms-advertisement-guide-dialog {
+  --sms-advertisement-guide-accent: #2563eb;
+  width: min(100%, 900px);
+}
+
+.sms-advertisement-guide-dialog .dialog-title {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.sms-advertisement-guide-notice {
+  display: grid;
+  gap: 7px;
+  padding: 0 2px;
+}
+
+.sms-advertisement-guide-notice p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.sms-advertisement-guide-notice-warning {
+  color: var(--text);
+}
+
+.sms-advertisement-guide-notice-warning strong {
+  color: var(--red);
+  font-weight: 650;
+}
+
+.sms-advertisement-guide-overview {
+  min-width: 0;
+  display: grid;
+  gap: 0;
+}
+
+.sms-advertisement-guide-diagram {
+  position: relative;
+  min-width: 0;
+  min-height: 390px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--control) 46%, var(--bg));
+  container-type: inline-size;
+  overflow: hidden;
+}
+
+.sms-advertisement-guide-phone {
+  position: absolute;
+  z-index: 2;
+  top: 22px;
+  left: 50%;
+  width: 32%;
+  min-width: 250px;
+  max-width: 280px;
+  min-height: 318px;
+  border: 8px solid color-mix(in srgb, var(--line) 78%, var(--control));
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  background: var(--bg);
+  padding: 18px 14px 24px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    0 1px 0 rgba(0, 0, 0, 0.02);
+  transform: translateX(-50%);
+}
+
+.sms-advertisement-guide-phone-time {
+  position: relative;
+  color: #8e8e93;
+  margin: 6px 0 16px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.sms-advertisement-guide-message {
+  min-height: 226px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--control) 86%, var(--bg));
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.sms-advertisement-guide-message-heading {
+  position: relative;
+}
+
+.sms-advertisement-guide-message-heading strong {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+}
+
+.sms-advertisement-guide-message-placeholder {
+  margin-top: 18px;
+  color: var(--text-soft);
+}
+
+.sms-advertisement-guide-optout {
+  position: relative;
+  margin-top: auto;
+  color: var(--text-soft);
+}
+
+.sms-advertisement-guide-marker {
+  position: absolute;
+  z-index: 5;
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(255, 255, 255, 0.86);
+  border-radius: 50%;
+  background: #62a8ff;
+  color: var(--white);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 1;
+  box-shadow: 0 1px 3px rgba(0, 97, 254, 0.18);
+  cursor: default;
+  -webkit-text-fill-color: var(--white);
+}
+
+.sms-advertisement-guide-marker-one {
+  top: -3px;
+  left: -30px;
+}
+
+.sms-advertisement-guide-marker-two {
+  top: 50%;
+  right: 44px;
+  transform: translateY(-50%);
+}
+
+.sms-advertisement-guide-marker-three {
+  top: 50%;
+  right: 40px;
+  transform: translateY(-50%);
+}
+
+.sms-advertisement-guide-annotation {
+  position: absolute;
+  z-index: 3;
+  width: 23%;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-soft);
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  font-size: 14px;
+  line-height: 21px;
+  letter-spacing: -0.01em;
+  word-break: keep-all;
+}
+
+.sms-advertisement-guide-annotation strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.sms-advertisement-guide-annotation-detail {
+  display: block;
+  margin-top: 6px;
+}
+
+.sms-advertisement-guide-annotation-one {
+  top: 92px;
+  left: 3%;
+}
+
+.sms-advertisement-guide-annotation-two {
+  top: 235px;
+  right: 3%;
+}
+
+.sms-advertisement-guide-annotation-three {
+  top: 42px;
+  right: 3%;
+}
+
+.sms-advertisement-guide-arrows {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--sms-advertisement-guide-accent);
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.sms-advertisement-guide-arrows-mobile {
+  display: none;
+}
+
+.sms-advertisement-guide-section {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.sms-advertisement-guide-section h3,
+.sms-advertisement-guide-section p {
+  margin: 0;
+}
+
+.sms-advertisement-guide-section h3 {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 23px;
+  letter-spacing: -0.01em;
+}
+
+.sms-advertisement-guide-section p {
+  margin-top: 5px;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.sms-advertisement-guide-example-list {
+  margin: 14px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.sms-advertisement-guide-example-list li::marker {
+  color: var(--muted);
+}
+
+.sms-advertisement-guide-footer {
+  justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .sms-advertisement-guide-diagram {
+    min-height: 710px;
+  }
+
+  .sms-advertisement-guide-phone {
+    top: 20px;
+    width: min(280px, calc(100% - 40px));
+    min-width: 0;
+  }
+
+  .sms-advertisement-guide-annotation {
+    width: 41%;
+  }
+
+  .sms-advertisement-guide-annotation-one {
+    top: 455px;
+    left: 5%;
+  }
+
+  .sms-advertisement-guide-annotation-two {
+    top: 555px;
+    right: 5%;
+  }
+
+  .sms-advertisement-guide-annotation-three {
+    top: 360px;
+    right: 5%;
+  }
+
+  .sms-advertisement-guide-arrows-desktop {
+    display: none;
+  }
+
+  .sms-advertisement-guide-arrows-mobile {
+    display: block;
+  }
+
 }
 
 .email-send-form-empty-state.sms-send-form-empty-state {
@@ -9386,6 +9811,21 @@ body.is-brand-message-button-dragging {
   line-height: 20px;
 }
 
+.email-send-form-template-empty-action {
+  width: fit-content;
+  margin: 4px auto 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.email-send-form-template-empty-action:hover {
+  color: var(--text-soft);
+}
+
 .empty-panel {
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -9990,8 +10430,8 @@ body.is-brand-message-button-dragging {
 }
 
 .profile-stack {
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+  display: grid;
   gap: 24px;
 }
 
@@ -10003,16 +10443,7 @@ body.is-brand-message-button-dragging {
   overflow: hidden;
 }
 
-.profile-email-card {
-  min-height: 203px;
-}
-
-.profile-auth-card {
-  min-height: 215px;
-}
-
 .profile-card-heading {
-  height: 40px;
   padding: 16px 16px 0;
 }
 
@@ -10023,107 +10454,93 @@ body.is-brand-message-button-dragging {
   line-height: 24px;
 }
 
-.profile-email-form {
-  min-height: 161px;
-}
-
-.profile-field-wrap {
-  width: min(448px, 100%);
-  height: 96px;
-  margin-bottom: 8px;
-  padding: 16px;
-}
-
-.profile-label {
-  display: inline;
-  color: var(--text-soft);
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.profile-input-wrap {
-  width: 100%;
-  height: 32px;
-  margin-top: 8px;
-}
-
-.profile-input-wrap input {
-  width: 100%;
-  height: 32px;
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-  background: var(--control);
-  color: var(--text);
-  padding: 0 12px;
-  outline: 0;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.profile-input-wrap input::placeholder {
-  color: var(--placeholder);
-}
-
-.profile-card-copy {
-  min-height: 52px;
-  padding: 16px;
-}
-
-.profile-card-copy p {
-  color: var(--text-soft);
-  font-size: 14px;
-  line-height: 20px;
-  margin: 0;
-}
-
-.auth-account-row {
-  height: 64px;
+.profile-overview-body {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) 307px 32px;
-  align-items: center;
-  gap: 16px;
-  padding: 0 12px;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(420px, 1.3fr);
+  gap: 24px;
+  padding: 20px 16px 24px;
 }
 
-.auth-provider {
+.profile-identity {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-soft);
+  gap: 12px;
+  align-self: start;
 }
 
-.auth-provider-icon {
-  width: 24px;
-  height: 24px;
+.profile-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--text-soft);
   display: grid;
   place-items: center;
-  flex: 0 0 auto;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1;
 }
 
-.auth-provider-icon svg {
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.profile-identity-copy,
+.profile-identity-copy > span,
+.profile-field-wrap {
+  min-width: 0;
   display: block;
 }
 
-.auth-provider-name,
-.auth-provider-email,
-.auth-date {
-  margin: 0;
-}
-
-.auth-provider-name {
+.profile-identity-copy strong {
+  display: block;
   color: var(--text);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 650;
   line-height: 20px;
 }
 
-.auth-provider-email,
-.auth-date {
+.profile-identity-copy > span {
+  margin-top: 2px;
   color: var(--text-soft);
+  font-size: 13px;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-field-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+}
+
+.profile-field-wrap {
+  display: grid;
+  gap: 5px;
+}
+
+.profile-label {
+  color: var(--muted);
   font-size: 12px;
-  font-weight: 400;
   line-height: 16px;
+}
+
+.profile-field-value {
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
 }
 
 .profile-card-actions {
@@ -10131,15 +10548,43 @@ body.is-brand-message-button-dragging {
   border-top: 1px solid var(--line);
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   padding: 12px;
 }
 
-.profile-card-action-note {
-  margin: 0;
-  color: var(--text-soft);
-  font-size: 13px;
-  line-height: 18px;
+.profile-state {
+  min-height: 180px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--bg);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+@media (max-width: 860px) {
+  .profile-overview-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-card {
+    border-radius: 20px;
+  }
+
+  .profile-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-card-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .settings-page .segmented {
@@ -10218,7 +10663,11 @@ body.is-brand-message-button-dragging {
 }
 
 .sender-resource-row {
-  grid-template-columns: 24px minmax(0, 1fr) minmax(104px, auto) 92px;
+  grid-template-columns: 24px minmax(0, 1fr) minmax(220px, auto) 92px;
+}
+
+.sender-resource-row:not(:has(.property-row-trailing)) {
+  grid-template-columns: 24px minmax(0, 1fr) minmax(220px, auto);
 }
 
 .sender-resource-empty-row {
@@ -10293,6 +10742,48 @@ body.is-brand-message-button-dragging {
   outline: 0;
 }
 
+.sender-resource-row .property-row-value:has(.sender-resource-limit-group) {
+  min-width: 0;
+  color: var(--text);
+}
+
+.sender-resource-limit-group {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.sender-resource-limit-group.is-kakao {
+  gap: 12px;
+}
+
+.sender-resource-limit-item {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sender-resource-limit-item + .sender-resource-limit-item {
+  border-left: 1px solid var(--line);
+  padding-left: 12px;
+}
+
+.sender-resource-limit-item > span:first-child {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.sender-resource-limit-item > span:last-child {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
 .settings-placeholder {
   max-width: 520px;
   color: var(--text-soft);
@@ -10306,6 +10797,14 @@ body.is-brand-message-button-dragging {
 .settings-usage-stack {
   display: grid;
   gap: 56px;
+}
+
+.settings-sender-resource-stack {
+  width: 100%;
+}
+
+.settings-limit-history-divider {
+  margin-bottom: 48px;
 }
 
 .settings-usage-muted {
@@ -15992,7 +16491,11 @@ body.is-brand-message-button-dragging {
   }
 
   .sender-resource-row {
-    grid-template-columns: 24px minmax(0, 1fr) minmax(104px, auto) 92px;
+    grid-template-columns: 24px minmax(0, 1fr) minmax(220px, auto) 92px;
+  }
+
+  .sender-resource-row:not(:has(.property-row-trailing)) {
+    grid-template-columns: 24px minmax(0, 1fr) minmax(220px, auto);
   }
 
   .message-reservation-detail-grid-layout {
@@ -16232,6 +16735,10 @@ body.is-brand-message-button-dragging {
     padding: 10px 0;
   }
 
+  .sender-resource-row:not(:has(.property-row-trailing)) {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+  }
+
   .property-row {
     min-height: auto;
     grid-template-columns: 24px minmax(0, 1fr) auto;
@@ -16254,6 +16761,12 @@ body.is-brand-message-button-dragging {
     font-size: 12px;
   }
 
+  .sender-resource-limit-group,
+  .sender-resource-limit-item {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
   .sender-resource-row .badge,
   .sender-resource-default-button {
     grid-column: 3 / 4;
@@ -16268,12 +16781,6 @@ body.is-brand-message-button-dragging {
 
   .metric-card:last-child {
     border-bottom: 0;
-  }
-
-  .auth-account-row {
-    height: auto;
-    grid-template-columns: 1fr;
-    padding: 12px;
   }
 
   .search-field,
@@ -16446,9 +16953,6 @@ body.is-brand-message-button-dragging {
     grid-template-columns: 1fr;
   }
 
-  .profile-card {
-    border-radius: 20px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -16464,6 +16968,10 @@ body.is-brand-message-button-dragging {
   .email-send-form-disclosure {
     animation: none;
     transition: none !important;
+  }
+
+  .email-send-form-disclosure[data-open="true"] {
+    overflow: visible;
   }
 
   .dropdown-menu-item {

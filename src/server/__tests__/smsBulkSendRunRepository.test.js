@@ -346,8 +346,9 @@ function createBulkRunInput(overrides = {}) {
       ),
     quotaBucket: {
       userId: 'user_1',
+      senderResourceId: 'sms_resource_1',
       channel: 'sms',
-      quotaScope: 'user_period',
+      quotaScope: 'sender_resource_period',
       periodStartAt: new Date('2026-06-01T00:00:00.000Z'),
       periodEndAt: new Date('2026-06-30T23:59:59.000Z'),
       quotaLimit: 50000,
@@ -380,8 +381,9 @@ function createMemoryBulkSendRepository({ quotaLimit }) {
       {
         id: 'quota_bucket_1',
         userId: 'user_1',
+        senderResourceId: 'sms_resource_1',
         channel: 'sms',
-        quotaScope: 'user_period',
+        quotaScope: 'sender_resource_period',
         periodStartAt: new Date('2026-06-01T00:00:00.000Z'),
         periodEndAt: new Date('2026-06-30T23:59:59.000Z'),
         quotaLimit,

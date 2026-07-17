@@ -13,9 +13,9 @@ describe('limit increase request service', () => {
       actorUserId: 'user_1',
       payload: {
         channel: 'sms',
-        currentLimit: 50_000,
         requestedLimit: 80_000,
         reason: '월 캠페인 물량 증가',
+        senderResourceId: 'sms_resource_1',
       },
     });
 
@@ -24,7 +24,7 @@ describe('limit increase request service', () => {
       limitScope: 'monthly',
       currentLimit: 50_000,
       requestedLimit: 80_000,
-      senderResourceId: null,
+      senderResourceId: 'sms_resource_1',
       status: 'submitted',
     });
     expect(repository.auditLogs).toContainEqual(expect.objectContaining({
@@ -40,15 +40,16 @@ describe('limit increase request service', () => {
     const result = await service.createRequest({
       actorUserId: 'user_1',
       payload: {
-        channel: 'alimtalk',
+        channel: 'kakao',
         requestedLimit: 3000,
-        reason: '주문 알림톡 피크 대응',
+        reason: '카카오 채널 발송량 피크 대응',
         senderResourceId: 'kakao_resource_1',
       },
     });
 
     expect(result.request).toMatchObject({
       channel: 'alimtalk',
+      channelLabel: '카카오 채널',
       limitScope: 'daily_channel',
       currentLimit: 1000,
       requestedLimit: 3000,
@@ -61,13 +62,44 @@ describe('limit increase request service', () => {
     });
   });
 
+  it('treats legacy AlimTalk and Brand Message requests as one Kakao channel request', async () => {
+    const repository = createMemoryRepository();
+    repository.requests.push(addTimestamps({
+      id: 'legacy_brand_request',
+      userId: 'user_1',
+      channel: 'brand-message',
+      limitScope: 'daily_channel',
+      senderResourceId: 'kakao_resource_1',
+      currentLimit: 1000,
+      requestedLimit: 3000,
+      reason: '기존 브랜드메시지 신청',
+      status: 'submitted',
+    }));
+    const service = createTestService({ repository });
+
+    await expect(service.createRequest({
+      actorUserId: 'user_1',
+      payload: {
+        channel: 'kakao',
+        requestedLimit: 5000,
+        reason: '카카오 채널 상향',
+        senderResourceId: 'kakao_resource_1',
+      },
+    })).rejects.toThrow('이미 검토 중인 한도 상향 신청이 있습니다.');
+  });
+
   it('lists requests for operators with requester identity', async () => {
     const repository = createMemoryRepository();
     const service = createTestService({ repository });
 
     await service.createRequest({
       actorUserId: 'user_1',
-      payload: { channel: 'sms', currentLimit: 1000, requestedLimit: 5000, reason: '테스트 발송량 증가' },
+      payload: {
+        channel: 'sms',
+        requestedLimit: 60_000,
+        reason: '테스트 발송량 증가',
+        senderResourceId: 'sms_resource_1',
+      },
     });
 
     const result = await service.listAdminRequests({
@@ -86,12 +118,39 @@ describe('limit increase request service', () => {
     await expect(service.listAdminRequests({ actorUserId: 'user_1' })).rejects.toThrow('Operator access is required.');
   });
 
+  it('updates the sender resource quota when an operator approves a request', async () => {
+    const repository = createMemoryRepository();
+    const service = createTestService({ repository });
+    const created = await service.createRequest({
+      actorUserId: 'user_1',
+      payload: {
+        channel: 'sms',
+        requestedLimit: 80_000,
+        reason: '월 캠페인 물량 증가',
+        senderResourceId: 'sms_resource_1',
+      },
+    });
+
+    const approved = await service.approveRequest({
+      actorUserId: 'operator_1',
+      requestId: created.request.id,
+      payload: { reviewMemo: '한도 조정 완료' },
+    });
+
+    expect(approved.request).toMatchObject({
+      status: 'approved',
+      requestedLimit: 80_000,
+      senderResource: { quotaLimit: 80_000 },
+    });
+    expect(repository.resources.find((resource) => resource.id === 'sms_resource_1')?.quotaLimit).toBe(80_000);
+  });
+
   it('requires a rejection reason and exposes it to the user', async () => {
     const repository = createMemoryRepository();
     const service = createTestService({ repository });
     const created = await service.createRequest({
       actorUserId: 'user_1',
-      payload: { channel: 'brand-message', reason: '브랜드 캠페인', requestedLimit: 4000, senderResourceId: 'kakao_resource_1' },
+      payload: { channel: 'kakao', reason: '카카오 채널 캠페인', requestedLimit: 4000, senderResourceId: 'kakao_resource_1' },
     });
 
     await expect(
@@ -135,18 +194,40 @@ function createMemoryRepository() {
     ],
     resources: [
       addTimestamps({
+        id: 'sms_resource_1',
+        resourceRef: 'sr_sms_1',
+        provider: 'nhn',
+        type: 'sms_send_no',
+        value: '0212345678',
+        displayName: null,
+        quotaLimit: 50_000,
+        status: 'active',
+        providerStatus: 'active',
+        metadataJson: null,
+      }),
+      addTimestamps({
         id: 'kakao_resource_1',
         resourceRef: 'sr_kakao_1',
         provider: 'nhn',
         type: 'kakao_sender_key',
         value: 'sender_key_1',
         displayName: '스토어 채널',
+        quotaLimit: 1000,
         status: 'active',
         providerStatus: 'active',
         metadataJson: null,
       }),
     ],
     links: [
+      addTimestamps({
+        id: 'link_sms_1',
+        userId: 'user_1',
+        senderResourceId: 'sms_resource_1',
+        billingAccountId: 'billing_1',
+        role: 'owner',
+        status: 'active',
+        isDefault: true,
+      }),
       addTimestamps({
         id: 'link_kakao_1',
         userId: 'user_1',
@@ -169,10 +250,10 @@ function createMemoryRepository() {
         .filter((request) => request.userId === userId)
         .map((request) => ({ request, senderResource: this.resources.find((resource) => resource.id === request.senderResourceId) ?? null }));
     },
-    async findSubmittedUserRequest({ channel, senderResourceId, userId }) {
+    async findSubmittedUserRequest({ channels, senderResourceId, userId }) {
       return this.requests.find((request) => (
         request.userId === userId
-        && request.channel === channel
+        && channels.includes(request.channel)
         && request.status === 'submitted'
         && request.senderResourceId === senderResourceId
       )) ?? null;
@@ -181,6 +262,13 @@ function createMemoryRepository() {
       const request = addTimestamps({ id: `limit_request_${this.requests.length + 1}`, ...values });
       this.requests.unshift(request);
       return request;
+    },
+    async approveRequestAndUpdateQuota({ quotaLimit, requestId, requestValues, senderResourceId }) {
+      const resource = this.resources.find((item) => item.id === senderResourceId);
+      const request = this.requests.find((item) => item.id === requestId);
+      Object.assign(resource, { quotaLimit, updatedAt: FIXED_NOW });
+      Object.assign(request, requestValues, { updatedAt: FIXED_NOW });
+      return { request, resource };
     },
     async listRequests({ status } = {}) {
       return this.requests

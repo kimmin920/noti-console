@@ -84,7 +84,8 @@ describe('metrics service', () => {
           }),
         ],
         quotaBuckets: [
-          { channel: 'sms', consumedCount: 850, quotaLimit: 1000, reservedCount: 100 },
+          { channel: 'sms', consumedCount: 400, quotaLimit: 500, reservedCount: 50 },
+          { channel: 'sms', consumedCount: 450, quotaLimit: 500, reservedCount: 50 },
         ],
       }),
     });
@@ -110,12 +111,12 @@ describe('metrics service', () => {
       unknownRuns: 0,
     });
     expect(summary.quota.sms).toMatchObject({
-      consumed: 850,
       limit: 1000,
       remaining: 50,
-      reserved: 100,
+      used: 950,
       usedRate: 0.95,
     });
+    expect(summary.quota.sms).not.toHaveProperty('reserved');
     expect(summary.alerts.map((alert) => alert.code)).toEqual(
       expect.arrayContaining([
         'result_sync_attention',

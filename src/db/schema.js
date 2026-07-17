@@ -101,11 +101,20 @@ export const smsBulkSendBatchStatusEnum = pgEnum('sms_bulk_send_batch_status', [
   'failed',
   'canceled',
 ]);
-export const smsQuotaScopeEnum = pgEnum('sms_quota_scope', ['user_period']);
+export const smsQuotaScopeEnum = pgEnum('sms_quota_scope', ['user_period', 'sender_resource_period']);
 export const smsQuotaReservationStatusEnum = pgEnum('sms_quota_reservation_status', [
   'reserved',
   'consumed',
   'released',
+]);
+export const senderResourceQuotaChannelEnum = pgEnum('sender_resource_quota_channel', [
+  'sms',
+  'alimtalk',
+  'brand-message',
+]);
+export const senderResourceQuotaReservationKindEnum = pgEnum('sender_resource_quota_reservation_kind', [
+  'primary',
+  'fallback',
 ]);
 export const messageSendChannelEnum = pgEnum('message_send_channel', [
   'sms',
@@ -306,6 +315,7 @@ export const senderResources = pgTable(
     type: senderResourceTypeEnum('type').notNull(),
     value: varchar('value', { length: 128 }).notNull(),
     displayName: varchar('display_name', { length: 120 }),
+    quotaLimit: integer('quota_limit').notNull().default(1000),
     status: senderResourceStatusEnum('status').notNull().default('active'),
     providerStatus: varchar('provider_status', { length: 80 }),
     metadataJson: jsonb('metadata_json'),
@@ -316,6 +326,7 @@ export const senderResources = pgTable(
     uniqueIndex('sender_resources_resource_ref_unique').on(table.resourceRef),
     uniqueIndex('sender_resources_provider_type_value_unique').on(table.provider, table.type, table.value),
     index('sender_resources_type_status_idx').on(table.type, table.status),
+    check('sender_resources_quota_limit_positive', sql`${table.quotaLimit} > 0`),
   ]
 );
 
@@ -663,6 +674,8 @@ export const smsQuotaBuckets = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    senderResourceId: uuid('sender_resource_id')
+      .references(() => senderResources.id, { onDelete: 'restrict' }),
     channel: smsBulkSendChannelEnum('channel').notNull().default('sms'),
     quotaScope: smsQuotaScopeEnum('quota_scope').notNull().default('user_period'),
     periodStartAt: timestampWithTimezone('period_start_at').notNull(),
@@ -682,6 +695,11 @@ export const smsQuotaBuckets = pgTable(
       table.periodEndAt
     ),
     index('sms_quota_buckets_lookup_idx').on(table.userId, table.channel, table.quotaScope, table.periodEndAt),
+    index('sms_quota_buckets_sender_resource_lookup_idx').on(
+      table.senderResourceId,
+      table.quotaScope,
+      table.periodEndAt
+    ),
   ]
 );
 
@@ -714,6 +732,41 @@ export const smsQuotaReservations = pgTable(
     uniqueIndex('sms_quota_reservations_run_unique').on(table.runId),
     index('sms_quota_reservations_bucket_status_idx').on(table.bucketId, table.status),
     index('sms_quota_reservations_user_recent_idx').on(table.userId, table.createdAt),
+  ]
+);
+
+export const senderResourceQuotaBuckets = pgTable(
+  'sender_resource_quota_buckets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    senderResourceId: uuid('sender_resource_id')
+      .notNull()
+      .references(() => senderResources.id, { onDelete: 'restrict' }),
+    quotaChannel: senderResourceQuotaChannelEnum('quota_channel').notNull(),
+    periodStartAt: timestampWithTimezone('period_start_at').notNull(),
+    periodEndAt: timestampWithTimezone('period_end_at').notNull(),
+    quotaLimit: integer('quota_limit').notNull(),
+    reservedCount: integer('reserved_count').notNull().default(0),
+    consumedCount: integer('consumed_count').notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex('sender_resource_quota_buckets_period_unique').on(
+      table.senderResourceId,
+      table.quotaChannel,
+      table.periodStartAt,
+      table.periodEndAt
+    ),
+    index('sender_resource_quota_buckets_lookup_idx').on(
+      table.senderResourceId,
+      table.quotaChannel,
+      table.periodEndAt
+    ),
+    check('sender_resource_quota_buckets_period_valid', sql`${table.periodEndAt} > ${table.periodStartAt}`),
+    check('sender_resource_quota_buckets_limit_positive', sql`${table.quotaLimit} > 0`),
+    check('sender_resource_quota_buckets_reserved_nonnegative', sql`${table.reservedCount} >= 0`),
+    check('sender_resource_quota_buckets_consumed_nonnegative', sql`${table.consumedCount} >= 0`),
   ]
 );
 
@@ -830,7 +883,7 @@ export const messageSendProviderRequests = pgTable(
   },
   (table) => [
     uniqueIndex('message_send_provider_requests_group_sequence_unique').on(table.groupId, table.sequence),
-    index('message_send_provider_requests_client_request_idx').on(table.clientRequestId),
+    uniqueIndex('message_send_provider_requests_client_request_unique').on(table.clientRequestId),
     index('message_send_provider_requests_provider_request_idx').on(table.providerRequestId),
     index('message_send_provider_requests_group_sequence_idx').on(table.groupId, table.sequence),
     index('message_send_provider_requests_sync_claim_idx').on(
@@ -849,6 +902,44 @@ export const messageSendProviderRequests = pgTable(
     check(
       'message_send_provider_requests_result_counts_lte_recipient_count',
       sql`${table.successCount} + ${table.failedCount} + ${table.pendingCount} + ${table.canceledCount} <= ${table.recipientCount}`
+    ),
+  ]
+);
+
+export const senderResourceQuotaReservations = pgTable(
+  'sender_resource_quota_reservations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bucketId: uuid('bucket_id')
+      .notNull()
+      .references(() => senderResourceQuotaBuckets.id, { onDelete: 'cascade' }),
+    providerRequestId: uuid('provider_request_id')
+      .references(() => messageSendProviderRequests.id, { onDelete: 'set null' }),
+    kind: senderResourceQuotaReservationKindEnum('kind').notNull(),
+    reservedCount: integer('reserved_count').notNull(),
+    consumedCount: integer('consumed_count').notNull().default(0),
+    releasedCount: integer('released_count').notNull().default(0),
+    settlementSnapshotJson: jsonb('settlement_snapshot_json'),
+    fallbackOpenedAt: timestampWithTimezone('fallback_opened_at'),
+    resultSyncedAt: timestampWithTimezone('result_synced_at'),
+    resultFinalizedAt: timestampWithTimezone('result_finalized_at'),
+    settledAt: timestampWithTimezone('settled_at'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex('sender_resource_quota_reservations_request_kind_unique')
+      .on(table.providerRequestId, table.kind)
+      .where(sql`${table.providerRequestId} is not null`),
+    index('sender_resource_quota_reservations_bucket_idx').on(table.bucketId),
+    index('sender_resource_quota_reservations_request_idx').on(table.providerRequestId),
+    index('sender_resource_quota_reservations_fallback_sync_idx').on(table.kind, table.resultFinalizedAt),
+    check('sender_resource_quota_reservations_reserved_positive', sql`${table.reservedCount} > 0`),
+    check('sender_resource_quota_reservations_consumed_nonnegative', sql`${table.consumedCount} >= 0`),
+    check('sender_resource_quota_reservations_released_nonnegative', sql`${table.releasedCount} >= 0`),
+    check(
+      'sender_resource_quota_reservations_settlement_lte_reserved',
+      sql`${table.consumedCount} + ${table.releasedCount} <= ${table.reservedCount}`
     ),
   ]
 );
@@ -991,6 +1082,7 @@ export const senderResourcesRelations = relations(senderResources, ({ many }) =>
   automationRules: many(automationRules),
   smsBulkSendRuns: many(smsBulkSendRuns),
   messageSendGroups: many(messageSendGroups),
+  quotaBuckets: many(senderResourceQuotaBuckets),
   limitIncreaseRequests: many(limitIncreaseRequests),
 }));
 
@@ -1156,6 +1248,10 @@ export const smsQuotaBucketsRelations = relations(smsQuotaBuckets, ({ one, many 
     fields: [smsQuotaBuckets.userId],
     references: [users.id],
   }),
+  senderResource: one(senderResources, {
+    fields: [smsQuotaBuckets.senderResourceId],
+    references: [senderResources.id],
+  }),
   reservations: many(smsQuotaReservations),
 }));
 
@@ -1172,6 +1268,14 @@ export const smsQuotaReservationsRelations = relations(smsQuotaReservations, ({ 
     fields: [smsQuotaReservations.userId],
     references: [users.id],
   }),
+}));
+
+export const senderResourceQuotaBucketsRelations = relations(senderResourceQuotaBuckets, ({ one, many }) => ({
+  senderResource: one(senderResources, {
+    fields: [senderResourceQuotaBuckets.senderResourceId],
+    references: [senderResources.id],
+  }),
+  reservations: many(senderResourceQuotaReservations),
 }));
 
 export const messageSendGroupsRelations = relations(messageSendGroups, ({ one, many }) => ({
@@ -1195,10 +1299,22 @@ export const messageSendGroupsRelations = relations(messageSendGroups, ({ one, m
   automationEventDeliveries: many(automationEventDeliveries),
 }));
 
-export const messageSendProviderRequestsRelations = relations(messageSendProviderRequests, ({ one }) => ({
+export const messageSendProviderRequestsRelations = relations(messageSendProviderRequests, ({ one, many }) => ({
   group: one(messageSendGroups, {
     fields: [messageSendProviderRequests.groupId],
     references: [messageSendGroups.id],
+  }),
+  quotaReservations: many(senderResourceQuotaReservations),
+}));
+
+export const senderResourceQuotaReservationsRelations = relations(senderResourceQuotaReservations, ({ one }) => ({
+  bucket: one(senderResourceQuotaBuckets, {
+    fields: [senderResourceQuotaReservations.bucketId],
+    references: [senderResourceQuotaBuckets.id],
+  }),
+  providerRequest: one(messageSendProviderRequests, {
+    fields: [senderResourceQuotaReservations.providerRequestId],
+    references: [messageSendProviderRequests.id],
   }),
 }));
 

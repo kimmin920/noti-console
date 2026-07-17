@@ -435,11 +435,6 @@ const brandMessageCouponFixedOptionOptions = [
   },
 ];
 
-const defaultBrandFallbackUnsubscribeNumbers = [
-  { label: '080-123-4567', value: '080-123-4567' },
-  { label: '080-987-6543', value: '080-987-6543' },
-];
-
 function createBrandCouponId() {
   return `brand-coupon-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -1613,10 +1608,6 @@ export function getBrandMessageValidationIssues(value) {
 
   if (message.fallbackEnabled && !message.fallbackSenderNumber) {
     issues.push({ field: 'fallbackSenderNumber', message: 'SMS 대체 발송용 발신번호를 선택해 주세요.' });
-  }
-
-  if (message.fallbackEnabled && message.fallbackAdvertisementEnabled && !message.fallbackUnsubscribeNumber) {
-    issues.push({ field: 'fallbackUnsubscribeNumber', message: '광고성 SMS 대체발송에는 080 수신거부 번호가 필요합니다.' });
   }
 
   if (!isCarouselType && !couponValidation.isValid) {
@@ -4754,7 +4745,6 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
   compositionPurpose = 'send',
   defaultValue,
   fallbackSenderNumbers = defaultSmsFallbackSenderNumbers,
-  fallbackUnsubscribeNumbers = defaultBrandFallbackUnsubscribeNumbers,
   onChange,
   onCarouselPreviewTargetChange,
   onFallbackSenderNumberCreate,
@@ -4843,9 +4833,6 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
   const visibleRecipientIssue = visibleValidationIssues.find((issue) => issue.field === 'recipient') ?? null;
   const visibleImageIssue = visibleValidationIssues.find((issue) => issue.field === 'image') ?? null;
   const visibleFallbackSenderIssue = visibleValidationIssues.find((issue) => issue.field === 'fallbackSenderNumber') ?? null;
-  const visibleFallbackUnsubscribeIssue = visibleValidationIssues.find((issue) => (
-    issue.field === 'fallbackUnsubscribeNumber'
-  )) ?? null;
   const visibleBodyContentIssue = visibleValidationIssues.find((issue) => (
     issue.field === 'content' && isContentRequired && isBodyEmpty
   )) ?? null;
@@ -4859,10 +4846,6 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
   const fallbackSenderWarnings = getBrandValidationWarning(
     visibleFallbackSenderIssue,
     'brand-message-fallback-sender-required'
-  );
-  const fallbackUnsubscribeWarnings = getBrandValidationWarning(
-    visibleFallbackUnsubscribeIssue,
-    'brand-message-fallback-unsubscribe-required'
   );
   const buttonEditorWarnings = getBrandValidationWarnings(buttonEditorIssues, 'brand-message-button-editor');
   const activeButtonValidation = activeButton ? getBrandButtonValidation(activeButton, { maxNameLength: topLevelButtonMaxNameLength }) : null;
@@ -5781,26 +5764,24 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
           </EmailSendFormRow>
         ) : null}
 
-        {!isTemplateRegistrationPurpose && scheduleVisible ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow className="sms-send-form-row-before-detail-border">
-              <EmailSendFormLabel htmlFor="brand-message-send-form-when">예약</EmailSendFormLabel>
-              <EmailSendFormScheduleField
-                id="brand-message-send-form-when"
-                onCollapseEmpty={hideScheduleIfEmpty}
-                onEmptyBackspace={() => setScheduleVisible(false)}
-                onNowSelect={() => {
-                  updateMessage({ scheduledAt: '' });
-                  setScheduleVisible(false);
-                }}
-                onValueChange={(scheduledAt) => updateMessage({ scheduledAt })}
-                options={scheduleOptions}
-                placeholder="날짜 또는 시간을 입력하세요"
-                value={message.scheduledAt}
-              />
-            </EmailSendFormRow>
-          </EmailSendFormDisclosure>
-        ) : null}
+        <EmailSendFormDisclosure open={!isTemplateRegistrationPurpose && scheduleVisible}>
+          <EmailSendFormRow className="sms-send-form-row-before-detail-border">
+            <EmailSendFormLabel htmlFor="brand-message-send-form-when">예약</EmailSendFormLabel>
+            <EmailSendFormScheduleField
+              id="brand-message-send-form-when"
+              onCollapseEmpty={hideScheduleIfEmpty}
+              onEmptyBackspace={() => setScheduleVisible(false)}
+              onNowSelect={() => {
+                updateMessage({ scheduledAt: '' });
+                setScheduleVisible(false);
+              }}
+              onValueChange={(scheduledAt) => updateMessage({ scheduledAt })}
+              options={scheduleOptions}
+              placeholder="날짜 또는 시간을 입력하세요"
+              value={message.scheduledAt}
+            />
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
 
         {!isTemplateMode ? (
           <>
@@ -5815,80 +5796,78 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
               />
             </EmailSendFormRow>
 
-            {isTopLevelImageMessage ? (
-              <EmailSendFormDisclosure>
-                <EmailSendFormRow>
-                  <EmailSendFormLabel
-                    className={[
-                      'brand-message-image-label',
-                      'brand-message-local-validation-label',
-                      visibleImageIssue && 'is-invalid',
-                    ].filter(Boolean).join(' ')}
-                    warnings={imageWarnings}
-                  >
-                    이미지
-                  </EmailSendFormLabel>
-                  <div className="brand-message-image-field">
-                    <input
-                      accept="image/png,image/jpeg"
-                      className="brand-message-file-input"
-                      disabled={Boolean(message.image?.imageUrl)}
-                      onChange={handleImageChange}
-                      ref={fileInputRef}
-                      type="file"
-                    />
-                    {message.image?.imageUrl ? (
-                      <span className="sms-send-form-upload-tag brand-message-image-upload-tag">
-                        <span
-                          aria-hidden="true"
-                          className="sms-send-form-upload-preview"
-                          style={{ backgroundImage: `url(${message.image.imageUrl})` }}
-                        />
-                        <span className="sms-send-form-upload-file">
-                          <span title={message.image.imageName || '업로드 이미지'}>
-                            {formatBrandImageTagLabel(message.image.imageName)}
-                          </span>
-                        </span>
-                        <button
-                          aria-label="첨부 이미지 제거"
-                          className="sms-send-form-upload-remove"
-                          onClick={clearImage}
-                          type="button"
-                        >
-                          <X aria-hidden="true" size={14} />
-                        </button>
-                      </span>
-                    ) : (
-                      <EmailSendFormGhostButton onClick={() => fileInputRef.current?.click()}>
-                        <ImagePlus aria-hidden="true" size={14} />
-                        업로드
-                      </EmailSendFormGhostButton>
-                    )}
-                  </div>
-                </EmailSendFormRow>
-                <EmailSendFormRow>
-                  <EmailSendFormLabel>이미지 이동 링크</EmailSendFormLabel>
-                  <EmailSendFormInput
-                    onChange={(event) => updateMessage({
-                      image: {
-                        ...(message.image ?? {}),
-                        imageLink: event.target.value,
-                      },
-                    })}
-                    placeholder="https://example.com"
-                    type="url"
-                    value={message.image?.imageLink ?? ''}
+            <EmailSendFormDisclosure open={isTopLevelImageMessage}>
+              <EmailSendFormRow>
+                <EmailSendFormLabel
+                  className={[
+                    'brand-message-image-label',
+                    'brand-message-local-validation-label',
+                    visibleImageIssue && 'is-invalid',
+                  ].filter(Boolean).join(' ')}
+                  warnings={imageWarnings}
+                >
+                  이미지
+                </EmailSendFormLabel>
+                <div className="brand-message-image-field">
+                  <input
+                    accept="image/png,image/jpeg"
+                    className="brand-message-file-input"
+                    disabled={Boolean(message.image?.imageUrl)}
+                    onChange={handleImageChange}
+                    ref={fileInputRef}
+                    type="file"
                   />
-                </EmailSendFormRow>
-                <ImageCropDialog
-                  file={imageCropFile}
-                  onApply={handleImageCropApply}
-                  onOpenChange={handleImageCropOpenChange}
-                  open={Boolean(imageCropFile)}
-                  preset={topLevelImageCropPreset}
+                  {message.image?.imageUrl ? (
+                    <span className="sms-send-form-upload-tag brand-message-image-upload-tag">
+                      <span
+                        aria-hidden="true"
+                        className="sms-send-form-upload-preview"
+                        style={{ backgroundImage: `url(${message.image.imageUrl})` }}
+                      />
+                      <span className="sms-send-form-upload-file">
+                        <span title={message.image.imageName || '업로드 이미지'}>
+                          {formatBrandImageTagLabel(message.image.imageName)}
+                        </span>
+                      </span>
+                      <button
+                        aria-label="첨부 이미지 제거"
+                        className="sms-send-form-upload-remove"
+                        onClick={clearImage}
+                        type="button"
+                      >
+                        <X aria-hidden="true" size={14} />
+                      </button>
+                    </span>
+                  ) : (
+                    <EmailSendFormGhostButton onClick={() => fileInputRef.current?.click()}>
+                      <ImagePlus aria-hidden="true" size={14} />
+                      업로드
+                    </EmailSendFormGhostButton>
+                  )}
+                </div>
+              </EmailSendFormRow>
+              <EmailSendFormRow>
+                <EmailSendFormLabel>이미지 이동 링크</EmailSendFormLabel>
+                <EmailSendFormInput
+                  onChange={(event) => updateMessage({
+                    image: {
+                      ...(message.image ?? {}),
+                      imageLink: event.target.value,
+                    },
+                  })}
+                  placeholder="https://example.com"
+                  type="url"
+                  value={message.image?.imageLink ?? ''}
                 />
-              </EmailSendFormDisclosure>
-            ) : null}
+              </EmailSendFormRow>
+              <ImageCropDialog
+                file={imageCropFile}
+                onApply={handleImageCropApply}
+                onOpenChange={handleImageCropOpenChange}
+                open={Boolean(imageCropFile)}
+                preset={topLevelImageCropPreset}
+              />
+            </EmailSendFormDisclosure>
 
           </>
         ) : null}
@@ -5919,12 +5898,12 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
                 <input
                   checked={message.fallbackEnabled}
                   onChange={(event) => updateMessage({
-                    fallbackAdvertisementEnabled: event.target.checked ? message.fallbackAdvertisementEnabled : false,
+                    fallbackAdvertisementEnabled: event.target.checked,
                     fallbackEnabled: event.target.checked,
                     fallbackSenderNumber: event.target.checked
                       ? message.fallbackSenderNumber || fallbackSenderNumbers[0]?.value || ''
                       : message.fallbackSenderNumber,
-                    fallbackUnsubscribeNumber: event.target.checked ? message.fallbackUnsubscribeNumber : '',
+                    fallbackUnsubscribeNumber: '',
                   })}
                   type="checkbox"
                 />
@@ -5934,69 +5913,39 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
           </div>
         </EmailSendFormRow>
 
-        {!isTemplateRegistrationPurpose && message.fallbackEnabled ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow
-              action={(
-                <EmailSendFormGhostButton
-                  className="brand-message-fallback-ad-button"
-                  onClick={() => updateMessage({
-                    fallbackAdvertisementEnabled: !message.fallbackAdvertisementEnabled,
-                    fallbackUnsubscribeNumber: message.fallbackAdvertisementEnabled
-                      ? ''
-                      : message.fallbackUnsubscribeNumber || fallbackUnsubscribeNumbers[0]?.value || '',
-                  })}
-                >
-                  {message.fallbackAdvertisementEnabled ? '광고성 해제' : '광고성'}
-                </EmailSendFormGhostButton>
-              )}
-              className="brand-message-send-form-fallback-row"
+        <EmailSendFormDisclosure open={!isTemplateRegistrationPurpose && message.fallbackEnabled}>
+          <EmailSendFormRow
+            className="brand-message-send-form-fallback-row"
+          >
+            <EmailSendFormLabel
+              className={[
+                'brand-message-fallback-label',
+                'brand-message-local-validation-label',
+                visibleFallbackSenderIssue && 'is-invalid',
+              ].filter(Boolean).join(' ')}
+              warnings={fallbackSenderWarnings}
             >
-              <EmailSendFormLabel
-                className={[
-                  'brand-message-fallback-label',
-                  'brand-message-local-validation-label',
-                  visibleFallbackSenderIssue && 'is-invalid',
-                ].filter(Boolean).join(' ')}
-                warnings={fallbackSenderWarnings}
-              >
-                SMS 대체
-              </EmailSendFormLabel>
-              <SmsFallbackSelect
-                description="브랜드메시지 실패 시 SMS로 대체 발송하려면 승인된 발신번호가 필요합니다."
-                enabled={message.fallbackEnabled}
-                onCreateSenderNumber={onFallbackSenderNumberCreate}
-                onValueChange={(nextFallback) => updateMessage({
-                  fallbackEnabled: nextFallback.enabled,
-                  fallbackSenderNumber: nextFallback.value,
-                })}
-                options={fallbackSenderNumbers}
-                value={message.fallbackSenderNumber}
-              />
-            </EmailSendFormRow>
-            {message.fallbackAdvertisementEnabled ? (
-              <EmailSendFormRow className="brand-message-send-form-fallback-ad-row">
-                <EmailSendFormLabel
-                  className={[
-                    'brand-message-fallback-unsubscribe-label',
-                    'brand-message-local-validation-label',
-                    visibleFallbackUnsubscribeIssue && 'is-invalid',
-                  ].filter(Boolean).join(' ')}
-                  warnings={fallbackUnsubscribeWarnings}
-                >
-                  080 번호
-                </EmailSendFormLabel>
-                <EmailSendFormSelect
-                  ariaLabel="광고성 SMS 대체발송 080 수신거부 번호 선택"
-                  onValueChange={(fallbackUnsubscribeNumber) => updateMessage({ fallbackUnsubscribeNumber })}
-                  options={fallbackUnsubscribeNumbers}
-                  showMenuLabel={false}
-                  value={message.fallbackUnsubscribeNumber}
-                />
-              </EmailSendFormRow>
-            ) : null}
-          </EmailSendFormDisclosure>
-        ) : null}
+              SMS 대체
+            </EmailSendFormLabel>
+            <SmsFallbackSelect
+              description="브랜드메시지 실패 시 SMS로 대체 발송하려면 승인된 발신번호가 필요합니다."
+              enabled={message.fallbackEnabled}
+              onCreateSenderNumber={onFallbackSenderNumberCreate}
+              onValueChange={(nextFallback) => updateMessage({
+                fallbackEnabled: nextFallback.enabled,
+                fallbackSenderNumber: nextFallback.value,
+              })}
+              options={fallbackSenderNumbers}
+              value={message.fallbackSenderNumber}
+            />
+          </EmailSendFormRow>
+          <EmailSendFormRow className="brand-message-send-form-fallback-ad-row">
+            <EmailSendFormLabel description="브랜드 메시지의 문자 대체발송에는 서버에 설정된 NOTI 공통 080 번호가 자동으로 적용됩니다.">
+              080 번호
+            </EmailSendFormLabel>
+            <span className="email-send-form-placeholder">NOTI 공통 080 자동 적용</span>
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
       </EmailSendFormSelection>
 
       <EmailSendFormCanvas
@@ -6015,6 +5964,8 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
             />
             <div className="brand-message-template-actions">
               <EmailSendFormTemplateDialog
+                emptyActionHref="/templates/brand/new"
+                emptyActionLabel="새 템플릿 만들기"
                 initialSelectedTemplateId={selectedTemplateDialogId}
                 onOpenChange={setTemplateDialogOpen}
                 onTemplateSelect={handleTemplateSelect}
@@ -6076,6 +6027,8 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
             {shouldRenderTemplatePickerOnly ? (
               <div className="brand-message-template-picker-row">
                 <EmailSendFormTemplateDialog
+                  emptyActionHref="/templates/brand/new"
+                  emptyActionLabel="새 템플릿 만들기"
                   onOpenChange={setTemplateDialogOpen}
                   onTemplateSelect={handleTemplateSelect}
                   open={templateDialogOpen}
@@ -6094,6 +6047,8 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
             {shouldRenderContentField && isContentRequired && isBodyEmpty ? (
               <EmailSendFormEmptyState
                 className="brand-message-send-form-empty-state"
+                emptyActionHref="/templates/brand/new"
+                emptyActionLabel="새 템플릿 만들기"
                 onOpenTemplateDialog={() => setTemplateDialogOpen(true)}
                 onTemplateDialogOpenChange={setTemplateDialogOpen}
                 onTemplateSelect={handleTemplateSelect}

@@ -20,6 +20,7 @@ import {
   validateClientRequestId,
 } from '../relay/groupingKeys.js';
 import { createSmsBulkSendRunRepository } from '../messages/repository.js';
+import { createDefaultMessageSendService } from '../messages/service.js';
 import {
   getMessageLogDemoCaseDetail,
   getMessageLogDemoCaseRecipientDetail,
@@ -104,12 +105,19 @@ export function createDefaultMessageLogService() {
       ...createMessageSendLedgerRepository(db),
       ...createSmsBulkSendRunRepository(db),
     },
+    messageSendService: createDefaultMessageSendService(),
     smsClient: createLazyNhnSmsClient(),
     kakaoClient: createLazyNhnKakaoBizmessageClient(),
   });
 }
 
-export function createMessageLogService({ repository, smsClient, kakaoClient, now = () => new Date() }) {
+export function createMessageLogService({
+  repository,
+  smsClient,
+  kakaoClient,
+  messageSendService = null,
+  now = () => new Date(),
+}) {
   return {
     async getStatus({ actorUserId, query = {} }) {
       const user = await requireActiveUser(repository, actorUserId);
@@ -550,6 +558,34 @@ export function createMessageLogService({ repository, smsClient, kakaoClient, no
 
       const context = normalized.context;
       const identity = buildNewResendIdentity({ user, context });
+      const original = {
+        requestId: normalized.requestId,
+        recipientSeq: normalized.recipientSeq,
+      };
+
+      if (messageSendService) {
+        const sendResult = normalizedChannel === CHANNELS.ALIMTALK
+          ? await messageSendService.resendRawAlimtalk({
+              actorUserId: user.id,
+              payload: buildRawAlimtalkResendPayload({
+                detail: normalized.raw,
+                identity,
+                senderResourceId: context.resource.id,
+              }),
+            })
+          : await messageSendService.sendSms({
+              actorUserId: user.id,
+              payload: buildSmsResendPayload({
+                channel: normalizedChannel,
+                detail: normalized.raw,
+                identity,
+                senderResourceId: context.resource.id,
+              }),
+            });
+
+        return { ...sendResult, original };
+      }
+
       const providerResponse =
         normalizedChannel === CHANNELS.ALIMTALK
           ? await resendAlimtalk({ detail: normalized.raw, context, identity, kakaoClient })
@@ -558,10 +594,7 @@ export function createMessageLogService({ repository, smsClient, kakaoClient, no
       return {
         state: 'accepted_by_provider',
         channel: normalizedChannel,
-        original: {
-          requestId: normalized.requestId,
-          recipientSeq: normalized.recipientSeq,
-        },
+        original,
         clientRequestId: identity.clientRequestId,
         requestRef: identity.requestRef,
         senderResourceId: context.resource.id,
@@ -1286,7 +1319,12 @@ async function correctDueLedgerMessageResults({ kakaoClient, limit, now, reposit
   for (const row of leasedRows) {
     const group = row.group;
     const request = row.providerRequest ?? row;
-    const correction = getMessageResultCorrectionStage({ group, now, request });
+    const correction = getMessageResultCorrectionStage({
+      fallbackReservation: row.fallbackReservation,
+      group,
+      now,
+      request,
+    });
 
     if (!correction) {
       await clearCorrectionLease({ now, repository, request });
@@ -1312,8 +1350,10 @@ async function correctDueLedgerMessageResults({ kakaoClient, limit, now, reposit
         authoritative: true,
         channel: group.channel,
         clearSyncLease: true,
-        finalize: correction.final,
-        nextSyncAtWhenPending: correction.final ? null : correction.finalAt,
+        fallbackResults: results.fallbackResults ?? [],
+        finalize: correction.finalizePrimary,
+        finalizeFallback: correction.finalizeFallback,
+        nextSyncAtWhenPending: correction.finalizePrimary ? null : correction.primaryFinalAt,
         now,
         providerRequestId: request.providerRequestId,
         results,
@@ -1325,9 +1365,21 @@ async function correctDueLedgerMessageResults({ kakaoClient, limit, now, reposit
       if (updatedRequest?.resultFinalizedAt) finalizedCount += 1;
       if (updatedRequest?.resultState === 'stale') staleCount += 1;
     } catch {
+      if (correction.fallbackDue) {
+        await repository.mergeProviderRequestResultSnapshotByProviderRequestId({
+          authoritative: true,
+          channel: group.channel,
+          clearSyncLease: true,
+          fallbackResults: [],
+          finalizeFallback: correction.finalizeFallback,
+          now,
+          providerRequestId: request.providerRequestId,
+          results: [],
+        });
+      }
       await markLedgerProviderRequestCorrectionError({
-        finalCorrection: correction.final,
-        nextCorrectionAt: correction.final ? null : correction.finalAt,
+        finalCorrection: correction.finalizePrimary,
+        nextCorrectionAt: correction.finalizePrimary ? null : correction.primaryFinalAt,
         now,
         repository,
         request,
@@ -1396,7 +1448,26 @@ async function fetchSmsMessageResultCorrectionEntries({ correction, group, reque
   return results;
 }
 
-function getMessageResultCorrectionStage({ group, now, request }) {
+function getMessageResultCorrectionStage({ fallbackReservation, group, now, request }) {
+  const primary = getPrimaryResultCorrectionStage({ group, now, request });
+  const fallback = getFallbackResultCorrectionStage({ fallbackReservation, group, now, request });
+
+  if (!primary && !fallback) return null;
+
+  const cursorCandidates = [primary?.cursor, fallback?.cursor].filter(Boolean);
+  const cursor = new Date(Math.min(...cursorCandidates.map((value) => value.getTime())));
+
+  return {
+    fallbackDue: Boolean(fallback),
+    finalizeFallback: Boolean(fallback?.final),
+    finalizePrimary: Boolean(primary?.final),
+    primaryFinalAt: primary?.finalAt ?? null,
+    windowEnd: now,
+    windowStart: new Date(Math.max(0, cursor.getTime() - MESSAGE_RESULT_WINDOW_OVERLAP_MS)),
+  };
+}
+
+function getPrimaryResultCorrectionStage({ group, now, request }) {
   if (!isMessageResultCorrectionCandidate({ group, request })) return null;
 
   const effectiveAt = getLedgerRequestEffectiveAt({ group, request });
@@ -1405,18 +1476,37 @@ function getMessageResultCorrectionStage({ group, now, request }) {
   const firstAt = new Date(effectiveAt.getTime() + MESSAGE_RESULT_FIRST_CORRECTION_DELAY_MS);
   const finalAt = new Date(effectiveAt.getTime() + MESSAGE_RESULT_FINAL_CORRECTION_DELAY_MS);
   const final = now >= finalAt;
-  const first = now >= firstAt;
-
-  if (!final && !first) return null;
-
-  const cursor = parseDateValue(request.resultSyncedAt) ?? effectiveAt;
-  const windowStart = new Date(Math.max(0, cursor.getTime() - MESSAGE_RESULT_WINDOW_OVERLAP_MS));
+  if (!final && now < firstAt) return null;
 
   return {
+    cursor: parseDateValue(request.resultSyncedAt) ?? effectiveAt,
     final,
     finalAt,
-    windowEnd: now,
-    windowStart,
+  };
+}
+
+function getFallbackResultCorrectionStage({ fallbackReservation, group, now, request }) {
+  if (!fallbackReservation || !isKakaoBizmessageChannel(group?.channel)) return null;
+  if (request?.providerState !== 'accepted' || !request?.providerRequestId) return null;
+  if (fallbackReservation.resultFinalizedAt || !fallbackReservation.fallbackOpenedAt) return null;
+
+  const remaining = Number(fallbackReservation.reservedCount ?? 0)
+    - Number(fallbackReservation.consumedCount ?? 0)
+    - Number(fallbackReservation.releasedCount ?? 0);
+  if (remaining <= 0) return null;
+
+  const openedAt = parseDateValue(fallbackReservation.fallbackOpenedAt);
+  if (!openedAt || openedAt > now) return null;
+
+  const firstAt = new Date(openedAt.getTime() + MESSAGE_RESULT_FIRST_CORRECTION_DELAY_MS);
+  const finalAt = new Date(openedAt.getTime() + MESSAGE_RESULT_FINAL_CORRECTION_DELAY_MS);
+  const final = now >= finalAt;
+  if (!final && (fallbackReservation.resultSyncedAt || now < firstAt)) return null;
+
+  return {
+    cursor: parseDateValue(fallbackReservation.resultSyncedAt) ?? openedAt,
+    final,
+    finalAt,
   };
 }
 
@@ -1664,7 +1754,9 @@ async function syncLedgerProviderRequest({ finalCorrection, kakaoClient, manual 
   const merge = await repository.mergeProviderRequestResultSnapshotByProviderRequestId({
     authoritative: true,
     clearSyncLease: true,
+    fallbackResults: results.fallbackResults ?? [],
     finalize: finalCorrection,
+    finalizeFallback: finalCorrection,
     nextSyncAtWhenPending: getNextEarlySyncAt({ group, request }),
     now,
     providerRequestId: request.providerRequestId,
@@ -1723,6 +1815,7 @@ async function fetchProviderRequestResultEntries({
   user,
 }) {
   const results = [];
+  const fallbackResults = [];
   let pageNum = 1;
 
   while (true) {
@@ -1749,6 +1842,7 @@ async function fetchProviderRequestResultEntries({
       .filter((log) => log.requestId === providerRequestId);
 
     results.push(...logs.map(toSnapshotMergeResult).filter(Boolean));
+    fallbackResults.push(...logs.map(toFallbackQuotaResult).filter(Boolean));
 
     if (!hasNextPage({ pageNum, pageSize: page.pageSize, totalCount: page.totalCount, receivedCount: page.items.length })) {
       break;
@@ -1757,6 +1851,11 @@ async function fetchProviderRequestResultEntries({
     pageNum += 1;
   }
 
+  Object.defineProperty(results, 'fallbackResults', {
+    configurable: false,
+    enumerable: false,
+    value: fallbackResults,
+  });
   return results;
 }
 
@@ -1895,6 +1994,20 @@ function toSnapshotMergeResult(log) {
   };
 }
 
+function toFallbackQuotaResult(log) {
+  const row = log?.raw ?? log;
+  const recipientSeq = normalizeOptionalInteger(log?.recipientSeq ?? row?.recipientSeq);
+  const resendStatus = normalizeOptionalString(row?.resendStatus);
+
+  if (!recipientSeq || !resendStatus) return null;
+
+  return {
+    recipientSeq,
+    resendStatus,
+    resendResultCode: normalizeOptionalString(row?.resendResultCode ?? row?.resendResult?.resultCode),
+  };
+}
+
 function optionalRecipientNo(value) {
   const recipientNo = normalizeOptionalString(value);
   return recipientNo ? { recipientNo } : {};
@@ -1910,22 +2023,25 @@ async function mergeStatusLogsIntoLedger({ channel, logs, now, repository }) {
   for (const log of logs) {
     const providerRequestId = normalizeOptionalString(log.requestId);
     const entry = toSnapshotMergeResult(log);
+    const fallbackEntry = toFallbackQuotaResult(log);
 
-    if (!providerRequestId || !entry) continue;
+    if (!providerRequestId || (!entry && !fallbackEntry)) continue;
 
-    const entries = entriesByRequestId.get(providerRequestId) ?? [];
-    entries.push(entry);
-    entriesByRequestId.set(providerRequestId, entries);
+    const bundle = entriesByRequestId.get(providerRequestId) ?? { fallbackResults: [], results: [] };
+    if (entry) bundle.results.push(entry);
+    if (fallbackEntry) bundle.fallbackResults.push(fallbackEntry);
+    entriesByRequestId.set(providerRequestId, bundle);
   }
 
-  for (const [providerRequestId, results] of entriesByRequestId.entries()) {
+  for (const [providerRequestId, bundle] of entriesByRequestId.entries()) {
     try {
       await repository.mergeProviderRequestResultSnapshotByProviderRequestId({
         authoritative: false,
         channel,
+        fallbackResults: bundle.fallbackResults,
         now,
         providerRequestId,
-        results,
+        results: bundle.results,
       });
     } catch {
       // Status polling is a UX fast path; webhook/correction remain the durable update paths.
@@ -2599,6 +2715,47 @@ function buildNewResendIdentity({ user, context }) {
     requestRef,
     senderGroupingKey,
     recipientGroupingKey: buildRecipientGroupingKey(senderGroupingKey, 0),
+  };
+}
+
+function buildSmsResendPayload({ channel, detail, identity, senderResourceId }) {
+  const title = normalizeOptionalString(detail.title);
+  const templateCode = normalizeOptionalString(detail.templateId ?? detail.templateCode);
+
+  return {
+    body: normalizeRequiredString(detail.body ?? detail.content ?? detail.messageContent, 'body'),
+    channel,
+    clientRequestId: identity.clientRequestId,
+    recipients: [{
+      recipientNo: normalizeRequiredString(
+        detail.recipientNo ?? detail.phoneNo ?? detail.internationalRecipientNo,
+        'recipientNo'
+      ),
+    }],
+    senderResourceId,
+    ...(channel !== CHANNELS.SMS || title ? { title: title || 'Resend' } : {}),
+    ...(templateCode ? { templateCode } : {}),
+  };
+}
+
+function buildRawAlimtalkResendPayload({ detail, identity, senderResourceId }) {
+  return {
+    clientRequestId: identity.clientRequestId,
+    senderResourceId,
+    ...optionalStringProperty('templateCode', detail.templateCode),
+    ...optionalObjectProperty('messageOption', detail.messageOption),
+    recipient: {
+      recipientNo: normalizeRequiredString(detail.recipientNo, 'recipientNo'),
+      content: normalizeRequiredString(detail.content ?? detail.body ?? detail.messageContent, 'content'),
+      ...optionalStringProperty('templateTitle', detail.templateTitle),
+      ...optionalStringProperty('templateSubtitle', detail.templateSubtitle),
+      ...optionalStringProperty('templateHeader', detail.templateHeader),
+      ...optionalObjectProperty('templateItem', detail.templateItem),
+      ...optionalObjectProperty('templateItemHighlight', detail.templateItemHighlight),
+      ...optionalObjectProperty('templateRepresentLink', detail.templateRepresentLink),
+      ...optionalObjectArrayProperty('buttons', detail.buttons),
+      ...optionalObjectArrayProperty('quickReplies', detail.quickReplies),
+    },
   };
 }
 

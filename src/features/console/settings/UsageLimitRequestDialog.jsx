@@ -47,7 +47,7 @@ export function LimitRequestDialog({
                   <FormField.Select
                     id="limit-request-target"
                     onChange={(event) => onFormChange((current) => ({ ...current, target: event.target.value }))}
-                    value={selectedOption?.value ?? 'sms'}
+                    value={selectedOption?.value ?? ''}
                   >
                     {requestOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>

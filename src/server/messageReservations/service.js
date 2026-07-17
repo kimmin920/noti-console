@@ -12,7 +12,7 @@ import {
 } from '../relay/constants.js';
 import { RelayError, RelayValidationError } from '../relay/errors.js';
 import { resolveGroupingFromKeys } from '../relay/groupingKeys.js';
-import { createMessageLogRepository } from '../messageLogs/repository.js';
+import { createMessageLogRepository, createMessageSendLedgerRepository } from '../messageLogs/repository.js';
 import { createSmsBulkSendRunRepository } from '../messages/repository.js';
 
 const ALL_RESERVATION_CHANNEL = 'all';
@@ -47,6 +47,7 @@ export function createDefaultMessageReservationRepository() {
 
   return {
     ...createMessageLogRepository(db),
+    ...createMessageSendLedgerRepository(db),
     ...createSmsBulkSendRunRepository(db),
   };
 }
@@ -244,6 +245,12 @@ export function createMessageReservationService({
         user,
       });
       const providerData = normalizeReservationCancelResponse(providerResponse, cancelableReservations.length);
+      await mergeConfirmedReservationCancellation({
+        cancelableReservations,
+        now: now(),
+        providerData,
+        repository,
+      });
 
       return {
         canceledCount: providerData.canceledCount,
@@ -300,6 +307,12 @@ export function createMessageReservationService({
         user,
       });
       const providerData = normalizeReservationCancelResponse(providerResponse, cancelableReservations.length);
+      await mergeConfirmedReservationCancellation({
+        cancelableReservations,
+        now: now(),
+        providerData,
+        repository,
+      });
 
       return {
         canceledCount: providerData.canceledCount,
@@ -1128,6 +1141,30 @@ function normalizeReservationCancelResponse(response, requestedCount = 0) {
     canceledCount: providerCanceledCount ?? requestedCount,
     requestedCount: providerRequestedCount ?? requestedCount,
   };
+}
+
+async function mergeConfirmedReservationCancellation({
+  cancelableReservations,
+  now,
+  providerData,
+  repository,
+}) {
+  if (providerData.canceledCount !== cancelableReservations.length) return null;
+  if (typeof repository.mergeProviderRequestResultSnapshotByProviderRequestId !== 'function') return null;
+
+  const requestId = cancelableReservations[0]?.requestId;
+  if (!requestId) return null;
+
+  return repository.mergeProviderRequestResultSnapshotByProviderRequestId({
+    authoritative: true,
+    now,
+    providerRequestId: requestId,
+    results: cancelableReservations.map((reservation) => ({
+      recipientSeq: reservation.recipientSeq,
+      resultCode: 'RESERVATION_CANCELED',
+      state: 'C',
+    })),
+  });
 }
 
 function getReservationUpdateUser(user) {

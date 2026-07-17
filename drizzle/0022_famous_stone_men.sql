@@ -1,0 +1,2 @@
+DROP INDEX "sms_quota_buckets_scope_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "sms_quota_buckets_scope_unique" ON "sms_quota_buckets" USING btree ("user_id","channel","quota_scope","period_start_at","period_end_at");

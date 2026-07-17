@@ -180,6 +180,33 @@ describe('NHN client wrappers', () => {
     });
   });
 
+  it('uses the NHN advertising SMS and MMS endpoints', async () => {
+    const fetchImpl = vi.fn(async () =>
+      createJsonResponse({
+        header: { isSuccessful: true, resultCode: 0, resultMessage: 'SUCCESS' },
+        body: { data: { requestId: 'ad-request-id' } },
+      })
+    );
+    const client = createNhnSmsClient({
+      config: {
+        appKey: 'sms-app-key',
+        secretKey: 'sms-secret-key',
+        baseUrl: NHN_DIRECT_API_BASE_URLS.SMS,
+      },
+      fetchImpl,
+    });
+
+    await client.sendAdSms({ body: '(광고) SMS', recipientList: [], sendNo: '15446859' });
+    await client.sendAdMms({ body: '(광고) LMS', recipientList: [], sendNo: '15446859', title: '광고' });
+
+    expect(String(fetchImpl.mock.calls[0][0])).toBe(
+      'https://sms.api.nhncloudservice.com/sms/v3.0/appKeys/sms-app-key/sender/ad-sms'
+    );
+    expect(String(fetchImpl.mock.calls[1][0])).toBe(
+      'https://sms.api.nhncloudservice.com/sms/v3.0/appKeys/sms-app-key/sender/ad-mms'
+    );
+  });
+
   it('sends KakaoTalk Bizmessage AlimTalk requests with X-Secret-Key and optional idempotency header', async () => {
     const fetchImpl = vi.fn(async () =>
       createJsonResponse({

@@ -1,8 +1,6 @@
-export const KAKAO_DAILY_DEFAULT_LIMIT = 1000;
-
 const CHANNEL_LABELS = Object.freeze({
-  alimtalk: '카카오 알림톡',
-  'brand-message': '카카오 브랜드메시지',
+  alimtalk: '카카오 채널',
+  'brand-message': '카카오 채널',
   sms: '문자',
 });
 const LIMIT_SCOPE_LABELS = Object.freeze({
@@ -49,6 +47,7 @@ function toSenderResourceDto(resource) {
     status: resource.status,
     providerStatus: resource.providerStatus,
     metadataJson: resource.metadataJson,
+    quotaLimit: resource.quotaLimit,
   };
 }
 

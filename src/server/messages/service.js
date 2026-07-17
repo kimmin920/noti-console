@@ -37,6 +37,11 @@ import {
   createMessageSendRepository,
   createSmsBulkSendRunRepository,
 } from './repository.js';
+import {
+  SenderResourceQuotaExceededError,
+  buildSenderResourceQuotaDescriptor,
+  createInitialFallbackQuotaSnapshot,
+} from './quota.js';
 
 const USER_STATUS_ACTIVE = 'active';
 const BILLING_ACCOUNT_STATUS_ACTIVE = 'active';
@@ -46,6 +51,8 @@ const MAX_RECIPIENTS = 1000;
 const SMS_BULK_MAX_RECIPIENTS = 50_000;
 const SMS_BULK_BATCH_SIZE = 1000;
 const SMS_BULK_PAYLOAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SMS_QUOTA_TIME_ZONE = 'Asia/Seoul';
+const SMS_SHORT_MAX_BYTES = 90;
 const MESSAGE_LOG_VISIBLE_RETENTION_DAYS = 90;
 const SMS_LONG_MAX_BYTES = 2000;
 const SEND_ROLES = new Set(['owner', 'sender']);
@@ -101,6 +108,7 @@ export function createMessageSendService({
   ledgerRepository = null,
   smsClient,
   kakaoClient,
+  commonSmsUnsubscribeNo = process.env.NHN_SMS_COMMON_UNSUBSCRIBE_NO,
   now = () => new Date(),
   workerId = 'message-worker',
 }) {
@@ -109,7 +117,10 @@ export function createMessageSendService({
       const user = await requireActiveUser(repository, actorUserId);
 
       try {
-        const sendPayload = normalizeSmsPayload(payload);
+        const sendPayload = prepareSmsAdvertisingPayload(
+          normalizeSmsPayload(payload),
+          commonSmsUnsubscribeNo
+        );
         const context = await resolveSendContext({
           repository,
           user,
@@ -118,7 +129,9 @@ export function createMessageSendService({
         });
         const identity = buildSendIdentity({ context, clientRequestId: sendPayload.clientRequestId });
         const providerRequest = buildSmsProviderRequest({ sendPayload, context, identity });
-        const sendMethod = sendPayload.channel === CHANNELS.SMS ? smsClient.sendSms : smsClient.sendMms;
+        const sendMethod = resolveSmsSendMethod(smsClient, sendPayload);
+
+        const createdAt = now();
 
         return executeProviderSend({
           ledgerRepository,
@@ -129,7 +142,7 @@ export function createMessageSendService({
           ledger: buildBasicLedgerInput({
             channel: sendPayload.channel,
             context,
-            createdAt: now(),
+            createdAt,
             managementTitle: payload?.managementSendName ?? payload?.managementTitle,
             recipientCount: sendPayload.recipients.length,
             requestDate: sendPayload.requestDate,
@@ -156,28 +169,36 @@ export function createMessageSendService({
 
       try {
         const createdAt = now();
-        const sendPayload = normalizeSmsPayload(payload, {
-          maxRecipients: SMS_BULK_MAX_RECIPIENTS,
-          requireClientRequestId: false,
-        });
+        const sendPayload = prepareSmsAdvertisingPayload(
+          normalizeSmsPayload(payload, {
+            maxRecipients: SMS_BULK_MAX_RECIPIENTS,
+            requireClientRequestId: false,
+          }),
+          commonSmsUnsubscribeNo
+        );
         const context = await resolveSendContext({
           repository,
           user,
           senderResourceId: sendPayload.senderResourceId,
           resourceType: SENDER_RESOURCE_TYPES.SMS_SEND_NO,
         });
-        const quotaBucket = await requireActiveSmsQuotaBucket({
-          repository: bulkRunRepository,
-          userId: user.id,
-          channel: sendPayload.channel,
-          now: createdAt,
-        });
+        const scheduledAt = parseProviderRequestDate(sendPayload.requestDate);
+        const effectiveAt = scheduledAt ?? createdAt;
+        const quotaBucket = buildSenderResourceQuotaBucket({ context, now: effectiveAt, userId: user.id });
         const runRequestId = randomUUID();
         const runRef = `run_${deriveRequestRef(runRequestId)}`;
         const batches = buildSmsBulkSendBatches({
           runRef,
           sendPayload,
           now: createdAt,
+        });
+        const ledgerPreparation = buildBulkLedgerPreparation({
+          batches,
+          context,
+          createdAt,
+          managementTitle: payload?.managementSendName ?? payload?.managementTitle,
+          scheduledAt,
+          sendPayload,
         });
         const result = await bulkRunRepository.createRunWithBatchesAndReservation({
           run: {
@@ -194,21 +215,25 @@ export function createMessageSendService({
             nextBatchAvailableAt: createdAt,
           },
           batches,
+          ledger: ledgerPreparation.ledger,
           quotaBucket,
           quotaReservation: {
             expiresAt: new Date(createdAt.getTime() + SMS_BULK_PAYLOAD_TTL_MS),
           },
+          quotaReservations: ledgerPreparation.quotaReservations,
           now: createdAt,
         });
-        await createBulkSendLedgerRows({
-          batches: result.batches,
-          context,
-          ledgerRepository,
-          managementTitle: payload?.managementSendName ?? payload?.managementTitle,
-          scheduledAt: parseProviderRequestDate(sendPayload.requestDate),
-          sendPayload,
-          now: createdAt,
-        });
+        if (!result.ledgerPrepared) {
+          await createBulkSendLedgerRows({
+            batches: result.batches,
+            context,
+            ledgerRepository,
+            managementTitle: payload?.managementSendName ?? payload?.managementTitle,
+            scheduledAt,
+            sendPayload,
+            now: createdAt,
+          });
+        }
 
         await auditSmsBulkRunCreated({
           repository,
@@ -276,6 +301,7 @@ export function createMessageSendService({
 
         const result = await sendSmsBulkProviderBatch({
           actorUserId: run.userId,
+          commonSmsUnsubscribeNo,
           payload: batch.payloadJson,
           repository,
           smsClient,
@@ -292,19 +318,30 @@ export function createMessageSendService({
             ledgerRepository,
             providerRequestId: result.provider?.requestId ?? null,
             providerState: 'accepted',
+            recipientResults: getExplicitProviderRejectionEntries({
+              channel: run.channel,
+              provider: result.provider,
+              recipientCount: batch.recipientCount,
+            }),
             resultState: 'not_synced',
             now: now(),
             run,
           });
-          await bulkRunRepository.consumeQuotaReservation({
-            runId: run.id,
-            recipientCount: batch.recipientCount,
-            now: now(),
-          });
+          if (!ledgerRepository?.updatePreparedProviderRequestOutcome) {
+            await bulkRunRepository.consumeQuotaReservation({
+              runId: run.id,
+              recipientCount: batch.recipientCount,
+              now: now(),
+            });
+          }
 
           const nextRun = await bulkRunRepository.recomputeRunAggregateCounts({ runId: run.id, now: now() });
 
-          if (nextRun && isTerminalBulkRunStatus(nextRun.status)) {
+          if (
+            !ledgerRepository?.updatePreparedProviderRequestOutcome
+            && nextRun
+            && isTerminalBulkRunStatus(nextRun.status)
+          ) {
             await bulkRunRepository.releaseQuotaReservation({ runId: run.id, now: now() });
           }
 
@@ -356,7 +393,15 @@ export function createMessageSendService({
             run,
           });
         }
-        await bulkRunRepository.releaseQuotaReservation({ runId: run.id, now: now() });
+        await cancelUnsentBulkBatches({
+          bulkRunRepository,
+          ledgerRepository,
+          now: now(),
+          run,
+        });
+        if (!ledgerRepository?.updatePreparedProviderRequestOutcome) {
+          await bulkRunRepository.releaseQuotaReservation({ runId: run.id, now: now() });
+        }
 
         const nextRun = await bulkRunRepository.recomputeRunAggregateCounts({ runId: run.id, now: now() });
 
@@ -368,7 +413,7 @@ export function createMessageSendService({
         };
       } catch (error) {
         const errorPayload = toBulkBatchError(error);
-        const unknownProviderState = isProviderTimeout(error) || isProviderRateLimit(error);
+        const unknownProviderState = isUnknownProviderOutcome(error);
 
         if (unknownProviderState) {
           await bulkRunRepository.markBatchUnknown({ batchId: batch.id, ...errorPayload, now: now() });
@@ -395,7 +440,15 @@ export function createMessageSendService({
           });
         }
 
-        await bulkRunRepository.releaseQuotaReservation({ runId: run.id, now: now() });
+        await cancelUnsentBulkBatches({
+          bulkRunRepository,
+          ledgerRepository,
+          now: now(),
+          run,
+        });
+        if (!ledgerRepository?.updatePreparedProviderRequestOutcome) {
+          await bulkRunRepository.releaseQuotaReservation({ runId: run.id, now: now() });
+        }
 
         const nextRun = await bulkRunRepository.recomputeRunAggregateCounts({ runId: run.id, now: now() });
 
@@ -452,6 +505,7 @@ export function createMessageSendService({
           repository,
           channel: CHANNELS.ALIMTALK,
           context,
+          fallbackResource,
           identity,
           ledger: buildBasicLedgerInput({
             channel: CHANNELS.ALIMTALK,
@@ -471,6 +525,66 @@ export function createMessageSendService({
           repository,
           user,
           operation: 'messages.alimtalk.send',
+          payload,
+          error,
+        });
+        throw error;
+      }
+    },
+
+    async resendRawAlimtalk({ actorUserId, payload }) {
+      const user = await requireActiveUser(repository, actorUserId);
+
+      try {
+        const sendPayload = normalizeRawAlimtalkResendPayload(payload);
+        const context = await resolveSendContext({
+          repository,
+          user,
+          senderResourceId: sendPayload.senderResourceId,
+          resourceType: SENDER_RESOURCE_TYPES.KAKAO_SENDER_KEY,
+        });
+        const identity = buildSendIdentity({ context, clientRequestId: sendPayload.clientRequestId });
+        const idempotencyKey = buildAlimtalkIdempotencyKey({
+          userRef: context.user.userRef,
+          resourceRef: context.resource.resourceRef,
+          requestRef: identity.requestRef,
+        });
+        const recipient = {
+          ...sendPayload.recipient,
+          recipientGroupingKey: buildRecipientGroupingKey(identity.senderGroupingKey, 0),
+        };
+        const body = {
+          senderKey: context.resource.value,
+          senderGroupingKey: identity.senderGroupingKey,
+          createUser: context.user.userRef,
+          recipientList: [recipient],
+          ...(sendPayload.templateCode ? { templateCode: sendPayload.templateCode } : {}),
+          ...(sendPayload.messageOption ? { messageOption: sendPayload.messageOption } : {}),
+        };
+        const createdAt = now();
+
+        return executeProviderSend({
+          ledgerRepository,
+          repository,
+          channel: CHANNELS.ALIMTALK,
+          context,
+          identity,
+          ledger: buildBasicLedgerInput({
+            channel: CHANNELS.ALIMTALK,
+            context,
+            createdAt,
+            managementTitle: payload?.managementSendName ?? 'AlimTalk resend',
+            recipientCount: 1,
+          }),
+          recipientCount: 1,
+          normalizeProviderResponse: normalizeAlimtalkProviderResponse,
+          callProvider: () => kakaoClient.sendRawAlimtalkMessage(body, { idempotencyKey }),
+        });
+      } catch (error) {
+        await auditLocalValidationRejection({
+          repository,
+          user,
+          operation: 'messages.alimtalk.resend',
           payload,
           error,
         });
@@ -505,6 +619,9 @@ export function createMessageSendService({
           context,
           identity,
           fallbackResource,
+          fallbackUnsubscribeNo: fallbackResource
+            ? requireCommonSmsUnsubscribeNo(commonSmsUnsubscribeNo)
+            : null,
         });
         const idempotencyKey = buildBrandMessageIdempotencyKey({
           userRef: context.user.userRef,
@@ -520,6 +637,7 @@ export function createMessageSendService({
           repository,
           channel: CHANNELS.BRAND_MESSAGE,
           context,
+          fallbackResource,
           identity,
           ledger: buildBasicLedgerInput({
             channel: CHANNELS.BRAND_MESSAGE,
@@ -582,38 +700,42 @@ async function executeProviderSend({
   repository,
   channel,
   context,
+  fallbackResource = null,
   identity,
   ledger,
   recipientCount,
   normalizeProviderResponse,
   callProvider,
 }) {
+  let prepared;
+
   try {
-    const providerResponse = await callProvider();
-    const provider = normalizeProviderResponse(providerResponse);
-    const ledgerEntry = await createDirectSendLedgerEntry({
+    prepared = await prepareDirectSendLedgerEntry({
+      fallbackResource,
       identity,
       ledger,
       ledgerRepository,
-      provider,
-      providerState: 'accepted',
     });
+  } catch (error) {
+    throw normalizeSenderResourceQuotaError(error, { fallbackResource });
+  }
 
-    return buildSendResult({
-      state: SEND_RESPONSE_STATES.ACCEPTED_BY_PROVIDER,
+  if (prepared?.deduplicated) {
+    return buildDeduplicatedSendResult({
       channel,
       context,
       identity,
+      prepared,
       recipientCount,
-      provider,
-      ledger: ledgerEntry,
     });
-  } catch (error) {
-    if (error instanceof RelayError) {
-      throw error;
-    }
+  }
 
-    const unknownAfterProviderCall = isProviderTimeout(error);
+  let provider;
+
+  try {
+    provider = normalizeProviderResponse(await callProvider());
+  } catch (error) {
+    const unknownAfterProviderCall = isUnknownProviderOutcome(error);
     const state = unknownAfterProviderCall
       ? SEND_RESPONSE_STATES.UNKNOWN_AFTER_PROVIDER_CALL
       : SEND_RESPONSE_STATES.REJECTED_BY_PROVIDER;
@@ -629,14 +751,19 @@ async function executeProviderSend({
       error,
       errorCode: envelope.error.code,
     });
-    const provider = normalizeProviderResponse(error?.responseBody);
-    const ledgerEntry = await createDirectSendLedgerEntry({
-      identity,
-      ledger,
-      ledgerRepository,
-      provider: null,
-      providerState: unknownAfterProviderCall ? 'unknown' : 'rejected',
-    });
+    const ledgerEntry = prepared
+      ? await recordPreparedProviderOutcomeSafely({
+          identity,
+          ledgerRepository,
+          providerState: unknownAfterProviderCall ? 'unknown' : 'rejected',
+        })
+      : await createDirectSendLedgerEntry({
+          identity,
+          ledger,
+          ledgerRepository,
+          provider: null,
+          providerState: unknownAfterProviderCall ? 'unknown' : 'rejected',
+        });
 
     return buildSendResult({
       state,
@@ -644,11 +771,243 @@ async function executeProviderSend({
       context,
       identity,
       recipientCount,
-      provider,
+      provider: normalizeProviderResponse(error?.responseBody),
       error: envelope.error,
       ledger: ledgerEntry,
     });
   }
+
+  const accepted = Boolean(provider?.requestId);
+
+  if (!accepted) {
+    const ledgerEntry = prepared
+      ? await recordPreparedProviderOutcomeSafely({
+          identity,
+          ledgerRepository,
+          providerState: 'unknown',
+        })
+      : await createDirectSendLedgerEntry({
+          identity,
+          ledger,
+          ledgerRepository,
+          provider: null,
+          providerState: 'unknown',
+        });
+
+    return buildSendResult({
+      state: SEND_RESPONSE_STATES.UNKNOWN_AFTER_PROVIDER_CALL,
+      channel,
+      context,
+      identity,
+      recipientCount,
+      provider,
+      error: {
+        source: 'relay',
+        code: RELAY_ERROR_CODES.UNKNOWN_AFTER_PROVIDER_CALL,
+        message: 'NHN 요청 식별자를 확인하지 못했습니다. 중복 발송하지 말고 발송 기록을 확인해 주세요.',
+        retryable: false,
+      },
+      ledger: ledgerEntry,
+    });
+  }
+
+  let ledgerEntry;
+
+  try {
+    ledgerEntry = prepared
+      ? await recordPreparedProviderOutcome({
+          identity,
+          ledgerRepository,
+          providerRequestId: provider.requestId,
+          providerState: 'accepted',
+          recipientResults: getExplicitProviderRejectionEntries({
+            channel,
+            provider,
+            recipientCount,
+          }),
+        })
+      : await createDirectSendLedgerEntry({
+          identity,
+          ledger,
+          ledgerRepository,
+          provider,
+          providerState: 'accepted',
+        });
+  } catch {
+    return buildSendResult({
+      state: SEND_RESPONSE_STATES.UNKNOWN_AFTER_PROVIDER_CALL,
+      channel,
+      context,
+      identity,
+      recipientCount,
+      provider,
+      error: {
+        source: 'relay',
+        code: RELAY_ERROR_CODES.UNKNOWN_AFTER_PROVIDER_CALL,
+        message: 'NHN 접수 후 로컬 상태를 확정하지 못했습니다. 중복 발송하지 말고 발송 기록을 확인해 주세요.',
+        retryable: false,
+      },
+      ledger: prepared ? toPreparedLedgerEntry(prepared) : null,
+    });
+  }
+
+  return buildSendResult({
+    state: SEND_RESPONSE_STATES.ACCEPTED_BY_PROVIDER,
+    channel,
+    context,
+    identity,
+    recipientCount,
+    provider,
+    ledger: ledgerEntry,
+  });
+}
+
+async function prepareDirectSendLedgerEntry({ fallbackResource, identity, ledger, ledgerRepository }) {
+  if (!ledgerRepository?.prepareGroupWithProviderRequestsAndQuota || !ledger) {
+    return null;
+  }
+
+  const resultSnapshotJson = createInitialResultSnapshot(ledger.recipientCount);
+  const effectiveAt = ledger.scheduledAt ?? ledger.createdAt;
+  const quotaReservations = [
+    {
+      clientRequestId: identity.clientRequestId,
+      kind: 'primary',
+      quota: buildSenderResourceQuotaDescriptor({
+        channel: ledger.channel,
+        effectiveAt,
+        senderResourceId: ledger.senderResourceId,
+      }),
+      reservedCount: ledger.recipientCount,
+    },
+  ];
+
+  if (fallbackResource) {
+    quotaReservations.push({
+      clientRequestId: identity.clientRequestId,
+      kind: 'fallback',
+      quota: buildSenderResourceQuotaDescriptor({
+        channel: CHANNELS.SMS,
+        effectiveAt,
+        senderResourceId: fallbackResource.id,
+      }),
+      reservedCount: ledger.recipientCount,
+      settlementSnapshotJson: createInitialFallbackQuotaSnapshot(ledger.recipientCount),
+    });
+  }
+
+  return ledgerRepository.prepareGroupWithProviderRequestsAndQuota({
+    group: {
+      acceptedRequestCount: 0,
+      billingAccountId: ledger.billingAccountId,
+      channel: ledger.channel,
+      createdAt: ledger.createdAt,
+      expiresAt: ledger.expiresAt,
+      managementTitle: ledger.managementTitle,
+      pendingCount: ledger.recipientCount,
+      providerRequestCount: 1,
+      providerState: 'sending',
+      resultState: 'not_synced',
+      scheduledAt: ledger.scheduledAt,
+      sendKind: ledger.sendKind,
+      sendTiming: ledger.sendTiming,
+      senderResourceId: ledger.senderResourceId,
+      sourceAutomationDeliveryId: ledger.sourceAutomationDeliveryId,
+      sourceAutomationRuleId: ledger.sourceAutomationRuleId,
+      sourceChannelCode: ledger.sourceChannelCode,
+      sourceEventKey: ledger.sourceEventKey,
+      sourceExternalEventId: ledger.sourceExternalEventId,
+      sourceType: ledger.sourceType,
+      totalRecipientCount: ledger.recipientCount,
+      userId: ledger.userId,
+    },
+    providerRequests: [
+      {
+        clientRequestId: identity.clientRequestId,
+        pendingCount: ledger.recipientCount,
+        providerRequestId: null,
+        providerState: 'sending',
+        recipientCount: ledger.recipientCount,
+        resultSnapshotJson,
+        resultSnapshotVersion: 0,
+        resultState: 'not_synced',
+        sequence: 1,
+      },
+    ],
+    quotaReservations,
+    now: ledger.createdAt,
+  });
+}
+
+async function recordPreparedProviderOutcome({
+  identity,
+  ledgerRepository,
+  providerRequestId = null,
+  providerState,
+  recipientResults = [],
+}) {
+  const result = await ledgerRepository.updatePreparedProviderRequestOutcome({
+    clientRequestId: identity.clientRequestId,
+    providerRequestId,
+    providerState,
+    ...(recipientResults.length ? { recipientResults } : {}),
+  });
+
+  return result
+    ? {
+        groupId: result.group?.id ?? result.providerRequest?.groupId ?? null,
+        requestLocalId: result.providerRequest?.id ?? null,
+      }
+    : null;
+}
+
+async function recordPreparedProviderOutcomeSafely(options) {
+  try {
+    return await recordPreparedProviderOutcome(options);
+  } catch {
+    return null;
+  }
+}
+
+function buildDeduplicatedSendResult({ channel, context, identity, prepared, recipientCount }) {
+  const request = prepared.providerRequests?.[0];
+  const provider = request?.providerRequestId ? { requestId: request.providerRequestId } : null;
+  const rejected = request?.providerState === 'rejected' || request?.providerState === 'failed';
+  const accepted = request?.providerState === 'accepted' && provider;
+  const state = accepted
+    ? SEND_RESPONSE_STATES.ACCEPTED_BY_PROVIDER
+    : rejected
+      ? SEND_RESPONSE_STATES.REJECTED_BY_PROVIDER
+      : SEND_RESPONSE_STATES.UNKNOWN_AFTER_PROVIDER_CALL;
+
+  return buildSendResult({
+    state,
+    channel,
+    context,
+    identity,
+    recipientCount,
+    provider,
+    ledger: toPreparedLedgerEntry(prepared),
+    ...(!accepted
+      ? {
+          error: {
+            source: 'relay',
+            code: rejected ? RELAY_ERROR_CODES.PROVIDER_REJECTED : RELAY_ERROR_CODES.UNKNOWN_AFTER_PROVIDER_CALL,
+            message: rejected
+              ? '이미 처리된 동일 요청이 제공사에서 거절되었습니다.'
+              : '동일한 발송 요청이 이미 처리 중이거나 결과 확인이 필요합니다.',
+            retryable: false,
+          },
+        }
+      : {}),
+  });
+}
+
+function toPreparedLedgerEntry(prepared) {
+  return {
+    groupId: prepared?.group?.id ?? null,
+    requestLocalId: prepared?.providerRequests?.[0]?.id ?? null,
+  };
 }
 
 function buildBasicLedgerInput({
@@ -819,6 +1178,64 @@ async function createBulkSendLedgerRows({
   });
 }
 
+function buildBulkLedgerPreparation({
+  batches,
+  context,
+  createdAt,
+  managementTitle,
+  scheduledAt,
+  sendPayload,
+}) {
+  const effectiveAt = scheduledAt ?? createdAt;
+  const quota = buildSenderResourceQuotaDescriptor({
+    channel: sendPayload.channel,
+    effectiveAt,
+    senderResourceId: context.resource.id,
+  });
+  const providerRequests = batches.map((batch) => ({
+    clientRequestId: batch.clientRequestId,
+    nextSyncAt: null,
+    pendingCount: batch.recipientCount,
+    providerRequestId: null,
+    providerState: 'queued',
+    recipientCount: batch.recipientCount,
+    resultSnapshotJson: createInitialResultSnapshot(batch.recipientCount),
+    resultSnapshotVersion: 0,
+    resultState: 'not_synced',
+    sequence: batch.sequence,
+  }));
+
+  return {
+    ledger: {
+      group: {
+        acceptedRequestCount: 0,
+        billingAccountId: context.billingAccount.id,
+        channel: sendPayload.channel,
+        createdAt,
+        expiresAt: addDays(createdAt, MESSAGE_LOG_VISIBLE_RETENTION_DAYS),
+        managementTitle: normalizeManagementSendName(managementTitle) ?? `${sendPayload.channel.toUpperCase()} send batch`,
+        pendingCount: sendPayload.recipients.length,
+        providerRequestCount: batches.length,
+        providerState: 'queued',
+        resultState: 'not_synced',
+        scheduledAt,
+        sendKind: 'bulk',
+        sendTiming: scheduledAt ? 'scheduled' : 'immediate',
+        senderResourceId: context.resource.id,
+        totalRecipientCount: sendPayload.recipients.length,
+        userId: context.user.id,
+      },
+      providerRequests,
+    },
+    quotaReservations: providerRequests.map((request) => ({
+      clientRequestId: request.clientRequestId,
+      kind: 'primary',
+      quota,
+      reservedCount: request.recipientCount,
+    })),
+  };
+}
+
 async function mirrorBulkBatchLedgerState({
   batch,
   failedCount = 0,
@@ -827,11 +1244,26 @@ async function mirrorBulkBatchLedgerState({
   pendingCount = 0,
   providerRequestId = null,
   providerState,
+  recipientResults = [],
   resultFinalizedAt = null,
   resultState,
   run,
 }) {
-  if (!ledgerRepository?.updateProviderRequestByClientRequestId || !batch.clientRequestId) {
+  if (!batch.clientRequestId) {
+    return null;
+  }
+
+  if (ledgerRepository?.updatePreparedProviderRequestOutcome) {
+    return ledgerRepository.updatePreparedProviderRequestOutcome({
+      clientRequestId: batch.clientRequestId,
+      now,
+      providerRequestId,
+      providerState,
+      ...(recipientResults.length ? { recipientResults } : {}),
+    });
+  }
+
+  if (!ledgerRepository?.updateProviderRequestByClientRequestId) {
     return null;
   }
 
@@ -860,6 +1292,29 @@ async function mirrorBulkBatchLedgerState({
   }
 
   return request;
+}
+
+async function cancelUnsentBulkBatches({ bulkRunRepository, ledgerRepository, now, run }) {
+  if (typeof bulkRunRepository.cancelPendingBatchesForRun !== 'function') return [];
+
+  const canceledBatches = await bulkRunRepository.cancelPendingBatchesForRun({
+    runId: run.id,
+    now,
+  });
+
+  for (const canceledBatch of canceledBatches) {
+    await mirrorBulkBatchLedgerState({
+      batch: canceledBatch,
+      ledgerRepository,
+      providerState: 'canceled',
+      resultFinalizedAt: now,
+      resultState: 'synced',
+      now,
+      run,
+    });
+  }
+
+  return canceledBatches;
 }
 
 async function rollupLedgerGroupFromRequests({ groupId, ledgerRepository, now }) {
@@ -1190,9 +1645,21 @@ function buildAlimtalkProviderRequest({ sendPayload, context, identity, fallback
   return { body };
 }
 
-function buildBrandMessageProviderRequest({ sendPayload, context, identity, fallbackResource }) {
+function buildBrandMessageProviderRequest({
+  sendPayload,
+  context,
+  identity,
+  fallbackResource,
+  fallbackUnsubscribeNo,
+}) {
   const resendParameter = fallbackResource
-    ? buildResendParameter(sendPayload.fallback, fallbackResource)
+    ? buildResendParameter(
+        {
+          ...sendPayload.fallback,
+          resendUnsubscribeNo: fallbackUnsubscribeNo,
+        },
+        fallbackResource
+      )
     : null;
   const recipientList = sendPayload.recipients.map((recipient, index) => ({
     ...recipient,
@@ -1293,9 +1760,18 @@ function buildResendParameter(fallback, fallbackResource) {
   };
 }
 
-async function sendSmsBulkProviderBatch({ actorUserId, payload, repository, smsClient }) {
+async function sendSmsBulkProviderBatch({
+  actorUserId,
+  commonSmsUnsubscribeNo,
+  payload,
+  repository,
+  smsClient,
+}) {
   const user = await requireActiveUser(repository, actorUserId);
-  const sendPayload = normalizeSmsPayload(payload);
+  const sendPayload = prepareSmsAdvertisingPayload(
+    normalizeSmsPayload(payload),
+    commonSmsUnsubscribeNo
+  );
   const context = await resolveSendContext({
     repository,
     user,
@@ -1304,7 +1780,7 @@ async function sendSmsBulkProviderBatch({ actorUserId, payload, repository, smsC
   });
   const identity = buildSendIdentity({ context, clientRequestId: sendPayload.clientRequestId });
   const providerRequest = buildSmsProviderRequest({ sendPayload, context, identity });
-  const sendMethod = sendPayload.channel === CHANNELS.SMS ? smsClient.sendSms : smsClient.sendMms;
+  const sendMethod = resolveSmsSendMethod(smsClient, sendPayload);
 
   return executeProviderSend({
     repository,
@@ -1337,7 +1813,80 @@ function normalizeSmsPayload(payload, { maxRecipients = MAX_RECIPIENTS, requireC
     requestDate: normalizeOptionalString(input.requestDate),
     statsId: normalizeStatsId(input.statsId),
     attachFileIdList: normalizeOptionalIdList(input.attachFileIdList, 'attachFileIdList'),
+    isAdvertisement: input.isAdvertisement === true,
   };
+}
+
+function prepareSmsAdvertisingPayload(sendPayload, configuredUnsubscribeNo) {
+  if (!sendPayload.isAdvertisement) {
+    return sendPayload;
+  }
+
+  const unsubscribeNo = requireCommonSmsUnsubscribeNo(configuredUnsubscribeNo);
+  const body = buildSmsAdvertisingBody(sendPayload.body, unsubscribeNo);
+  const bodyBytes = getSmsByteLength(body);
+
+  if (bodyBytes > SMS_LONG_MAX_BYTES) {
+    throw new RelayValidationError(
+      `body cannot exceed ${SMS_LONG_MAX_BYTES} bytes after adding advertising notices.`
+    );
+  }
+
+  const channel = sendPayload.channel === CHANNELS.SMS && bodyBytes > SMS_SHORT_MAX_BYTES
+    ? CHANNELS.LMS
+    : sendPayload.channel;
+
+  return {
+    ...sendPayload,
+    body,
+    channel,
+    ...(channel !== CHANNELS.SMS && !sendPayload.title ? { title: '광고' } : {}),
+  };
+}
+
+function buildSmsAdvertisingBody(value, unsubscribeNo) {
+  const content = String(value ?? '')
+    .replace(/\r\n?/gu, '\n')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => !isSmsAdvertisingOptOutLine(line.trim()))
+    .join('\n')
+    .trim()
+    .replace(/^\(광고\)\s*/u, '')
+    .trimStart();
+
+  if (!content) {
+    throw new RelayValidationError('body must include advertising message content.');
+  }
+
+  return `(광고)\n${content}\n무료수신거부 ${unsubscribeNo}`;
+}
+
+function isSmsAdvertisingOptOutLine(value) {
+  return /^(?:\[\s*)?무료\s*(?:수신\s*)?거부(?:\s*\])?\s*080[-\d\s]+$/u.test(value);
+}
+
+function requireCommonSmsUnsubscribeNo(value) {
+  const unsubscribeNo = String(value ?? '').replace(/\D/g, '');
+
+  if (!/^080\d{7,8}$/.test(unsubscribeNo)) {
+    throw new RelayError({
+      code: RELAY_ERROR_CODES.RELAY_CONFIG_ERROR,
+      message: 'NHN_SMS_COMMON_UNSUBSCRIBE_NO must be a valid 080 number.',
+      retryable: false,
+      status: 500,
+    });
+  }
+
+  return unsubscribeNo;
+}
+
+function resolveSmsSendMethod(smsClient, sendPayload) {
+  if (sendPayload.isAdvertisement) {
+    return sendPayload.channel === CHANNELS.SMS ? smsClient.sendAdSms : smsClient.sendAdMms;
+  }
+
+  return sendPayload.channel === CHANNELS.SMS ? smsClient.sendSms : smsClient.sendMms;
 }
 
 function normalizeManagementSendName(value) {
@@ -1358,28 +1907,49 @@ function normalizeOptionalClientRequestId(value) {
   return normalized ? validateClientRequestId(normalized) : null;
 }
 
-async function requireActiveSmsQuotaBucket({ repository, userId, channel, now }) {
-  if (typeof repository.findActiveSmsQuotaBucket !== 'function') {
+function buildSenderResourceQuotaBucket({ context, now, userId }) {
+  const quotaLimit = context.resource.quotaLimit;
+
+  if (!Number.isInteger(quotaLimit) || quotaLimit <= 0) {
     throw new RelayError({
       code: RELAY_ERROR_CODES.LOCAL_VALIDATION_FAILED,
-      message: 'SMS quota is not configured.',
+      message: 'SMS sender resource quota is not configured.',
       retryable: false,
       status: 403,
     });
   }
 
-  const bucket = await repository.findActiveSmsQuotaBucket({ userId, channel, now });
+  const { periodEndAt, periodStartAt } = getMonthlyQuotaPeriod(now);
 
-  if (!bucket) {
-    throw new RelayError({
-      code: RELAY_ERROR_CODES.FORBIDDEN,
-      message: 'SMS quota is not configured.',
-      retryable: false,
-      status: 403,
-    });
-  }
+  return {
+    channel: CHANNELS.SMS,
+    periodEndAt,
+    periodStartAt,
+    quotaLimit,
+    quotaScope: 'sender_resource_period',
+    senderResourceId: context.resource.id,
+    userId,
+  };
+}
 
-  return bucket;
+function getMonthlyQuotaPeriod(value) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    month: '2-digit',
+    timeZone: SMS_QUOTA_TIME_ZONE,
+    year: 'numeric',
+  }).formatToParts(value);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const year = Number(values.year);
+  const month = Number(values.month);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const periodStartAt = new Date(`${year}-${String(month).padStart(2, '0')}-01T00:00:00+09:00`);
+  const nextPeriodStartAt = new Date(`${nextYear}-${String(nextMonth).padStart(2, '0')}-01T00:00:00+09:00`);
+
+  return {
+    periodEndAt: new Date(nextPeriodStartAt.getTime() - 1),
+    periodStartAt,
+  };
 }
 
 function buildSmsBulkSendBatches({ runRef, sendPayload, now }) {
@@ -1513,16 +2083,41 @@ function isTerminalBulkRunStatus(status) {
 }
 
 function normalizeBulkRunError(error) {
-  if (error instanceof SmsBulkSendQuotaError) {
+  if (error instanceof SmsBulkSendQuotaError || error instanceof SenderResourceQuotaExceededError) {
     return new RelayError({
-      code: RELAY_ERROR_CODES.FORBIDDEN,
-      message: error.message,
+      code: RELAY_ERROR_CODES.SENDER_RESOURCE_QUOTA_EXCEEDED,
+      message: '발송 가능한 한도가 부족합니다. 발신수단 관리에서 한도를 확인하거나 상향 신청해 주세요.',
       retryable: false,
-      status: 403,
+      status: 429,
     });
   }
 
   return error;
+}
+
+function normalizeSenderResourceQuotaError(error, { fallbackResource } = {}) {
+  if (!(error instanceof SenderResourceQuotaExceededError)) return error;
+
+  const fallbackQuotaExceeded = fallbackResource?.id && error.senderResourceId === fallbackResource.id;
+
+  return new RelayError({
+    code: RELAY_ERROR_CODES.SENDER_RESOURCE_QUOTA_EXCEEDED,
+    message: fallbackQuotaExceeded
+      ? '문자 대체발송에 사용할 발신번호의 월 한도가 부족합니다.'
+      : '발송 가능한 한도가 부족합니다. 발신수단 관리에서 한도를 확인하거나 상향 신청해 주세요.',
+    retryable: false,
+    status: 429,
+  });
+}
+
+function isUnknownProviderOutcome(error) {
+  if (isProviderTimeout(error)) return true;
+  if (isProviderRateLimit(error)) return false;
+
+  const status = Number(error?.status ?? error?.response?.status ?? error?.cause?.status ?? 0);
+  if (status >= 500) return true;
+
+  return ['ECONNRESET', 'EPIPE', 'UND_ERR_SOCKET'].includes(String(error?.code ?? error?.cause?.code ?? ''));
 }
 
 async function auditSmsBulkRunCreated({ repository, run, user }) {
@@ -1572,6 +2167,38 @@ function normalizeAlimtalkPayload(payload) {
     requestDate: normalizeOptionalString(input.requestDate),
     statsId: normalizeStatsId(input.statsId),
     messageOption: normalizeMessageOption(input.messageOption),
+  };
+}
+
+function normalizeRawAlimtalkResendPayload(payload) {
+  const input = normalizePayloadObject(payload);
+  const recipientInput = normalizePlainObject(input.recipient, 'recipient');
+
+  return {
+    clientRequestId: validateClientRequestId(input.clientRequestId),
+    senderResourceId: normalizeRequiredString(input.senderResourceId, 'senderResourceId'),
+    templateCode: normalizeOptionalString(input.templateCode),
+    messageOption: normalizeMessageOption(input.messageOption),
+    recipient: {
+      recipientNo: normalizeRequiredString(recipientInput.recipientNo, 'recipient.recipientNo'),
+      content: normalizeRequiredString(recipientInput.content, 'recipient.content'),
+      ...optionalStringProperty('templateTitle', recipientInput.templateTitle),
+      ...optionalStringProperty('templateSubtitle', recipientInput.templateSubtitle),
+      ...optionalStringProperty('templateHeader', recipientInput.templateHeader),
+      ...optionalObjectProperty('templateItem', recipientInput.templateItem, 'recipient.templateItem'),
+      ...optionalObjectProperty(
+        'templateItemHighlight',
+        recipientInput.templateItemHighlight,
+        'recipient.templateItemHighlight'
+      ),
+      ...optionalObjectProperty(
+        'templateRepresentLink',
+        recipientInput.templateRepresentLink,
+        'recipient.templateRepresentLink'
+      ),
+      ...optionalObjectArrayProperty('buttons', recipientInput.buttons, 'recipient.buttons'),
+      ...optionalObjectArrayProperty('quickReplies', recipientInput.quickReplies, 'recipient.quickReplies'),
+    },
   };
 }
 
@@ -2694,6 +3321,38 @@ function normalizeProviderRecipientResults(value) {
   });
 }
 
+function getExplicitProviderRejectionEntries({ channel, provider, recipientCount }) {
+  if (!Array.isArray(provider?.recipients)) return [];
+
+  return provider.recipients.flatMap((recipient) => {
+    const recipientSeq = Number(recipient?.recipientSeq);
+    const resultCode = recipient?.resultCode;
+
+    if (
+      !Number.isInteger(recipientSeq)
+      || recipientSeq < 1
+      || recipientSeq > recipientCount
+      || resultCode === null
+      || resultCode === undefined
+      || isInitialProviderRecipientAccepted({ channel, resultCode })
+    ) {
+      return [];
+    }
+
+    return [{ recipientSeq, resultCode, state: 'F' }];
+  });
+}
+
+function isInitialProviderRecipientAccepted({ channel, resultCode }) {
+  const normalized = String(resultCode).trim().toUpperCase();
+
+  if (channel === CHANNELS.ALIMTALK || channel === CHANNELS.BRAND_MESSAGE) {
+    return normalized === 'MRC01' || normalized === '0';
+  }
+
+  return normalized === '0';
+}
+
 function normalizeOptionalSafeInteger(value) {
   const number = Number(value);
   return Number.isSafeInteger(number) ? number : null;
@@ -2729,6 +3388,8 @@ function createLazyNhnSmsClient() {
   }
 
   return {
+    sendAdSms: (...args) => getClient().sendAdSms(...args),
+    sendAdMms: (...args) => getClient().sendAdMms(...args),
     sendSms: (...args) => getClient().sendSms(...args),
     sendMms: (...args) => getClient().sendMms(...args),
   };
@@ -2747,6 +3408,7 @@ function createLazyNhnKakaoBizmessageClient() {
 
   return {
     sendAlimtalkMessage: (...args) => getClient().sendAlimtalkMessage(...args),
+    sendRawAlimtalkMessage: (...args) => getClient().sendRawAlimtalkMessage(...args),
     sendBrandBasicMessage: (...args) => getClient().sendBrandBasicMessage(...args),
     sendBrandFreestyleMessage: (...args) => getClient().sendBrandFreestyleMessage(...args),
     uploadBrandImage: (...args) => getClient().uploadBrandImage(...args),

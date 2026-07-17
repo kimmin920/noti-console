@@ -20,8 +20,7 @@ export function getLimitRequestStatusTone(status) {
 }
 
 export function getLimitRequestChannelLabel(channel) {
-  if (channel === 'alimtalk') return '카카오 알림톡';
-  if (channel === 'brand-message') return '카카오 브랜드메시지';
+  if (channel === 'kakao' || channel === 'alimtalk' || channel === 'brand-message') return '카카오 채널';
   return '문자';
 }
 
@@ -30,6 +29,7 @@ export function getLimitRequestScopeLabel(scope) {
 }
 
 export function formatLimitCount(value, { cadence } = {}) {
+  if (value === null || value === undefined || value === '') return '-';
   const number = Number(value);
   if (!Number.isFinite(number)) return '-';
   const prefix = cadence ? `${cadence} ` : '';

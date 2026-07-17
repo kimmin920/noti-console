@@ -315,13 +315,19 @@ Identity:
 
 Quota:
 
-- Enforce product quota before creating the run.
-- SMS quota is per user in this phase.
-- Reserve quota for the requested recipient count before the worker starts.
-- Consume accepted recipients as provider batches are accepted.
-- Release unaccepted reservations when a run reaches a terminal `failed`,
-  `blocked`, or `canceled` state.
-- Future Kakao and Brand Message quotas are out of scope.
+- Enforce quota per sender resource before creating the run.
+- SMS/LMS/MMS share one KST monthly bucket for each registered sender number.
+- Reserve the complete recipient count atomically before the worker starts.
+- Provider acceptance keeps quota reserved; only confirmed delivery success
+  moves it to consumed.
+- Explicit failure/cancellation releases the corresponding reservation. An
+  uncertain provider outcome keeps the in-flight batch reserved while later
+  unsent batches are released.
+- Direct AlimTalk and Brand Message sends use separate KST daily usage buckets
+  under one Kakao sender-resource limit. When SMS fallback is enabled, its SMS
+  sender quota is reserved in the same pre-provider transaction.
+- Webhooks and the existing correction poller settle both primary and fallback
+  reservations through the shared message-result snapshot merge path.
 
 Sensitive payload handling:
 

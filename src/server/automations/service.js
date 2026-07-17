@@ -51,6 +51,7 @@ export const AUTOMATION_UNSENT_REASON_CODES = Object.freeze({
   PAYLOAD_VALIDATION_FAILED: 'payload_validation_failed',
   PROVIDER_REJECTED: 'provider_rejected',
   PROVIDER_UNKNOWN: 'provider_unknown',
+  QUOTA_EXCEEDED: 'quota_exceeded',
   UNSUPPORTED_SEND_CHANNEL: 'unsupported_send_channel',
 });
 
@@ -2083,6 +2084,14 @@ function providerResultReason(sendResult) {
 
 function errorDispatchReason(error) {
   if (error instanceof RelayError) {
+    if (error.code === RELAY_ERROR_CODES.SENDER_RESOURCE_QUOTA_EXCEEDED) {
+      return {
+        code: AUTOMATION_UNSENT_REASON_CODES.QUOTA_EXCEEDED,
+        failed: false,
+        message: 'Sender resource quota is not available for this automation delivery.',
+      };
+    }
+
     if (error.code === RELAY_ERROR_CODES.FORBIDDEN) {
       return {
         code: AUTOMATION_UNSENT_REASON_CODES.MISSING_REGISTRATION,

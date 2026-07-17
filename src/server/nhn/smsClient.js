@@ -24,8 +24,18 @@ export function createNhnSmsClient(options = {}) {
         method: 'POST',
         body,
       }),
+    sendAdSms: (body) =>
+      request(`${appRoot}/sender/ad-sms`, {
+        method: 'POST',
+        body,
+      }),
     sendMms: (body) =>
       request(`${appRoot}/sender/mms`, {
+        method: 'POST',
+        body,
+      }),
+    sendAdMms: (body) =>
+      request(`${appRoot}/sender/ad-mms`, {
         method: 'POST',
         body,
       }),

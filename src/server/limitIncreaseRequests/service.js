@@ -2,7 +2,7 @@ import { getDb } from '../../db/client.js';
 import { sanitizeAuditMetadata } from '../audit/service.js';
 import { RELAY_ERROR_CODES, SENDER_RESOURCE_TYPES } from '../relay/constants.js';
 import { RelayError, RelayValidationError } from '../relay/errors.js';
-import { KAKAO_DAILY_DEFAULT_LIMIT, getLimitScope, toLimitRequestDto } from './model.js';
+import { getLimitScope, toLimitRequestDto } from './model.js';
 import { createLimitIncreaseRequestRepository } from './repository.js';
 
 const ACTIVE_USER_STATUS = 'active';
@@ -13,12 +13,15 @@ const LIMIT_REQUEST_STATUS = Object.freeze({
   REJECTED: 'rejected',
   SUBMITTED: 'submitted',
 });
-const REQUEST_CHANNELS = new Set(['sms', 'alimtalk', 'brand-message']);
+const KAKAO_REQUEST_STORAGE_CHANNEL = 'alimtalk';
+const KAKAO_LEGACY_CHANNELS = Object.freeze(['alimtalk', 'brand-message']);
+const REQUEST_CHANNELS = new Set(['sms', KAKAO_REQUEST_STORAGE_CHANNEL]);
 const STATUS_FILTERS = new Set(['submitted', 'approved', 'rejected', 'canceled']);
 const CHANNEL_ALIASES = Object.freeze({
-  alimtalk: 'alimtalk',
-  brand: 'brand-message',
-  'brand-message': 'brand-message',
+  alimtalk: KAKAO_REQUEST_STORAGE_CHANNEL,
+  brand: KAKAO_REQUEST_STORAGE_CHANNEL,
+  'brand-message': KAKAO_REQUEST_STORAGE_CHANNEL,
+  kakao: KAKAO_REQUEST_STORAGE_CHANNEL,
   sms: 'sms',
 });
 const MAX_LIMIT = 10_000_000;
@@ -43,12 +46,20 @@ export function createLimitIncreaseRequestService({ repository, now = () => new 
     async createRequest({ actorUserId, payload = {} }) {
       const user = await requireActiveUser(repository, actorUserId);
       const input = normalizeCreateInput(payload);
-      const senderResourceRecord = input.channel === 'sms'
-        ? null
-        : await requireActiveKakaoSenderResource(repository, user.id, input.senderResourceId);
-      const senderResourceId = senderResourceRecord?.resource?.id ?? null;
+      const senderResourceRecord = await requireActiveLimitSenderResource(
+        repository,
+        user.id,
+        input.senderResourceId,
+        input.channel
+      );
+
+      if (input.requestedLimit <= senderResourceRecord.resource.quotaLimit) {
+        throw new RelayValidationError('requestedLimit must be greater than the current sender resource quota limit.');
+      }
+
+      const senderResourceId = senderResourceRecord.resource.id;
       const existing = await repository.findSubmittedUserRequest({
-        channel: input.channel,
+        channels: getDuplicateRequestChannels(input.channel),
         senderResourceId,
         userId: user.id,
       });
@@ -62,7 +73,7 @@ export function createLimitIncreaseRequestService({ repository, now = () => new 
         channel: input.channel,
         limitScope: getLimitScope(input.channel),
         senderResourceId,
-        currentLimit: input.currentLimit,
+        currentLimit: senderResourceRecord.resource.quotaLimit,
         requestedLimit: input.requestedLimit,
         reason: input.reason,
         status: LIMIT_REQUEST_STATUS.SUBMITTED,
@@ -80,7 +91,7 @@ export function createLimitIncreaseRequestService({ repository, now = () => new 
       });
 
       return {
-        request: toLimitRequestDto({ request, senderResource: senderResourceRecord?.resource ?? null }),
+        request: toLimitRequestDto({ request, senderResource: senderResourceRecord.resource }),
       };
     },
 
@@ -104,14 +115,22 @@ export function createLimitIncreaseRequestService({ repository, now = () => new 
         throw new RelayValidationError('Only submitted limit increase requests can be approved.');
       }
 
+      requireApprovableSenderResource(record);
+
       const reviewedAt = now();
-      const request = await repository.updateRequest(record.request.id, {
-        status: LIMIT_REQUEST_STATUS.APPROVED,
-        reviewedBy: operator.id,
-        reviewedAt,
-        reviewMemo: normalizeOptionalString(payload.reviewMemo),
-        rejectReason: null,
+      const approved = await repository.approveRequestAndUpdateQuota({
+        quotaLimit: record.request.requestedLimit,
+        requestId: record.request.id,
+        requestValues: {
+          status: LIMIT_REQUEST_STATUS.APPROVED,
+          reviewedBy: operator.id,
+          reviewedAt,
+          reviewMemo: normalizeOptionalString(payload.reviewMemo),
+          rejectReason: null,
+        },
+        senderResourceId: record.senderResource.id,
       });
+      const request = approved.request;
 
       await writeAuditLog(repository, {
         actorUserId: operator.id,
@@ -120,7 +139,7 @@ export function createLimitIncreaseRequestService({ repository, now = () => new 
         metadataJson: { channel: request.channel, requestedLimit: request.requestedLimit },
       });
 
-      return { request: toLimitRequestDto({ ...record, request }) };
+      return { request: toLimitRequestDto({ ...record, request, senderResource: approved.resource }) };
     },
 
     async rejectRequest({ actorUserId, requestId, payload = {} }) {
@@ -155,20 +174,13 @@ export function createLimitIncreaseRequestService({ repository, now = () => new 
 
 function normalizeCreateInput(payload) {
   const channel = normalizeChannel(payload.channel);
-  const defaultCurrentLimit = channel === 'sms' ? null : KAKAO_DAILY_DEFAULT_LIMIT;
-  const currentLimit = normalizeOptionalPositiveInteger(payload.currentLimit, 'currentLimit') ?? defaultCurrentLimit;
   const requestedLimit = normalizeRequiredPositiveInteger(payload.requestedLimit, 'requestedLimit');
-
-  if (currentLimit !== null && requestedLimit <= currentLimit) {
-    throw new RelayValidationError('requestedLimit must be greater than currentLimit.');
-  }
 
   return {
     channel,
-    currentLimit,
     reason: normalizeRequiredString(payload.reason, 'reason'),
     requestedLimit,
-    senderResourceId: channel === 'sms' ? null : normalizeRequiredString(payload.senderResourceId, 'senderResourceId'),
+    senderResourceId: normalizeRequiredString(payload.senderResourceId, 'senderResourceId'),
   };
 }
 
@@ -187,17 +199,45 @@ async function requireOperator(repository, actorUserId) {
   return user;
 }
 
-async function requireActiveKakaoSenderResource(repository, userId, senderResourceId) {
+async function requireActiveLimitSenderResource(repository, userId, senderResourceId, channel) {
   const record = await repository.getUserSenderResource({ userId, senderResourceId });
+  const expectedType = getSenderResourceType(channel);
   if (
     !record
     || record.link.status !== ACTIVE_LINK_STATUS
     || record.resource.status !== ACTIVE_RESOURCE_STATUS
-    || record.resource.type !== SENDER_RESOURCE_TYPES.KAKAO_SENDER_KEY
+    || record.resource.type !== expectedType
   ) {
-    throw new RelayValidationError('senderResourceId must reference an active Kakao business channel.');
+    throw new RelayValidationError('senderResourceId must reference an active sender resource for the requested channel.');
   }
+
+  if (!Number.isInteger(record.resource.quotaLimit) || record.resource.quotaLimit <= 0) {
+    throw new RelayValidationError('The sender resource does not have a valid quota limit.');
+  }
+
   return record;
+}
+
+function requireApprovableSenderResource(record) {
+  const expectedType = getSenderResourceType(record.request.channel);
+
+  if (
+    !record.senderResource
+    || record.senderResource.status !== ACTIVE_RESOURCE_STATUS
+    || record.senderResource.type !== expectedType
+  ) {
+    throw new RelayValidationError('The limit increase request must reference an active sender resource.');
+  }
+
+  if (record.request.requestedLimit <= record.senderResource.quotaLimit) {
+    throw new RelayValidationError('The requested limit is no longer greater than the current sender resource quota.');
+  }
+}
+
+function getSenderResourceType(channel) {
+  return channel === 'sms'
+    ? SENDER_RESOURCE_TYPES.SMS_SEND_NO
+    : SENDER_RESOURCE_TYPES.KAKAO_SENDER_KEY;
 }
 
 async function requireRequest(repository, requestId) {
@@ -217,9 +257,13 @@ async function requireRequest(repository, requestId) {
 function normalizeChannel(value) {
   const channel = CHANNEL_ALIASES[normalizeRequiredString(value, 'channel')];
   if (!REQUEST_CHANNELS.has(channel)) {
-    throw new RelayValidationError('channel must be sms, alimtalk, or brand-message.');
+    throw new RelayValidationError('channel must be sms or kakao.');
   }
   return channel;
+}
+
+function getDuplicateRequestChannels(channel) {
+  return channel === 'sms' ? ['sms'] : KAKAO_LEGACY_CHANNELS;
 }
 
 function normalizeStatusFilter(value) {
@@ -231,15 +275,6 @@ function normalizeRequiredPositiveInteger(value, fieldName) {
   const number = Number(value);
   if (!Number.isInteger(number) || number <= 0 || number > MAX_LIMIT) {
     throw new RelayValidationError(`${fieldName} must be a positive integer up to ${MAX_LIMIT}.`);
-  }
-  return number;
-}
-
-function normalizeOptionalPositiveInteger(value, fieldName) {
-  if (value === undefined || value === null || value === '') return null;
-  const number = Number(value);
-  if (!Number.isInteger(number) || number < 0 || number > MAX_LIMIT) {
-    throw new RelayValidationError(`${fieldName} must be a non-negative integer up to ${MAX_LIMIT}.`);
   }
   return number;
 }

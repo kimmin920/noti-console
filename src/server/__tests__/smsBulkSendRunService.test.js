@@ -9,7 +9,7 @@ const DIRECT_CLIENT_REQUEST_ID = 'de305d54-75b4-431b-adb2-eb6b9e546014';
 
 describe('SMS bulk send run service', () => {
   it('creates a 50000-recipient run as 50 batches without exposing sensitive payloads', async () => {
-    const repository = createMessageRepository();
+    const repository = createMessageRepository({ quotaLimit: 60_000 });
     const bulkRunRepository = createBulkRunRepository({ quotaLimit: 60_000 });
     const service = createService({ bulkRunRepository, repository });
     const recipients = createRecipients(50_000);
@@ -35,6 +35,13 @@ describe('SMS bulk send run service', () => {
     });
     expect(bulkRunRepository.runs).toHaveLength(1);
     expect(bulkRunRepository.batches).toHaveLength(50);
+    expect(bulkRunRepository.quotaBucket).toMatchObject({
+      periodEndAt: new Date('2026-06-30T14:59:59.999Z'),
+      periodStartAt: new Date('2026-05-31T15:00:00.000Z'),
+      quotaLimit: 60_000,
+      quotaScope: 'sender_resource_period',
+      senderResourceId: 'sms_resource_1',
+    });
     expect(new Set(bulkRunRepository.batches.map((batch) => batch.clientRequestId)).size).toBe(50);
     expect(JSON.stringify(result)).not.toContain('01000000000');
     expect(JSON.stringify(result)).not.toContain('Pickup code');
@@ -60,7 +67,7 @@ describe('SMS bulk send run service', () => {
     });
   });
 
-  it('rejects bulk creation when user SMS quota is insufficient', async () => {
+  it('rejects bulk creation when the sender number quota is insufficient', async () => {
     const bulkRunRepository = createBulkRunRepository({ quotaLimit: 1000 });
     const service = createService({ bulkRunRepository });
 
@@ -74,7 +81,8 @@ describe('SMS bulk send run service', () => {
         },
       })
     ).rejects.toMatchObject({
-      code: RELAY_ERROR_CODES.FORBIDDEN,
+      code: RELAY_ERROR_CODES.SENDER_RESOURCE_QUOTA_EXCEEDED,
+      status: 429,
     });
     expect(bulkRunRepository.runs).toEqual([]);
     expect(bulkRunRepository.batches).toEqual([]);
@@ -312,7 +320,7 @@ function createService({
     kakaoClient: {},
     ledgerRepository,
     now: () => FIXED_NOW,
-    repository: repository ?? createMessageRepository(),
+    repository: repository ?? createMessageRepository({ quotaLimit: bulkRunRepository.quotaBucket.quotaLimit }),
     smsClient: smsClient ?? createSmsClient(),
     workerId: 'test-worker',
   });
@@ -334,7 +342,7 @@ function createSmsClient(overrides = {}) {
   };
 }
 
-function createMessageRepository() {
+function createMessageRepository({ quotaLimit = 10_000 } = {}) {
   return {
     auditLogs: [],
     billingAccounts: [
@@ -363,6 +371,7 @@ function createMessageRepository() {
         id: 'sms_resource_1',
         provider: 'nhn',
         providerStatus: 'approved',
+        quotaLimit,
         resourceRef: 'smsref1',
         status: 'active',
         type: SENDER_RESOURCE_TYPES.SMS_SEND_NO,
@@ -411,8 +420,9 @@ function createBulkRunRepository({ quotaLimit }) {
       periodEndAt: new Date('2026-07-01T00:00:00.000Z'),
       periodStartAt: new Date('2026-06-01T00:00:00.000Z'),
       quotaLimit,
-      quotaScope: 'user_period',
+      quotaScope: 'sender_resource_period',
       reservedCount: 0,
+      senderResourceId: 'sms_resource_1',
       userId: 'user_1',
     },
     quotaReservation: null,
@@ -437,9 +447,14 @@ function createBulkRunRepository({ quotaLimit }) {
     async createRunWithBatchesAndReservation({ batches, quotaBucket, quotaReservation = {}, run, now }) {
       const availableCount = this.quotaBucket.quotaLimit - this.quotaBucket.reservedCount - this.quotaBucket.consumedCount;
 
-      if (availableCount < run.totalRecipients || quotaBucket.id !== this.quotaBucket.id) {
+      if (
+        availableCount < run.totalRecipients
+        || quotaBucket.senderResourceId !== this.quotaBucket.senderResourceId
+      ) {
         throw new SmsBulkSendQuotaError('SMS quota is not available for this bulk send run.');
       }
+
+      Object.assign(this.quotaBucket, quotaBucket, { id: this.quotaBucket.id });
 
       const createdRun = {
         acceptedCount: 0,
@@ -503,9 +518,6 @@ function createBulkRunRepository({ quotaLimit }) {
       this.quotaBucket.consumedCount += count;
       this.quotaReservation.consumedCount += count;
       return { consumedCount: count, quotaBucket: this.quotaBucket, quotaReservation: this.quotaReservation };
-    },
-    async findActiveSmsQuotaBucket() {
-      return this.quotaBucket;
     },
     async getRunForActor({ actorUserId, runId }) {
       return this.runs.find((run) => run.id === runId && run.userId === actorUserId) ?? null;

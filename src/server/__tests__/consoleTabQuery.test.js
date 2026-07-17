@@ -35,7 +35,7 @@ describe('console tab query helpers', () => {
   });
 
   it('maps settings tabs to stable query values and back', () => {
-    const tabs = ['사용량', '발신 수단 관리', '청구', '연동', '프로필'];
+    const tabs = ['발신 수단 관리', '청구', '연동', '프로필'];
 
     expect(getSettingsTabQueryValue('사용량')).toBe('usage');
     expect(getSettingsTabQueryValue('발신 수단 관리')).toBe('sender-resources');
@@ -43,12 +43,12 @@ describe('console tab query helpers', () => {
     expect(getSettingsTabQueryValue('연동')).toBe('integrations');
     expect(getSettingsTabQueryValue('프로필')).toBe('profile');
     expect(getSettingsTabQueryValue('수신거부 페이지')).toBe('');
-    expect(getSettingsTabFromQuery(new URLSearchParams('tab=usage'), tabs)).toBe('사용량');
+    expect(getSettingsTabFromQuery(new URLSearchParams('tab=usage'), tabs)).toBe('발신 수단 관리');
     expect(getSettingsTabFromQuery(new URLSearchParams('tab=sender-resources'), tabs)).toBe('발신 수단 관리');
     expect(getSettingsTabFromQuery(new URLSearchParams('tab=billing'), tabs)).toBe('청구');
     expect(getSettingsTabFromQuery(new URLSearchParams('tab=integrations'), tabs)).toBe('연동');
     expect(getSettingsTabFromQuery(new URLSearchParams('tab=profile'), tabs)).toBe('프로필');
-    expect(getSettingsTabFromQuery(new URLSearchParams('tab=unsubscribe'), tabs)).toBe('사용량');
-    expect(getSettingsTabFromQuery(new URLSearchParams('tab=unknown'), tabs)).toBe('사용량');
+    expect(getSettingsTabFromQuery(new URLSearchParams('tab=unsubscribe'), tabs)).toBe('발신 수단 관리');
+    expect(getSettingsTabFromQuery(new URLSearchParams('tab=unknown'), tabs)).toBe('발신 수단 관리');
   });
 });

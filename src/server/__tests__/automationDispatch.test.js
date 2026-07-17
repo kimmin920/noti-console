@@ -221,6 +221,32 @@ describe('automation message dispatch', () => {
     });
   });
 
+  it('marks sender-resource quota exhaustion as unsent instead of a retryable dispatch failure', async () => {
+    const messageSendService = {
+      sendAlimtalk: vi.fn(async () => {
+        throw new RelayError({
+          code: RELAY_ERROR_CODES.SENDER_RESOURCE_QUOTA_EXCEEDED,
+          message: 'Sender quota exhausted.',
+          retryable: false,
+          status: 429,
+        });
+      }),
+    };
+    const harness = createDispatchHarness({ messageSendService });
+
+    const result = await harness.service.processPublAutomationEvent(createEnvelope());
+
+    expect(result).toMatchObject({
+      status: AUTOMATION_PROCESSING_STATUSES.UNSENT,
+      reasonCode: AUTOMATION_UNSENT_REASON_CODES.QUOTA_EXCEEDED,
+    });
+    expect(messageSendService.sendAlimtalk).toHaveBeenCalledTimes(1);
+    expect(harness.repository.deliveries[0]).toMatchObject({
+      reasonCode: AUTOMATION_UNSENT_REASON_CODES.QUOTA_EXCEEDED,
+      status: 'unsent',
+    });
+  });
+
   it('dispatches when rule conditions match', async () => {
     const harness = createDispatchHarness({
       eventRepository: createMemoryPublEventRepository({
@@ -400,6 +426,7 @@ describe('automation message dispatch', () => {
 
 function createDispatchHarness({
   eventRepository = createMemoryPublEventRepository(),
+  messageSendService: injectedMessageSendService,
   repository = createMemoryDispatchRepository(),
   rules,
   templateService = createTemplateService(),
@@ -411,13 +438,13 @@ function createDispatchHarness({
   const ledgerRepository = createMemoryLedgerRepository();
   const smsClient = createSmsClient();
   const kakaoClient = createKakaoClient();
-  const messageSendService = createMessageSendService({
-    ledgerRepository,
-    repository,
-    smsClient,
-    kakaoClient,
-    now: () => FIXED_NOW,
-  });
+  const messageSendService = injectedMessageSendService ?? createMessageSendService({
+      ledgerRepository,
+      repository,
+      smsClient,
+      kakaoClient,
+      now: () => FIXED_NOW,
+    });
   const service = createAutomationService({
     automationRepository: repository,
     messageSendService,

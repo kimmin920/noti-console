@@ -1,8 +1,10 @@
-import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 
 import {
   auditLogs,
   billingAccounts,
+  messageSendGroups,
+  messageSendProviderRequests,
   senderResources,
   smsBulkSendBatches,
   smsBulkSendRuns,
@@ -12,6 +14,7 @@ import {
   users,
 } from '../../db/schema.js';
 import { sanitizeAuditMetadata } from '../audit/service.js';
+import { reserveSenderResourceQuotasTx } from './quotaRepository.js';
 
 const CLAIMABLE_RUN_STATUSES = ['queued', 'running'];
 const TERMINAL_BATCH_STATUSES = new Set(['accepted', 'rejected', 'unknown', 'failed', 'canceled']);
@@ -81,10 +84,61 @@ export function createSmsBulkSendRunRepository(db) {
     async createRunWithBatchesAndReservation({
       run,
       batches,
+      ledger,
       quotaBucket,
       quotaReservation = {},
+      quotaReservations = [],
       now = new Date(),
     }) {
+      if (ledger) {
+        return db.transaction(async (tx) => {
+          const [createdRun] = await tx
+            .insert(smsBulkSendRuns)
+            .values({ ...run, updatedAt: now })
+            .returning();
+          const createdBatches = batches.length
+            ? await tx
+                .insert(smsBulkSendBatches)
+                .values(batches.map((batch) => ({ ...batch, runId: createdRun.id, updatedAt: now })))
+                .returning()
+            : [];
+          const [createdGroup] = await tx
+            .insert(messageSendGroups)
+            .values({
+              ...ledger.group,
+              providerRequestCount: ledger.providerRequests.length,
+              updatedAt: now,
+            })
+            .returning();
+          const createdProviderRequests = await tx
+            .insert(messageSendProviderRequests)
+            .values(
+              ledger.providerRequests.map((request) => ({
+                ...request,
+                groupId: createdGroup.id,
+                updatedAt: now,
+              }))
+            )
+            .returning();
+          const createdQuotaReservations = await reserveSenderResourceQuotasTx(tx, {
+            now,
+            providerRequests: createdProviderRequests,
+            reservations: quotaReservations,
+          });
+
+          return {
+            run: createdRun,
+            batches: createdBatches,
+            ledger: {
+              group: createdGroup,
+              providerRequests: createdProviderRequests,
+            },
+            ledgerPrepared: true,
+            quotaReservations: createdQuotaReservations,
+          };
+        });
+      }
+
       return db.transaction(async (tx) => {
         const [bucket] = await tx
           .insert(smsQuotaBuckets)
@@ -96,7 +150,7 @@ export function createSmsBulkSendRunRepository(db) {
           })
           .onConflictDoUpdate({
             target: [
-              smsQuotaBuckets.userId,
+              smsQuotaBuckets.senderResourceId,
               smsQuotaBuckets.channel,
               smsQuotaBuckets.quotaScope,
               smsQuotaBuckets.periodStartAt,
@@ -313,25 +367,6 @@ export function createSmsBulkSendRunRepository(db) {
       return mappings;
     },
 
-    async findActiveSmsQuotaBucket({ userId, channel, now = new Date() }) {
-      const [bucket] = await db
-        .select()
-        .from(smsQuotaBuckets)
-        .where(
-          and(
-            eq(smsQuotaBuckets.userId, userId),
-            eq(smsQuotaBuckets.channel, channel),
-            eq(smsQuotaBuckets.quotaScope, 'user_period'),
-            lte(smsQuotaBuckets.periodStartAt, now),
-            gte(smsQuotaBuckets.periodEndAt, now)
-          )
-        )
-        .orderBy(sql`${smsQuotaBuckets.periodEndAt} asc`)
-        .limit(1);
-
-      return bucket ?? null;
-    },
-
     async updateRunForActor({ actorUserId, runId, values, now = new Date() }) {
       const [run] = await db
         .update(smsBulkSendRuns)
@@ -431,6 +466,14 @@ export function createSmsBulkSendRunRepository(db) {
         .returning();
 
       return batch ?? null;
+    },
+
+    async cancelPendingBatchesForRun({ runId, now = new Date() }) {
+      return db
+        .update(smsBulkSendBatches)
+        .set(terminalBatchValues('canceled', now))
+        .where(and(eq(smsBulkSendBatches.runId, runId), eq(smsBulkSendBatches.status, 'pending')))
+        .returning();
     },
 
     async recomputeRunAggregateCounts({ runId, now = new Date() }) {

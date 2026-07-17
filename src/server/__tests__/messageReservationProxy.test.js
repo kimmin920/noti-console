@@ -302,6 +302,8 @@ describe('message reservation proxy', () => {
   });
 
   it('cancels every reserved recipient in one requestId group', async () => {
+    const mergeProviderRequestResultSnapshotByProviderRequestId = vi.fn(async () => ({}));
+    const repository = createMemoryRepository({ mergeProviderRequestResultSnapshotByProviderRequestId });
     const smsClient = createSmsClient({
       cancelReservations: vi.fn(async () => ({
         body: {
@@ -324,7 +326,7 @@ describe('message reservation proxy', () => {
         },
       })),
     });
-    const service = createTestService({ smsClient });
+    const service = createTestService({ repository, smsClient });
 
     const result = await service.cancelReservationGroup({
       actorUserId: 'user_1',
@@ -352,6 +354,15 @@ describe('message reservation proxy', () => {
       requestId: 'reservation-request-1',
       skippedCount: 1,
       state: 'canceled',
+    });
+    expect(mergeProviderRequestResultSnapshotByProviderRequestId).toHaveBeenCalledWith({
+      authoritative: true,
+      now: FIXED_NOW,
+      providerRequestId: 'reservation-request-1',
+      results: [
+        { recipientSeq: 1, resultCode: 'RESERVATION_CANCELED', state: 'C' },
+        { recipientSeq: 2, resultCode: 'RESERVATION_CANCELED', state: 'C' },
+      ],
     });
   });
 
@@ -801,6 +812,12 @@ function createMemoryRepository(overrides = {}) {
       },
     ],
     bulkMappings: overrides.bulkMappings ?? new Map(),
+    ...(overrides.mergeProviderRequestResultSnapshotByProviderRequestId
+      ? {
+          mergeProviderRequestResultSnapshotByProviderRequestId:
+            overrides.mergeProviderRequestResultSnapshotByProviderRequestId,
+        }
+      : {}),
     async findBillingAccountForUser(userId) {
       return this.billingAccounts.find((item) => item.ownerType === 'user' && item.ownerId === userId) ?? null;
     },

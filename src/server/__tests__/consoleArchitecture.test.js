@@ -62,13 +62,15 @@ describe('console screen architecture', () => {
   it('shares sender resource type constants across settings and admin screens', () => {
     const adminScreen = readSource('features/console/admin/SenderResourceApplicationsPage.jsx');
     const settingsScreen = readSource('features/console/settings/SettingsPage.jsx');
+    const settingsSenderResources = readSource('features/console/settings/UsageSettingsContent.jsx');
     const sharedConfig = readSource('features/console/settings/senderResourceApplicationConfig.js');
 
     expect(sharedConfig).toContain("export const SMS_SENDER_RESOURCE_TYPE = 'sms_send_no';");
     expect(sharedConfig).toContain("export const KAKAO_SENDER_RESOURCE_TYPE = 'kakao_sender_key';");
     expect(adminScreen).toContain('SMS_SENDER_RESOURCE_TYPE,');
-    expect(settingsScreen).toContain('KAKAO_SENDER_RESOURCE_TYPE,');
     expect(settingsScreen).toContain('SMS_SENDER_RESOURCE_TYPE,');
+    expect(settingsSenderResources).toContain('KAKAO_SENDER_RESOURCE_TYPE,');
+    expect(settingsSenderResources).toContain('SMS_SENDER_RESOURCE_TYPE,');
   });
 });
 

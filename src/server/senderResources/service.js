@@ -6,7 +6,12 @@ import { createNhnKakaoBizmessageClient } from '../nhn/kakaoBizmessageClient.js'
 import { resolveNhnKakaoBizmessageConfig } from '../nhn/config.js';
 import { NHN_ALIMTALK_DEFAULT_SENDER_GROUP_KEY } from '../nhn/kakaoCommonTemplateSources.js';
 import { createNhnSmsClient } from '../nhn/smsClient.js';
-import { PROVIDERS, RELAY_ERROR_CODES, SENDER_RESOURCE_TYPES } from '../relay/constants.js';
+import {
+  DEFAULT_SENDER_RESOURCE_QUOTA_LIMIT,
+  PROVIDERS,
+  RELAY_ERROR_CODES,
+  SENDER_RESOURCE_TYPES,
+} from '../relay/constants.js';
 import { NhnProviderError, RelayError, RelayValidationError, extractProviderDetails } from '../relay/errors.js';
 import { createEvidenceStore } from '../storage/evidenceStore.js';
 import { createSenderResourceRepository } from './repository.js';
@@ -828,6 +833,7 @@ async function createOrActivateUserResourceLink({
       type: resourceType,
       value,
       displayName: resolveSenderResourceDisplayName({ displayName, resourceType, value }),
+      quotaLimit: DEFAULT_SENDER_RESOURCE_QUOTA_LIMIT,
       status: RESOURCE_STATUS.ACTIVE,
       providerStatus,
       metadataJson,
@@ -1496,6 +1502,7 @@ function toUserSenderResourceDto({ link, resource }) {
       status: resource.status,
       providerStatus: resource.providerStatus,
       metadataJson: resource.metadataJson,
+      quotaLimit: resource.quotaLimit,
     },
   };
 }

@@ -721,6 +721,149 @@
   width: 48px;
 }
 
+.limit-request-history-section {
+  min-width: 0;
+  width: 100%;
+}
+
+.limit-request-history-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.limit-request-history-heading > div {
+  min-width: 0;
+}
+
+.limit-request-history-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.limit-request-history-heading p {
+  width: min(520px, 100%);
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.limit-request-history-action {
+  flex: 0 0 auto;
+}
+
+.limit-request-history-data-table-shell {
+  min-width: 0;
+  position: relative;
+  width: 100%;
+}
+
+.resend-data-table.limit-request-history-data-table {
+  min-width: 780px;
+  table-layout: fixed;
+  width: max(100%, 780px);
+}
+
+.limit-request-history-data-table .resend-data-table-cell {
+  height: 56px;
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+.limit-request-history-data-table .is-limit-request-target {
+  width: 22%;
+}
+
+.limit-request-history-data-table .is-limit-request-change {
+  width: 150px;
+}
+
+.limit-request-history-data-table .is-limit-request-reason {
+  width: 25%;
+}
+
+.limit-request-history-data-table .is-limit-request-created-at {
+  width: 165px;
+}
+
+.limit-request-history-data-table .is-limit-request-status {
+  width: 104px;
+}
+
+.limit-request-history-target-cell,
+.limit-request-history-reason-cell {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.limit-request-history-target-cell > span,
+.limit-request-history-reason-cell > span,
+.limit-request-history-reason-cell > small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.limit-request-history-target-cell > span {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.limit-request-history-target-cell small,
+.limit-request-history-reason-cell small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.limit-request-history-reason-cell small {
+  color: var(--red);
+}
+
+.limit-request-history-change-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.limit-request-history-change-cell > span:nth-child(2) {
+  color: var(--muted);
+}
+
+.limit-request-history-change-cell strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.limit-request-history-loading {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .limit-request-history-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .limit-request-history-action {
+    align-self: flex-start;
+  }
+}
+
 .automation-data-table .automation-rule-row.is-clickable {
   cursor: pointer;
 }

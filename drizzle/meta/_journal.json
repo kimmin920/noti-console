@@ -141,6 +141,27 @@
       "when": 1783305506637,
       "tag": "0019_publ_papp_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784286110351,
+      "tag": "0020_fresh_captain_cross",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784291996965,
+      "tag": "0021_solid_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1784292977448,
+      "tag": "0022_famous_stone_men",
+      "breakpoints": true
     }
   ]
 }

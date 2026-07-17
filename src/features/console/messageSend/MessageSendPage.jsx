@@ -18,7 +18,7 @@ import { getReservationsHrefForChannel, shouldShowSmsReservationAcceptedToast } 
 import { getSmsBulkSendRunToastView } from './smsBulkSendRunToast.js';
 import { messageLogQueryKeys } from '../messageLogs/queryKeys.js';
 import { buildTabQueryHref, getMessageSendTabFromQuery, getMessageSendTabQueryValue } from '../tabQuery.js';
-import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
+import { ConsoleLink, useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { useStandaloneConsole } from '../StandaloneConsoleContext.jsx';
 import { usePublMessageRecipients } from '../../publClient/usePublMessageRecipients.js';
 
@@ -885,7 +885,7 @@ function showSendErrorToast(showToast, error, fallbackTitle, options = {}) {
       description: error.message,
       id: options.id,
       title: error.title,
-      variant: error.code === 'AD_SMS_UNSUPPORTED' ? 'default' : 'critical',
+      variant: 'critical',
     });
     return;
   }
@@ -939,7 +939,15 @@ function MessageSendApiStatus({
   if (activeTab === 'SMS' && !hasSmsSender) {
     return (
       <div className="message-send-api-status" role="status">
-        <span>승인된 발신번호가 없습니다. 발신번호를 등록하면 SMS/LMS/MMS를 발송할 수 있습니다.</span>
+        <span>
+          승인된 발신번호가 없습니다. 발신번호를 등록하면 SMS/LMS/MMS를 발송할 수 있습니다.
+          <ConsoleLink
+            className="message-send-api-status-link"
+            href="/settings/sender-resources/sms/new"
+          >
+            발신번호 신청하기
+          </ConsoleLink>
+        </span>
       </div>
     );
   }
@@ -947,7 +955,15 @@ function MessageSendApiStatus({
   if (activeTab === '알림톡' && !hasAlimtalkSender) {
     return (
       <div className="message-send-api-status" role="status">
-        <span>연결된 알림톡 채널이 없습니다. 채널을 연결하면 알림톡을 발송할 수 있습니다.</span>
+        <span>
+          연결된 알림톡 채널이 없습니다. 채널을 연결하면 알림톡을 발송할 수 있습니다.
+          <ConsoleLink
+            className="message-send-api-status-link"
+            href="/settings/sender-resources/kakao/new"
+          >
+            카카오 채널 연결하기
+          </ConsoleLink>
+        </span>
       </div>
     );
   }
@@ -955,7 +971,15 @@ function MessageSendApiStatus({
   if (activeTab === '브랜드 메시지' && !hasBrandSender) {
     return (
       <div className="message-send-api-status" role="status">
-        <span>연결된 브랜드 발신 채널이 없습니다. 카카오 채널을 연결하면 브랜드 메시지를 발송할 수 있습니다.</span>
+        <span>
+          연결된 브랜드 발신 채널이 없습니다. 카카오 채널을 연결하면 브랜드 메시지를 발송할 수 있습니다.
+          <ConsoleLink
+            className="message-send-api-status-link"
+            href="/settings/sender-resources/kakao/new"
+          >
+            카카오 채널 연결하기
+          </ConsoleLink>
+        </span>
       </div>
     );
   }

@@ -83,13 +83,6 @@ export function buildSmsSendPayload(message, { templates = [] } = {}) {
     title: '발신번호 필요',
   });
 
-  if (message.isAdvertisement) {
-    throw new MessageSendValidationError(
-      '광고성 문자 발송은 아직 지원하지 않습니다. 광고성 문자 신청하기를 진행해 주세요.',
-      { code: 'AD_SMS_UNSUPPORTED', title: '광고성 문자 지원 준비 중' }
-    );
-  }
-
   const body = normalizeRequiredString(message.body, {
     message: '메시지 내용을 입력해 주세요.',
     title: '메시지 내용 필요',
@@ -110,10 +103,11 @@ export function buildSmsSendPayload(message, { templates = [] } = {}) {
     body,
     channel,
     clientRequestId: createClientRequestId(),
+    isAdvertisement: Boolean(message.isAdvertisement),
     recipients,
     senderResourceId,
     ...(managementTitle ? { managementTitle } : {}),
-    ...(channel !== 'sms' ? { title: getSmsTitle(selectedTemplate) } : {}),
+    ...(channel !== 'sms' ? { title: managementTitle ?? getSmsTitle(selectedTemplate) } : {}),
     ...(requestDate ? { requestDate } : {}),
     ...(selectedTemplate ? { templateCode: getTemplateCode(selectedTemplate) } : {}),
   };
@@ -1689,27 +1683,10 @@ function buildBrandFallback(message) {
     message: 'SMS 대체 발송용 발신번호를 선택해 주세요.',
     title: 'SMS 대체 발신번호 필요',
   });
-  const advertisementEnabled = Boolean(message.fallbackAdvertisementEnabled);
-  const resendUnsubscribeNo = String(message.fallbackUnsubscribeNumber ?? '').trim();
-
-  if (advertisementEnabled && !resendUnsubscribeNo) {
-    throw new MessageSendValidationError(
-      '광고성 SMS 대체발송에는 080 수신거부 번호가 필요합니다.',
-      { code: 'BRAND_FALLBACK_UNSUBSCRIBE_REQUIRED', title: '080 번호 필요' }
-    );
-  }
-
   return {
     enabled: true,
     resendType: 'SMS',
     smsSenderResourceId,
-    ...(advertisementEnabled ? {
-      advertisement: {
-        enabled: true,
-        unsubscribeNo: resendUnsubscribeNo,
-      },
-      resendUnsubscribeNo,
-    } : {}),
   };
 }
 

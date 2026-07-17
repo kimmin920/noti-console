@@ -3,6 +3,15 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImagePlus, X } from 'lucide-react';
+import { AppButton as Button } from '../ui-extensions/AppButton.jsx';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './Dialog.jsx';
 import {
   defaultEmailSendFormSchedules,
   defaultEmailSendFormSegments,
@@ -39,7 +48,9 @@ const BYTES_PER_KB = 1024;
 export const smsMmsAttachmentConstraints = {
   acceptedExtensions: ['.jpg', '.jpeg'],
   acceptedMimeTypes: ['image/jpeg'],
-  accept: '.jpg,.jpeg,image/jpeg',
+  acceptedOriginalExtensions: ['.jpg', '.jpeg', '.png'],
+  acceptedOriginalMimeTypes: ['image/jpeg', 'image/png'],
+  accept: '.jpg,.jpeg,.png,image/jpeg,image/png',
   maxCount: 3,
   maxFileBytes: 300 * BYTES_PER_KB,
   maxFileNameLength: 45,
@@ -59,10 +70,7 @@ export const defaultSmsSendFormSenderNumbers = [
   { label: '운영팀 010-9876-5432', value: '010-9876-5432' },
 ];
 
-export const defaultSmsSendFormUnsubscribeNumbers = [
-  { label: '080-123-4567', value: '080-123-4567' },
-  { label: '080-987-6543', value: '080-987-6543' },
-];
+export const defaultSmsSendFormUnsubscribeNumbers = [];
 
 export const defaultSmsSendFormTemplates = [
   {
@@ -136,7 +144,7 @@ export const defaultSmsSendFormValue = {
   senderNumber: '1544-0000',
   templateId: '',
   templateParameter: {},
-  unsubscribeNumber: '080-123-4567',
+  unsubscribeNumber: '',
   variables: {},
 };
 
@@ -298,10 +306,10 @@ function validateSmsAttachmentFile(file, nextAttachments) {
 
 function validateSmsAttachmentSelection(file, nextAttachmentCount) {
   const extension = getSmsAttachmentExtension(file.name);
-  const isAcceptedExtension = smsMmsAttachmentConstraints.acceptedExtensions.includes(extension);
+  const isAcceptedExtension = smsMmsAttachmentConstraints.acceptedOriginalExtensions.includes(extension);
 
   if (!isAcceptedExtension) {
-    return 'JPG 또는 JPEG 이미지만 첨부할 수 있습니다.';
+    return 'JPG, JPEG 또는 PNG 이미지만 선택할 수 있습니다.';
   }
 
   if (file.name.length > smsMmsAttachmentConstraints.maxFileNameLength) {
@@ -360,7 +368,6 @@ export function SmsSendForm({
   senderNumberCreateLabel = '발신번호 추가하기',
   senderNumbers = defaultSmsSendFormSenderNumbers,
   templates = defaultSmsSendFormTemplates,
-  unsubscribeNumbers = defaultSmsSendFormUnsubscribeNumbers,
   value,
   variablePanelRoot,
   ...props
@@ -372,6 +379,7 @@ export function SmsSendForm({
   const [imageVisible, setImageVisible] = useState(() => Boolean(message.imageName || message.imageAttachments.length));
   const [imageCropQueue, setImageCropQueue] = useState([]);
   const [imageReviewMessage, setImageReviewMessage] = useState('');
+  const [advertisementGuideOpen, setAdvertisementGuideOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [activeVariableKey, setActiveVariableKey] = useState('');
   const templateDialogItems = useMemo(() => getSmsTemplateDialogItems(templates), [templates]);
@@ -399,6 +407,11 @@ export function SmsSendForm({
     }
 
     onChange?.(nextValue);
+  }
+
+  function confirmAdvertisementGuide() {
+    setAdvertisementGuideOpen(false);
+    updateMessage({ isAdvertisement: true });
   }
 
   function hideScheduleIfEmpty() {
@@ -563,7 +576,7 @@ export function SmsSendForm({
       <EmailSendFormSelection>
         <EmailSendFormRow
           action={!message.isAdvertisement ? (
-            <EmailSendFormGhostButton onClick={() => updateMessage({ isAdvertisement: true })}>
+            <EmailSendFormGhostButton onClick={() => setAdvertisementGuideOpen(true)}>
               광고성
             </EmailSendFormGhostButton>
           ) : null}
@@ -582,25 +595,20 @@ export function SmsSendForm({
           />
         </EmailSendFormRow>
 
-        {message.isAdvertisement ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow
-              action={(
-                <EmailSendFormGhostButton onClick={() => updateMessage({ isAdvertisement: false })}>
-                  해제
-                </EmailSendFormGhostButton>
-              )}
-            >
-              <EmailSendFormLabel>080 번호</EmailSendFormLabel>
-              <EmailSendFormSelect
-                ariaLabel="080 수신거부 번호 선택"
-                onValueChange={(unsubscribeNumber) => updateMessage({ unsubscribeNumber })}
-                options={unsubscribeNumbers}
-                value={message.unsubscribeNumber}
-              />
-            </EmailSendFormRow>
-          </EmailSendFormDisclosure>
-        ) : null}
+        <EmailSendFormDisclosure open={message.isAdvertisement}>
+          <EmailSendFormRow
+            action={(
+              <EmailSendFormGhostButton onClick={() => updateMessage({ isAdvertisement: false })}>
+                해제
+              </EmailSendFormGhostButton>
+            )}
+          >
+            <EmailSendFormLabel description="광고성 문자에는 서버에 설정된 NOTI 공통 080 무료 수신거부 번호가 자동으로 적용됩니다.">
+              080 번호
+            </EmailSendFormLabel>
+            <span className="email-send-form-placeholder">NOTI 공통 080 자동 적용</span>
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
 
         <EmailSendFormRow
           action={!scheduleVisible ? (
@@ -623,97 +631,99 @@ export function SmsSendForm({
           />
         </EmailSendFormRow>
 
-        {scheduleVisible ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow className="sms-send-form-row-before-detail-border">
-              <EmailSendFormLabel htmlFor="sms-send-form-when">예약</EmailSendFormLabel>
-              <EmailSendFormScheduleField
-                id="sms-send-form-when"
-                onCollapseEmpty={hideScheduleIfEmpty}
-                onEmptyBackspace={hideScheduleOnEmptyBackspace}
-                onNowSelect={() => {
-                  updateMessage({ scheduledAt: '' });
-                  setScheduleVisible(false);
-                }}
-                onValueChange={(scheduledAt) => updateMessage({ scheduledAt })}
-                options={scheduleOptions}
-                placeholder="날짜 또는 시간을 입력하세요"
-                value={message.scheduledAt}
-              />
-            </EmailSendFormRow>
-          </EmailSendFormDisclosure>
-        ) : null}
+        <EmailSendFormDisclosure open={scheduleVisible}>
+          <EmailSendFormRow className="sms-send-form-row-before-detail-border">
+            <EmailSendFormLabel htmlFor="sms-send-form-when">예약</EmailSendFormLabel>
+            <EmailSendFormScheduleField
+              id="sms-send-form-when"
+              onCollapseEmpty={hideScheduleIfEmpty}
+              onEmptyBackspace={hideScheduleOnEmptyBackspace}
+              onNowSelect={() => {
+                updateMessage({ scheduledAt: '' });
+                setScheduleVisible(false);
+              }}
+              onValueChange={(scheduledAt) => updateMessage({ scheduledAt })}
+              options={scheduleOptions}
+              placeholder="날짜 또는 시간을 입력하세요"
+              value={message.scheduledAt}
+            />
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
 
-        {imageVisible ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow className="sms-send-form-detail-start-row">
-              <EmailSendFormLabel htmlFor={imageInputId} warning={imageReviewMessage}>이미지</EmailSendFormLabel>
-              <div className="sms-send-form-upload-field">
-                <input
-                  accept={smsMmsAttachmentConstraints.accept}
-                  className="sms-send-form-upload-input"
-                  disabled={!canAddImage}
-                  id={imageInputId}
-                  multiple
-                  onChange={handleImageChange}
-                  ref={imageInputRef}
-                  type="file"
-                />
-                <div className="sms-send-form-upload-list">
-                  {message.imageAttachments.map((attachment) => (
-                    <span className="sms-send-form-upload-tag" key={attachment.id}>
-                      {attachment.previewUrl ? (
-                        <span
-                          aria-hidden="true"
-                          className="sms-send-form-upload-preview"
-                          style={{ backgroundImage: `url(${attachment.previewUrl})` }}
-                        />
-                      ) : null}
-                      <span className="sms-send-form-upload-file">
-                        <span title={attachment.fileName}>{formatSmsAttachmentTagLabel(attachment.fileName)}</span>
-                      </span>
-                      <button
-                        aria-label={`${attachment.fileName} 제거`}
-                        className="sms-send-form-upload-remove"
-                        onClick={() => removeImageAttachment(attachment.id)}
-                        type="button"
-                      >
-                        <X aria-hidden="true" size={14} />
-                      </button>
+        <EmailSendFormDisclosure open={imageVisible}>
+          <EmailSendFormRow className="sms-send-form-detail-start-row">
+            <EmailSendFormLabel
+              description="JPG/JPEG/PNG 원본을 선택할 수 있습니다. PNG는 편집 후 투명 영역이 흰색으로 처리된 JPG로 변환됩니다. 최대 3개까지 첨부할 수 있으며, 변환 결과는 파일당 300KB 및 1000×1000px 이하여야 합니다."
+              htmlFor={imageInputId}
+              warning={imageReviewMessage}
+            >
+              이미지
+            </EmailSendFormLabel>
+            <div className="sms-send-form-upload-field">
+              <input
+                accept={smsMmsAttachmentConstraints.accept}
+                className="sms-send-form-upload-input"
+                disabled={!canAddImage}
+                id={imageInputId}
+                multiple
+                onChange={handleImageChange}
+                ref={imageInputRef}
+                type="file"
+              />
+              <div className="sms-send-form-upload-list">
+                {message.imageAttachments.map((attachment) => (
+                  <span className="sms-send-form-upload-tag" key={attachment.id}>
+                    {attachment.previewUrl ? (
+                      <span
+                        aria-hidden="true"
+                        className="sms-send-form-upload-preview"
+                        style={{ backgroundImage: `url(${attachment.previewUrl})` }}
+                      />
+                    ) : null}
+                    <span className="sms-send-form-upload-file">
+                      <span title={attachment.fileName}>{formatSmsAttachmentTagLabel(attachment.fileName)}</span>
                     </span>
-                  ))}
-                  {!message.imageAttachments.length && message.imageName ? (
-                    <span className="sms-send-form-upload-tag">
-                      <span className="sms-send-form-upload-file">
-                        <span title={message.imageName}>{formatSmsAttachmentTagLabel(message.imageName)}</span>
-                      </span>
-                      <button
-                        aria-label="첨부 이미지 제거"
-                        className="sms-send-form-upload-remove"
-                        onClick={clearLegacyImageName}
-                        type="button"
-                      >
-                        <X aria-hidden="true" size={14} />
-                      </button>
+                    <button
+                      aria-label={`${attachment.fileName} 제거`}
+                      className="sms-send-form-upload-remove"
+                      onClick={() => removeImageAttachment(attachment.id)}
+                      type="button"
+                    >
+                      <X aria-hidden="true" size={14} />
+                    </button>
+                  </span>
+                ))}
+                {!message.imageAttachments.length && message.imageName ? (
+                  <span className="sms-send-form-upload-tag">
+                    <span className="sms-send-form-upload-file">
+                      <span title={message.imageName}>{formatSmsAttachmentTagLabel(message.imageName)}</span>
                     </span>
-                  ) : null}
-                  {canAddImage ? (
-                    <EmailSendFormGhostButton onClick={openImageFileDialog}>
-                      <ImagePlus aria-hidden="true" size={14} />
-                      업로드
-                    </EmailSendFormGhostButton>
-                  ) : null}
-                  {!canAddImage ? (
-                    <EmailSendFormGhostButton disabled>
-                      <ImagePlus aria-hidden="true" size={14} />
-                      최대 3개
-                    </EmailSendFormGhostButton>
-                  ) : null}
-                </div>
+                    <button
+                      aria-label="첨부 이미지 제거"
+                      className="sms-send-form-upload-remove"
+                      onClick={clearLegacyImageName}
+                      type="button"
+                    >
+                      <X aria-hidden="true" size={14} />
+                    </button>
+                  </span>
+                ) : null}
+                {canAddImage ? (
+                  <EmailSendFormGhostButton onClick={openImageFileDialog}>
+                    <ImagePlus aria-hidden="true" size={14} />
+                    업로드
+                  </EmailSendFormGhostButton>
+                ) : null}
+                {!canAddImage ? (
+                  <EmailSendFormGhostButton disabled>
+                    <ImagePlus aria-hidden="true" size={14} />
+                    최대 3개
+                  </EmailSendFormGhostButton>
+                ) : null}
               </div>
-            </EmailSendFormRow>
-          </EmailSendFormDisclosure>
-        ) : null}
+            </div>
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
 
         <EmailSendFormRow
           action={!imageVisible ? (
@@ -723,12 +733,17 @@ export function SmsSendForm({
           ) : null}
           className={imageVisible ? 'sms-send-form-detail-row' : 'sms-send-form-detail-start-row'}
         >
-          <EmailSendFormLabel htmlFor={managementTitleInputId}>발송명</EmailSendFormLabel>
+          <EmailSendFormLabel
+            description="SMS에서는 발송 내역을 구분하는 관리용 제목이며, LMS/MMS에서는 수신자에게 표시됩니다."
+            htmlFor={managementTitleInputId}
+          >
+            제목
+          </EmailSendFormLabel>
           <EmailSendFormInput
             id={managementTitleInputId}
             maxLength={120}
             onChange={(event) => updateMessage({ managementTitle: event.target.value })}
-            placeholder="관리용 발송명"
+            placeholder="제목을 입력하세요"
             value={message.managementTitle}
           />
         </EmailSendFormRow>
@@ -747,6 +762,8 @@ export function SmsSendForm({
             />
             <div className="sms-template-actions">
               <EmailSendFormTemplateDialog
+                emptyActionHref="/templates/sms/new"
+                emptyActionLabel="새 템플릿 만들기"
                 onOpenChange={setTemplateDialogOpen}
                 onTemplateSelect={handleTemplateSelect}
                 open={templateDialogOpen}
@@ -768,6 +785,8 @@ export function SmsSendForm({
             {isBodyEmpty ? (
               <EmailSendFormEmptyState
                 className="sms-send-form-empty-state"
+                emptyActionHref="/templates/sms/new"
+                emptyActionLabel="새 템플릿 만들기"
                 onOpenTemplateDialog={() => setTemplateDialogOpen(true)}
                 onTemplateSelect={handleTemplateSelect}
                 onTemplateDialogOpenChange={setTemplateDialogOpen}
@@ -799,6 +818,145 @@ export function SmsSendForm({
           </p>
         ) : null}
       </EmailSendFormCanvas>
+      <Dialog onOpenChange={setAdvertisementGuideOpen} open={advertisementGuideOpen}>
+        <DialogContent className="sms-advertisement-guide-dialog" size="large">
+          <DialogHeader>
+            <DialogTitle>광고 메시지 가이드</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="sms-advertisement-guide-body">
+            <div className="sms-advertisement-guide-notice">
+              <p>
+                한국인터넷진흥원(KISA) 불법 스팸 방지를 위한 정보통신망법 안내서에 따라
+                아래의 규칙을 준수하여 메시지를 발송해 주세요.
+              </p>
+              <p className="sms-advertisement-guide-notice-warning">
+                <strong>
+                  광고 메시지 규칙 미준수 시 메시지 발송이 중단될 수 있으며,
+                  정보통신망법에 따라 과태료
+                </strong>
+                {' 등의 처벌을 받을 수 있습니다.'}
+              </p>
+            </div>
+
+            <section className="sms-advertisement-guide-overview">
+              <div className="sms-advertisement-guide-diagram">
+                <p
+                  className="sms-advertisement-guide-annotation sms-advertisement-guide-annotation-one"
+                >
+                  <strong>(광고)와 업체명(발송자명)</strong>이 메시지 앞에 자동으로 붙습니다.
+                </p>
+
+                <div className="sms-advertisement-guide-phone">
+                  <div className="sms-advertisement-guide-phone-time">
+                    오늘 오후 8:30
+                    <button
+                      aria-hidden="true"
+                      className="sms-advertisement-guide-marker sms-advertisement-guide-marker-three"
+                      disabled
+                      type="button"
+                    >
+                      3
+                    </button>
+                  </div>
+                  <div className="sms-advertisement-guide-message">
+                    <div className="sms-advertisement-guide-message-heading">
+                      <button
+                        aria-hidden="true"
+                        className="sms-advertisement-guide-marker sms-advertisement-guide-marker-one"
+                        disabled
+                        type="button"
+                      >
+                        1
+                      </button>
+                      <strong>(광고) NOTI</strong>
+                    </div>
+                    <span className="sms-advertisement-guide-message-placeholder">
+                      작성한 메시지 내용이 표시됩니다.
+                    </span>
+                    <div className="sms-advertisement-guide-optout">
+                      <span>
+                        무료 수신거부 번호
+                        <br />
+                        080-1234-5678
+                      </span>
+                      <button
+                        aria-hidden="true"
+                        className="sms-advertisement-guide-marker sms-advertisement-guide-marker-two"
+                        disabled
+                        type="button"
+                      >
+                        2
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <p
+                  className="sms-advertisement-guide-annotation sms-advertisement-guide-annotation-two"
+                >
+                  <strong>무료 수신거부 번호</strong>가 메시지 하단에 자동으로 붙습니다.
+                  <span className="sms-advertisement-guide-annotation-detail">
+                    수신거부 요청 결과는 <strong>요청일로부터 14일 이내</strong> 고지해야 합니다.
+                  </span>
+                </p>
+
+                <p
+                  className="sms-advertisement-guide-annotation sms-advertisement-guide-annotation-three"
+                >
+                  <strong>광고성 메시지 발송 제한 시간</strong>
+                  <span className="sms-advertisement-guide-annotation-detail">
+                    오후 9시 – 오전 8시
+                  </span>
+                </p>
+
+                <svg
+                  aria-hidden="true"
+                  className="sms-advertisement-guide-arrows sms-advertisement-guide-arrows-desktop"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 800 390"
+                >
+                  <path d="M205 116C231 116 256 114 281 121" />
+                  <path d="M268 110L282 121L267 130" />
+                  <path d="M600 258C548 258 505 270 450 274" />
+                  <path d="M466 263L449 274L466 283" />
+                  <path d="M600 75C560 75 518 67 473 63" />
+                  <path d="M488 55L472 63L486 74" />
+                </svg>
+
+                <svg
+                  aria-hidden="true"
+                  className="sms-advertisement-guide-arrows sms-advertisement-guide-arrows-mobile"
+                  preserveAspectRatio="none"
+                  viewBox="0 0 400 710"
+                >
+                  <path d="M92 480C64 370 70 204 99 118" />
+                  <path d="M89 133L99 117L103 136" />
+                  <path d="M306 580C337 488 305 364 244 271" />
+                  <path d="M247 289L244 271L259 283" />
+                  <path d="M306 380C330 294 320 146 262 60" />
+                  <path d="M266 78L262 59L277 72" />
+                </svg>
+              </div>
+            </section>
+
+            <section className="sms-advertisement-guide-section">
+              <h3>광고성 메시지란?</h3>
+              <p>다음과 같은 홍보·혜택 안내가 포함된 메시지를 말합니다.</p>
+              <ul className="sms-advertisement-guide-example-list">
+                <li>고객관리 차원의 안부 인사, 무료 뉴스레터</li>
+                <li>쿠폰, 마일리지 제공 및 소멸 안내</li>
+                <li>특가, 할인 안내</li>
+                <li>상품 및 서비스 홍보를 위한 프로모션, 이벤트 안내</li>
+              </ul>
+            </section>
+          </DialogBody>
+          <DialogFooter className="sms-advertisement-guide-footer">
+            <Button onClick={confirmAdvertisementGuide} variant="primary">
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ImageCropDialog
         file={activeImageCropFile}
         onApply={handleCroppedSmsImageApply}

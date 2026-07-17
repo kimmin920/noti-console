@@ -66,7 +66,7 @@ function DatePickerCalendar({
     <div className="resend-ui-date-picker-presets__calendar" data-resend-date-picker-calendar>
       <div className="resend-ui-date-picker-presets__caption">
         <button
-          aria-label="Go to the Previous Month"
+          aria-label="이전 달로 이동"
           className="resend-ui-date-picker-presets__nav-button"
           disabled={previousDisabled}
           onClick={() => setVisibleMonth(previousMonth)}
@@ -78,7 +78,7 @@ function DatePickerCalendar({
           {formatMonthTitle(visibleMonth)}
         </span>
         <button
-          aria-label="Go to the Next Month"
+          aria-label="다음 달로 이동"
           className="resend-ui-date-picker-presets__nav-button"
           disabled={nextDisabled}
           onClick={() => setVisibleMonth(nextMonth)}
@@ -130,7 +130,7 @@ function DatePickerCalendar({
                     <span className="resend-ui-date-picker-presets__day-placeholder" />
                   ) : (
                     <button
-                      aria-label={day.today ? `Today, ${day.isoDate}` : day.isoDate}
+                      aria-label={day.today ? `오늘, ${day.isoDate}` : day.isoDate}
                       className="resend-ui-date-picker-presets__day-button"
                       disabled={day.disabled}
                       onClick={() => handleDaySelect(day)}

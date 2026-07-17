@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateImageCropOriginalFile } from '../../components/ui/imageCropUtils.js';
+import { smsMmsAttachmentConstraints } from '../../components/ui/SmsSendForm.jsx';
+import {
+  getImageCropPreset,
+  validateImageCropOriginalFile,
+} from '../../components/ui/imageCropUtils.js';
 
 describe('imageCropUtils', () => {
+  it('accepts PNG originals while keeping the provider output format JPEG-only', () => {
+    expect(smsMmsAttachmentConstraints.accept).toContain('.png');
+    expect(smsMmsAttachmentConstraints.acceptedOriginalExtensions).toContain('.png');
+    expect(smsMmsAttachmentConstraints.acceptedExtensions).toEqual(['.jpg', '.jpeg']);
+    expect(smsMmsAttachmentConstraints.acceptedMimeTypes).toEqual(['image/jpeg']);
+    expect(getImageCropPreset('SMS_MMS').outputMimeType).toBe('image/jpeg');
+  });
+
   it('allows SMS MMS PNG originals above the provider output byte limit before JPEG conversion', () => {
     const pngOriginal = {
       name: 'notice.png',

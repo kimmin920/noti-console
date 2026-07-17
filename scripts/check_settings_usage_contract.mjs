@@ -2,11 +2,9 @@
 
 import { readdir, readFile } from 'node:fs/promises';
 
-const PHASE = '42-settings-usage-limit-requests';
 const REQUIRED_FILES = [
-  `phases/${PHASE}/current-state-audit.md`,
-  `phases/${PHASE}/settings-usage-contract.md`,
   'src/features/console/settings/UsageSettingsContent.jsx',
+  'src/features/console/settings/usageLimitRows.js',
   'src/features/console/settings/AdminLimitIncreaseRequestsPanel.jsx',
   'src/features/console/settings/limitIncreaseRequestLabels.js',
   'src/features/console/messageSend/queryKeys.js',
@@ -50,6 +48,7 @@ async function checkPackageScript() {
 
 async function checkUsageCopyAndLimits() {
   const usageSource = await readSource('src/features/console/settings/UsageSettingsContent.jsx');
+  const limitRowsSource = await readSource('src/features/console/settings/usageLimitRows.js');
   const consoleSource = await readSource('src/features/console/settings/SettingsPage.jsx');
 
   assertNotIncludes(usageSource, 'Resend API', 'usage tab must not mention Resend API');
@@ -58,14 +57,21 @@ async function checkUsageCopyAndLimits() {
   assertNotIncludes(usageSource, '트랜잭션', 'usage tab must not keep transaction title');
   assertNotIncludes(consoleSource, 'copy="Resend API 또는 SMTP 인터페이스를 사용해 이메일을 앱에 연동하세요."', 'old usage placeholder is removed');
 
-  assertIncludes(usageSource, '문자는 사용자 기준 월 단위 한도로 관리합니다.', 'SMS monthly limit copy exists');
-  assertIncludes(usageSource, '월 단위', 'SMS monthly scope is represented');
-  assertIncludes(usageSource, '카카오 비즈채널마다 알림톡과 브랜드메시지 각각 일 1,000건', 'Kakao per-channel daily copy exists');
+  assertIncludes(usageSource, '등록한 발신번호마다 기본 월 1,000건', 'SMS sender-number monthly limit copy exists');
+  assertIncludes(usageSource, '기본 월 1,000건', 'SMS monthly scope is represented');
+  assertIncludes(usageSource, '알림톡과 브랜드메시지 한도는 함께 조정됩니다.', 'Kakao limits increase together per channel');
   assertIncludes(usageSource, '일 1,000건', 'Kakao daily 1000 limit is represented');
+  assertIncludes(usageSource, 'label="일 한도"', 'Kakao sender row renders one daily limit item');
+  assertNotIncludes(usageSource, 'label="알림톡"', 'Kakao sender row does not split AlimTalk quota UI');
+  assertNotIncludes(usageSource, 'label="브랜드메시지"', 'Kakao sender row does not split Brand Message quota UI');
   assertIncludes(usageSource, 'senderResourceId', 'Kakao request can target a sender resource channel');
   assertNotIncludes(usageSource, '업그레이드', 'usage limit actions use request copy instead of upgrade copy');
-  assertIncludes(usageSource, "openLimitRequestDialog('sms')", 'SMS limit action opens dialog with SMS selected');
-  assertIncludes(usageSource, "openLimitRequestDialog('kakao')", 'Kakao limit action opens dialog with Kakao selected');
+  assertIncludes(usageSource, 'limit-request-history-action', 'the unified limit request action sits above request history');
+  assertIncludes(usageSource, 'onLimitRequest={openLimitRequestDialog}', 'the unified limit action opens the existing dialog');
+  assertNotIncludes(usageSource, 'sender-resource-limit-request-button', 'sender resource rows do not duplicate limit request actions');
+  assertIncludes(limitRowsSource, "channel: 'kakao'", 'Kakao limit requests use one channel-wide target');
+  assertNotIncludes(limitRowsSource, "value: `alimtalk:${senderResourceId}`", 'Kakao request options are not split by AlimTalk');
+  assertNotIncludes(limitRowsSource, "value: `brand-message:${senderResourceId}`", 'Kakao request options are not split by Brand Message');
 }
 
 async function checkFrontendWiring() {
@@ -80,7 +86,6 @@ async function checkFrontendWiring() {
   assertIncludes(usageSource, 'useLimitIncreaseRequestsQuery()', 'usage page reads user limit requests');
   assertIncludes(usageSource, 'useLimitIncreaseRequestCreateMutation()', 'usage page submits limit requests');
   assertIncludes(usageSource, 'rejectReason', 'usage page renders rejection reason');
-  assertIncludes(usageSource, 'useMetricsSummaryQuery', 'usage page reads existing quota summary');
 
   assertIncludes(queryKeys, 'limitIncreaseRequests', 'query keys include user limit requests');
   assertIncludes(queryKeys, 'adminLimitIncreaseRequestsRoot', 'query keys include admin limit requests root');
@@ -124,7 +129,8 @@ async function checkBackendWiring() {
   assertIncludes(service, 'async rejectRequest({ actorUserId, requestId, payload = {} })', 'service rejects requests');
   assertIncludes(service, 'normalizeRequiredString(payload.rejectReason', 'reject reason is required');
   assertIncludes(service, 'requireOperator(repository, actorUserId)', 'admin actions require operator access');
-  assertIncludes(service, 'KAKAO_DAILY_DEFAULT_LIMIT', 'Kakao daily default limit is server-owned');
+  assertIncludes(service, 'senderResourceRecord.resource.quotaLimit', 'limit requests read the server-owned sender resource quota');
+  assertIncludes(service, 'KAKAO_LEGACY_CHANNELS', 'legacy Kakao request channels share duplicate detection');
   assertNotMatch(service, /recipient|messageBody|providerResponseBody|providerRequestBody/, 'service does not store prohibited message/provider payload fields');
 
   assertIncludes(repository, 'limitIncreaseRequests', 'repository uses limit increase request table');
@@ -141,6 +147,7 @@ async function checkSchemaAndMigration() {
   assertIncludes(schema, 'export const limitIncreaseRequestStatusEnum', 'schema declares request status enum');
   assertIncludes(schema, 'export const limitIncreaseRequestScopeEnum', 'schema declares request scope enum');
   assertIncludes(schema, 'export const limitIncreaseRequests = pgTable', 'schema declares request table');
+  assertIncludes(schema, "quotaLimit: integer('quota_limit').notNull().default(1000)", 'sender resources own a default 1000 quota');
   assertIncludes(schema, 'rejectReason: varchar', 'schema stores reject reason separately');
   assertIncludes(schema, 'requestedLimit: integer', 'schema stores requested limit');
   assertIncludes(schema, 'limitIncreaseRequestsRelations', 'schema declares request relations');
@@ -152,6 +159,10 @@ async function checkSchemaAndMigration() {
   assert(
     migrationContents.some((content) => content.includes('CREATE TABLE "limit_increase_requests"')),
     'migration creates limit_increase_requests table'
+  );
+  assert(
+    migrationContents.some((content) => content.includes('ADD COLUMN "quota_limit" integer DEFAULT 1000 NOT NULL')),
+    'migration adds the sender resource quota default'
   );
 }
 

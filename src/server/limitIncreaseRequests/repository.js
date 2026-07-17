@@ -1,8 +1,9 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 
 import {
   auditLogs,
   limitIncreaseRequests,
+  senderResourceQuotaBuckets,
   senderResources,
   userSenderResources,
   users,
@@ -45,7 +46,7 @@ export function createLimitIncreaseRequestRepository(db) {
         .orderBy(desc(limitIncreaseRequests.createdAt));
     },
 
-    async findSubmittedUserRequest({ channel, senderResourceId = null, userId }) {
+    async findSubmittedUserRequest({ channels, senderResourceId = null, userId }) {
       const senderResourceFilter = senderResourceId
         ? eq(limitIncreaseRequests.senderResourceId, senderResourceId)
         : isNull(limitIncreaseRequests.senderResourceId);
@@ -54,7 +55,7 @@ export function createLimitIncreaseRequestRepository(db) {
         .from(limitIncreaseRequests)
         .where(and(
           eq(limitIncreaseRequests.userId, userId),
-          eq(limitIncreaseRequests.channel, channel),
+          inArray(limitIncreaseRequests.channel, channels),
           eq(limitIncreaseRequests.status, 'submitted'),
           senderResourceFilter
         ))
@@ -66,6 +67,53 @@ export function createLimitIncreaseRequestRepository(db) {
     async createRequest(values) {
       const [request] = await db.insert(limitIncreaseRequests).values(values).returning();
       return request;
+    },
+
+    async approveRequestAndUpdateQuota({ quotaLimit, requestId, requestValues, senderResourceId }) {
+      return db.transaction(async (tx) => {
+        const now = new Date();
+        const [currentResource] = await tx
+          .select()
+          .from(senderResources)
+          .where(eq(senderResources.id, senderResourceId))
+          .limit(1)
+          .for('update');
+
+        if (!currentResource) {
+          throw new Error('Sender resource was not found while approving a limit increase request.');
+        }
+        if (!Number.isInteger(quotaLimit) || quotaLimit <= currentResource.quotaLimit) {
+          throw new Error('Approved quota limit must be greater than the current sender resource limit.');
+        }
+
+        const [resource] = await tx
+          .update(senderResources)
+          .set({ quotaLimit, updatedAt: now })
+          .where(eq(senderResources.id, senderResourceId))
+          .returning();
+        await tx
+          .update(senderResourceQuotaBuckets)
+          .set({ quotaLimit, updatedAt: now })
+          .where(and(
+            eq(senderResourceQuotaBuckets.senderResourceId, senderResourceId),
+            gt(senderResourceQuotaBuckets.periodEndAt, now)
+          ));
+
+        const [request] = await tx
+          .update(limitIncreaseRequests)
+          .set({ ...requestValues, updatedAt: now })
+          .where(and(
+            eq(limitIncreaseRequests.id, requestId),
+            eq(limitIncreaseRequests.status, 'submitted')
+          ))
+          .returning();
+
+        if (!request) {
+          throw new Error('Limit increase request was not found while approving it.');
+        }
+
+        return { request, resource };
+      });
     },
 
     async listRequests({ status } = {}) {

@@ -57,6 +57,18 @@ describe('message send payload builders', () => {
     expect(payload).not.toHaveProperty('managementTitle');
   });
 
+  it('uses the title field as the recipient-visible LMS title', () => {
+    const payload = buildSmsSendPayload({
+      ...baseSmsMessage,
+      body: '가'.repeat(46),
+      managementTitle: '  배송 일정 안내  ',
+    });
+
+    expect(payload.channel).toBe('lms');
+    expect(payload.managementTitle).toBe('배송 일정 안내');
+    expect(payload.title).toBe('배송 일정 안내');
+  });
+
   it('expands a concrete Publ contact into the existing SMS recipient payload', () => {
     const payload = buildSmsSendPayload({
       ...baseSmsMessage,
@@ -84,6 +96,18 @@ describe('message send payload builders', () => {
       ...baseSmsMessage,
       body: '가'.repeat(1001),
     })).toThrow(MessageSendValidationError);
+  });
+
+  it('marks advertising SMS for server-owned advertisement delivery', () => {
+    const payload = buildSmsSendPayload({
+      ...baseSmsMessage,
+      isAdvertisement: true,
+      unsubscribeNumber: '080-999-9999',
+    });
+
+    expect(payload.isAdvertisement).toBe(true);
+    expect(payload).not.toHaveProperty('unsubscribeNo');
+    expect(payload).not.toHaveProperty('unsubscribeNumber');
   });
 
   it('builds an NHN TEXT brand-message freestyle payload', () => {

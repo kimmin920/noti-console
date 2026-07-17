@@ -505,6 +505,7 @@ describe('sender resource approval service', () => {
         type: SENDER_RESOURCE_TYPES.SMS_SEND_NO,
         value: '15446859',
         displayName: null,
+        quotaLimit: 1000,
         status: 'active',
       },
       isDefault: true,

@@ -288,29 +288,29 @@ export function AlimtalkSendForm({
           />
         </EmailSendFormRow>
 
-        {scheduleVisible ? (
-          <EmailSendFormDisclosure>
-            <EmailSendFormRow className="sms-send-form-row-before-detail-border">
-              <EmailSendFormLabel htmlFor="alimtalk-send-form-when">예약</EmailSendFormLabel>
-              <EmailSendFormScheduleField
-                id="alimtalk-send-form-when"
-                onCollapseEmpty={hideScheduleIfEmpty}
-                onEmptyBackspace={hideScheduleOnEmptyBackspace}
-                onNowSelect={() => {
-                  updateMessage({ scheduledAt: '' });
-                  setScheduleVisible(false);
-                }}
-                onValueChange={(scheduledAt) => updateMessage({ scheduledAt })}
-                options={scheduleOptions}
-                placeholder="날짜 또는 시간을 입력하세요"
-                value={message.scheduledAt}
-              />
-            </EmailSendFormRow>
-          </EmailSendFormDisclosure>
-        ) : null}
+        <EmailSendFormDisclosure open={scheduleVisible}>
+          <EmailSendFormRow className="sms-send-form-row-before-detail-border">
+            <EmailSendFormLabel htmlFor="alimtalk-send-form-when">예약</EmailSendFormLabel>
+            <EmailSendFormScheduleField
+              id="alimtalk-send-form-when"
+              onCollapseEmpty={hideScheduleIfEmpty}
+              onEmptyBackspace={hideScheduleOnEmptyBackspace}
+              onNowSelect={() => {
+                updateMessage({ scheduledAt: '' });
+                setScheduleVisible(false);
+              }}
+              onValueChange={(scheduledAt) => updateMessage({ scheduledAt })}
+              options={scheduleOptions}
+              placeholder="날짜 또는 시간을 입력하세요"
+              value={message.scheduledAt}
+            />
+          </EmailSendFormRow>
+        </EmailSendFormDisclosure>
 
         <EmailSendFormRow className="alimtalk-send-form-group-start">
-          <EmailSendFormLabel>SMS 대체</EmailSendFormLabel>
+          <EmailSendFormLabel description="발송 실패 시, 동일한 유형(정보성/광고성)의 문자로 대체하여 전송합니다.">
+            SMS 대체
+          </EmailSendFormLabel>
           <SmsFallbackSelect
             description="알림톡 실패 시 SMS로 대체 발송하려면 승인된 발신번호가 필요합니다."
             enabled={message.fallbackEnabled}
@@ -343,6 +343,8 @@ export function AlimtalkSendForm({
             <div className="alimtalk-template-actions">
               <EmailSendFormTemplateDialog
                 description="발송에 사용할 승인된 알림톡 템플릿을 선택하세요."
+                emptyActionHref="/templates/alimtalk/new"
+                emptyActionLabel="새 템플릿 만들기"
                 emptyCopy="발신 채널에 승인된 템플릿이 있으면 여기에 표시됩니다."
                 emptyTitle="선택 가능한 알림톡 템플릿이 없습니다"
                 onOpenChange={setTemplateDialogOpen}
@@ -369,6 +371,8 @@ export function AlimtalkSendForm({
             <div className="alimtalk-template-actions">
               <EmailSendFormTemplateDialog
                 description="발송에 사용할 승인된 알림톡 템플릿을 선택하세요."
+                emptyActionHref="/templates/alimtalk/new"
+                emptyActionLabel="새 템플릿 만들기"
                 emptyCopy="발신 채널에 승인된 템플릿이 있으면 여기에 표시됩니다."
                 emptyTitle="선택 가능한 알림톡 템플릿이 없습니다"
                 onOpenChange={setTemplateDialogOpen}
