@@ -47,7 +47,7 @@ export function buildMetricsSummary({ automationDeliveries, bulkRuns, filters, m
     alerts: buildAlerts({ automation, bulk, quota, resultAttention }),
     automation,
     bulk,
-    channelBreakdown: finalizeBreakdown(channelMap, filters.channel),
+    channelBreakdown: finalizeBreakdown(channelMap, filters.channels),
     generatedAt: filters.generatedAt.toISOString(),
     period: {
       from: filters.period.from.toISOString(),
@@ -172,20 +172,20 @@ function summarizeBulkRuns(runs) {
 }
 
 function summarizeQuotaBuckets(buckets) {
-  const smsBucket = buckets.find((bucket) => bucket.channel === 'sms');
-  if (!smsBucket) return { sms: null };
-  const limit = toCount(smsBucket.quotaLimit);
-  const consumed = toCount(smsBucket.consumedCount);
-  const reserved = toCount(smsBucket.reservedCount);
-  const remaining = Math.max(limit - consumed - reserved, 0);
+  const smsBuckets = buckets.filter((bucket) => bucket.channel === 'sms');
+  if (!smsBuckets.length) return { sms: null };
+  const limit = smsBuckets.reduce((total, bucket) => total + toCount(bucket.quotaLimit), 0);
+  const consumed = smsBuckets.reduce((total, bucket) => total + toCount(bucket.consumedCount), 0);
+  const reserved = smsBuckets.reduce((total, bucket) => total + toCount(bucket.reservedCount), 0);
+  const used = consumed + reserved;
+  const remaining = Math.max(limit - used, 0);
 
   return {
     sms: {
-      consumed,
       limit,
       remaining,
-      reserved,
-      usedRate: rate(consumed + reserved, limit),
+      used,
+      usedRate: rate(used, limit),
     },
   };
 }
@@ -208,8 +208,11 @@ function buildAlerts({ automation, bulk, quota, resultAttention }) {
 }
 
 function finalizeBreakdown(map, activeFilter) {
+  const activeKeys = Array.isArray(activeFilter) ? new Set(activeFilter) : null;
   return [...map.entries()]
-    .filter(([key, item]) => (activeFilter === 'all' ? item.recipientCount > 0 : key === activeFilter))
+    .filter(([key, item]) => activeKeys
+      ? (activeKeys.size === 0 ? item.recipientCount > 0 : activeKeys.has(key))
+      : (activeFilter === 'all' ? item.recipientCount > 0 : key === activeFilter))
     .map(([key, item]) => ({
       ...withRates(item),
       channel: CHANNELS.includes(key) ? key : undefined,

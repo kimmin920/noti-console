@@ -12,22 +12,16 @@ const RANGE_DAYS = new Map([
 ]);
 
 export function normalizeMetricsQuery(query, currentTime) {
-  const range = normalizeRange(query.range);
+  const period = normalizePeriod(query, currentTime);
   const source = normalizeSource(query.source);
-  const channel = normalizeChannel(query.channel);
-  const days = RANGE_DAYS.get(range);
-  const currentDayStart = getZonedDayStart(currentTime);
-  const from = new Date(currentDayStart.getTime() - (days - 1) * MS_PER_DAY);
+  const channels = normalizeChannels(query.channel);
 
   return {
-    channel,
+    channel: channels.length === 0 ? 'all' : channels.join(','),
+    channels,
     generatedAt: currentTime,
     granularity: 'day',
-    period: {
-      from,
-      range,
-      to: currentTime,
-    },
+    period,
     source,
   };
 }
@@ -51,14 +45,53 @@ function normalizeRange(value) {
   return typeof value === 'string' && RANGE_DAYS.has(value) ? value : '15d';
 }
 
-function normalizeChannel(value) {
-  if (!value || value === 'all') return 'all';
-  if (CHANNELS.includes(value)) return value;
-  throw new RelayValidationError('지원하지 않는 메트릭 채널입니다.');
+function normalizePeriod(query, currentTime) {
+  if (query.from || query.to) return normalizeCustomPeriod(query, currentTime);
+
+  const range = normalizeRange(query.range);
+  const days = RANGE_DAYS.get(range);
+  const currentDayStart = getZonedDayStart(currentTime);
+  return {
+    from: new Date(currentDayStart.getTime() - (days - 1) * MS_PER_DAY),
+    range,
+    to: currentTime,
+  };
+}
+
+function normalizeCustomPeriod(query, currentTime) {
+  const from = parseZonedDate(query.from, false);
+  const requestedTo = parseZonedDate(query.to ?? query.from, true);
+  const to = requestedTo > currentTime ? currentTime : requestedTo;
+  const dayCount = Math.floor((getZonedDayStart(to).getTime() - getZonedDayStart(from).getTime()) / MS_PER_DAY) + 1;
+
+  if (from > to || dayCount < 1 || dayCount > 30) {
+    throw new RelayValidationError('발송 현황 조회 기간은 최대 30일입니다.');
+  }
+
+  return { from, range: 'custom', to };
+}
+
+function parseZonedDate(value, endOfDay) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new RelayValidationError('발송 현황 날짜 형식이 올바르지 않습니다.');
+  }
+
+  const date = new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}+09:00`);
+  if (Number.isNaN(date.getTime()) || formatZonedDate(date) !== value) {
+    throw new RelayValidationError('발송 현황 날짜 형식이 올바르지 않습니다.');
+  }
+  return date;
+}
+
+function normalizeChannels(value) {
+  if (!value || value === 'all') return [];
+  const channels = [...new Set(String(value).split(',').filter(Boolean))];
+  if (channels.length > 0 && channels.every((channel) => CHANNELS.includes(channel))) return channels;
+  throw new RelayValidationError('지원하지 않는 발송 현황 채널입니다.');
 }
 
 function normalizeSource(value) {
   if (!value || value === 'all') return 'all';
   if (SOURCE_TYPES.includes(value)) return value;
-  throw new RelayValidationError('지원하지 않는 메트릭 출처입니다.');
+  throw new RelayValidationError('지원하지 않는 발송 현황 출처입니다.');
 }

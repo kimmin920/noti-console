@@ -24,3 +24,4 @@ export * from './primitives/textarea';
 export * from './primitives/typography';
 export * from './domain/audience-contact-list';
 export * from './domain/audience-management-list';
+export * from './domain/metrics-dashboard';

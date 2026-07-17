@@ -8,7 +8,7 @@ export const navItems = [
   { id: 'automations', label: '자동화' },
   { id: 'templates', label: '템플릿' },
   { id: 'audience', label: '수신자' },
-  { id: 'metrics', label: '메트릭' },
+  { id: 'metrics', label: '발송 현황' },
   { id: 'reservations', label: '예약' },
   { id: 'logs', label: '발송기록' },
   { id: 'settings', label: '설정' },
@@ -130,7 +130,7 @@ export const pageMeta = {
     emptyCopy: '목록을 만들려면 구독자를 가져오거나 연락처를 직접 추가하세요.',
     emptyButton: '연락처 추가',
   },
-  metrics: { title: '메트릭' },
+  metrics: { title: '발송 현황' },
   logs: {
     title: '발송기록',
     emptyTitle: '아직 발송기록이 없습니다',

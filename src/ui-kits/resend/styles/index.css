@@ -8,6 +8,9 @@
 @import "../domain/date-picker-presets/date-picker-presets.css";
 @import "../domain/delete-confirmation-modal/delete-confirmation-modal.css";
 @import "../domain/export-modal/export-modal.css";
+@import "../domain/metrics-dashboard/metrics-dashboard-cards.css";
+@import "../domain/metrics-dashboard/metrics-dashboard-charts.css";
+@import "../domain/metrics-dashboard/metrics-dashboard.css";
 @import "../feedback/toast/toast.css";
 @import "../layout/api-drawer/api-drawer.css";
 @import "../layout/page-header-actions/page-header-actions.css";

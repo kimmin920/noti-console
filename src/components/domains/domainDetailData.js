@@ -3,7 +3,7 @@ export const domainDetailNavItems = [
   { href: '/automations', label: 'Automations' },
   { href: '/templates', label: 'Templates' },
   { href: '/audience', label: 'Audience' },
-  { href: '/metrics', label: 'Metrics' },
+  { href: '/metrics', label: '발송 현황' },
   { href: '/domains', label: 'Domains' },
   { href: '/logs', label: 'Logs' },
   { href: '/api-keys', label: 'API keys' },

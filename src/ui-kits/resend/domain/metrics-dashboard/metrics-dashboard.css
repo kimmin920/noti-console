@@ -1,0 +1,100 @@
+.resend-ui-metrics-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--rui-spacing) * 10);
+  width: 100%;
+}
+
+.resend-ui-metrics-dashboard__header,
+.resend-ui-metrics-dashboard__filters,
+.resend-ui-metrics-dashboard__overview-header,
+.resend-ui-metrics-dashboard__overview-stats,
+.resend-ui-metrics-dashboard__rate-grid,
+.resend-ui-metrics-dashboard__domain-event-list,
+.resend-ui-metrics-dashboard__rate-breakdown,
+.resend-ui-metrics-dashboard__row-label,
+.resend-ui-metrics-dashboard__row-value {
+  display: flex;
+}
+
+.resend-ui-metrics-dashboard__header {
+  flex-direction: column;
+  gap: calc(var(--rui-spacing) * 4);
+  justify-content: space-between;
+}
+
+.resend-ui-metrics-dashboard__title {
+  color: var(--rui-gray-12);
+  font-family: var(--rui-font-display);
+  font-size: var(--rui-type-7-font-size);
+  font-weight: var(--rui-font-weight-medium);
+  line-height: var(--rui-type-7-line-height);
+  margin: 0;
+}
+
+.resend-ui-metrics-dashboard__filters {
+  flex-direction: column;
+  gap: calc(var(--rui-spacing) * 2);
+}
+
+.resend-ui-metrics-dashboard__filter,
+.resend-ui-metrics-dashboard__event-filter {
+  width: 100%;
+}
+
+.resend-ui-metrics-dashboard__menu-content,
+.resend-ui-metrics-dashboard__event-menu {
+  min-width: calc(var(--rui-spacing) * 48);
+}
+
+.resend-ui-metrics-dashboard__menu-item {
+  justify-content: space-between;
+}
+
+.resend-ui-metrics-dashboard__event-option {
+  justify-content: flex-start;
+}
+
+.resend-ui-metrics-dashboard__content,
+.resend-ui-metrics-dashboard__overview-stack,
+.resend-ui-metrics-dashboard__card-body,
+.resend-ui-metrics-dashboard__health-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.resend-ui-metrics-dashboard__content {
+  gap: calc(var(--rui-spacing) * 10);
+}
+
+.resend-ui-metrics-dashboard__overview-stack {
+  gap: calc(var(--rui-spacing) * 6);
+}
+
+.resend-ui-metrics-dashboard__health-grid,
+.resend-ui-metrics-dashboard__rate-grid {
+  display: grid;
+  gap: calc(var(--rui-spacing) * 6);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 48rem) {
+  .resend-ui-metrics-dashboard__header,
+  .resend-ui-metrics-dashboard__filters,
+  .resend-ui-metrics-dashboard__overview-header {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .resend-ui-metrics-dashboard__health-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .resend-ui-metrics-dashboard__rate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .resend-ui-metrics-dashboard__filter {
+    min-width: calc(var(--rui-spacing) * 40);
+  }
+}

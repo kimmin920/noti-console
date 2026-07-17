@@ -1,0 +1,56 @@
+.resend-ui-metrics-dashboard__chart-wrap {
+  margin-bottom: calc(var(--rui-spacing) * 2);
+  overflow: visible;
+  width: 100%;
+}
+
+.resend-ui-metrics-dashboard__chart {
+  display: block;
+  height: 300px;
+  min-width: 100%;
+  width: 100%;
+}
+
+.resend-ui-metrics-dashboard__chart[data-loading] {
+  opacity: .45;
+}
+
+.resend-ui-metrics-dashboard__grid line {
+  stroke: var(--rui-gray-a2);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+}
+
+.resend-ui-metrics-dashboard__axis-labels {
+  fill: #a09fa6;
+  font-family: var(--rui-font-sans);
+  font-size: var(--rui-text-caption);
+}
+
+.resend-ui-metrics-dashboard__area-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.resend-ui-metrics-dashboard__area-fill {
+  opacity: 1;
+}
+
+.resend-ui-metrics-dashboard__bar {
+  max-width: 3px;
+}
+
+.resend-ui-metrics-dashboard__risk-line {
+  stroke: var(--rui-orange-a9);
+  stroke-dasharray: 2 2;
+  stroke-width: 1;
+}
+
+.resend-ui-metrics-dashboard__risk-label {
+  fill: var(--rui-orange-a9);
+  font-family: var(--rui-font-sans);
+  font-size: var(--rui-text-2xs);
+  font-weight: var(--rui-font-weight-semibold);
+}

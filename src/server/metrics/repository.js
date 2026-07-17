@@ -1,11 +1,12 @@
-import { and, eq, gte, isNotNull, isNull, lte, or } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
 
 import {
   automationEventDeliveries,
   messageSendGroups,
   senderResources,
+  senderResourceQuotaBuckets,
   smsBulkSendRuns,
-  smsQuotaBuckets,
+  userSenderResources,
   users,
 } from '../../db/schema.js';
 
@@ -16,7 +17,7 @@ export function createMetricsRepository(db) {
       return user ?? null;
     },
 
-    async listMessageSendGroupsForMetrics({ channel, from, sourceType, to, userId }) {
+    async listMessageSendGroupsForMetrics({ channel, channels, from, sourceType, to, userId }) {
       const predicates = [
         eq(messageSendGroups.userId, userId),
         isNull(messageSendGroups.archivedAt),
@@ -34,7 +35,9 @@ export function createMetricsRepository(db) {
         ),
       ];
 
-      if (channel) {
+      if (channels?.length > 1) {
+        predicates.push(inArray(messageSendGroups.channel, channels));
+      } else if (channel) {
         predicates.push(eq(messageSendGroups.channel, channel));
       }
 
@@ -66,14 +69,16 @@ export function createMetricsRepository(db) {
         .where(and(...predicates));
     },
 
-    async listAutomationDeliveriesForMetrics({ channel, from, to, userId }) {
+    async listAutomationDeliveriesForMetrics({ channel, channels, from, to, userId }) {
       const predicates = [
         eq(automationEventDeliveries.userId, userId),
         gte(automationEventDeliveries.receivedAt, from),
         lte(automationEventDeliveries.receivedAt, to),
       ];
 
-      if (channel) {
+      if (channels?.length > 1) {
+        predicates.push(inArray(automationEventDeliveries.sendChannel, channels));
+      } else if (channel) {
         predicates.push(eq(automationEventDeliveries.sendChannel, channel));
       }
 
@@ -89,14 +94,16 @@ export function createMetricsRepository(db) {
         .where(and(...predicates));
     },
 
-    async listSmsBulkRunsForMetrics({ channel, from, to, userId }) {
+    async listSmsBulkRunsForMetrics({ channel, channels, from, to, userId }) {
       const predicates = [
         eq(smsBulkSendRuns.userId, userId),
         gte(smsBulkSendRuns.createdAt, from),
         lte(smsBulkSendRuns.createdAt, to),
       ];
 
-      if (channel) {
+      if (channels?.length > 1) {
+        predicates.push(inArray(smsBulkSendRuns.channel, channels));
+      } else if (channel) {
         predicates.push(eq(smsBulkSendRuns.channel, channel));
       }
 
@@ -117,19 +124,26 @@ export function createMetricsRepository(db) {
     async listSmsQuotaBucketsForMetrics({ now, userId }) {
       return db
         .select({
-          channel: smsQuotaBuckets.channel,
-          consumedCount: smsQuotaBuckets.consumedCount,
-          periodEndAt: smsQuotaBuckets.periodEndAt,
-          periodStartAt: smsQuotaBuckets.periodStartAt,
-          quotaLimit: smsQuotaBuckets.quotaLimit,
-          reservedCount: smsQuotaBuckets.reservedCount,
+          channel: senderResourceQuotaBuckets.quotaChannel,
+          consumedCount: senderResourceQuotaBuckets.consumedCount,
+          periodEndAt: senderResourceQuotaBuckets.periodEndAt,
+          periodStartAt: senderResourceQuotaBuckets.periodStartAt,
+          quotaLimit: senderResourceQuotaBuckets.quotaLimit,
+          reservedCount: senderResourceQuotaBuckets.reservedCount,
+          senderResourceId: senderResourceQuotaBuckets.senderResourceId,
         })
-        .from(smsQuotaBuckets)
+        .from(senderResourceQuotaBuckets)
+        .leftJoin(userSenderResources, and(
+          eq(userSenderResources.senderResourceId, senderResourceQuotaBuckets.senderResourceId),
+          eq(userSenderResources.userId, userId),
+          eq(userSenderResources.status, 'active')
+        ))
         .where(
           and(
-            eq(smsQuotaBuckets.userId, userId),
-            lte(smsQuotaBuckets.periodStartAt, now),
-            gte(smsQuotaBuckets.periodEndAt, now)
+            eq(senderResourceQuotaBuckets.quotaChannel, 'sms'),
+            lte(senderResourceQuotaBuckets.periodStartAt, now),
+            gte(senderResourceQuotaBuckets.periodEndAt, now),
+            eq(userSenderResources.userId, userId)
           )
         );
     },

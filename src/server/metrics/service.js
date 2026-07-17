@@ -21,7 +21,7 @@ export function createMetricsService({ repository, now = () => new Date() }) {
       if (!user || user.status !== ACTIVE_USER_STATUS) {
         throw new RelayError({
           code: RELAY_ERROR_CODES.FORBIDDEN,
-          message: '메트릭을 조회할 권한이 없습니다.',
+          message: '발송 현황을 조회할 권한이 없습니다.',
           retryable: false,
           status: 403,
         });
@@ -29,7 +29,8 @@ export function createMetricsService({ repository, now = () => new Date() }) {
 
       const filters = normalizeMetricsQuery(query, now());
       const repositoryFilters = {
-        channel: filters.channel === 'all' ? null : filters.channel,
+        channel: filters.channels.length === 1 ? filters.channels[0] : null,
+        channels: filters.channels,
         from: filters.period.from,
         sourceType: filters.source === 'all' ? null : filters.source,
         to: filters.period.to,
@@ -73,5 +74,6 @@ function shouldReadSmsQuotaBuckets(filters) {
 }
 
 function isSmsScopedChannel(channel) {
-  return channel === 'all' || SMS_SCOPED_CHANNELS.has(channel);
+  const channels = channel === 'all' ? [] : channel.split(',');
+  return channels.length === 0 || channels.some((item) => SMS_SCOPED_CHANNELS.has(item));
 }
