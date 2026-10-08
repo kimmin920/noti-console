@@ -9,7 +9,8 @@ import { getMessageTemplateVariableValue } from './MessageTemplateVariables.jsx'
 
 const SMS_ADVERTISEMENT_PREFIX = '(광고)';
 const SMS_ADVERTISEMENT_OPT_OUT_PREFIX = '무료수신거부';
-const SMS_ADVERTISEMENT_FALLBACK_OPT_OUT_NUMBER = 'NOTI 공통 080';
+const SMS_ADVERTISEMENT_FALLBACK_OPT_OUT_NUMBER = '080 번호 입력';
+const SMS_MAX_BYTES = 90;
 
 function isSameDate(left, right) {
   return left.getFullYear() === right.getFullYear()
@@ -132,6 +133,22 @@ function formatSmsPreviewBody(message) {
   ].filter(Boolean).join('\n');
 }
 
+function getSmsPreviewByteLength(value) {
+  return Array.from(value).reduce((total, character) => (
+    total + (character.charCodeAt(0) > 127 ? 2 : 1)
+  ), 0);
+}
+
+function shouldRenderSmsPreviewTitle(message, body) {
+  const title = String(message.managementTitle ?? '').trim();
+
+  if (!title) {
+    return false;
+  }
+
+  return message.imageAttachments.length > 0 || getSmsPreviewByteLength(body) > SMS_MAX_BYTES;
+}
+
 function getSmsPreviewSenderNumber(message, senderNumbers) {
   const selectedSenderNumber = senderNumbers.find((senderNumber) => (
     senderNumber.value === message.senderNumber
@@ -173,6 +190,7 @@ export function SmsPreview({
   const [initialPreviewDate] = useState(() => new Date());
   const message = getSmsPreviewValue(value);
   const body = formatSmsPreviewBody(message);
+  const shouldRenderTitle = shouldRenderSmsPreviewTitle(message, body);
   const senderNumber = getSmsPreviewSenderNumber(message, senderNumbers);
   const previewImages = message.imageAttachments.filter((image) => image.previewUrl);
   const resolvedTimeLabel = timeLabel ?? formatSmsPreviewTime(message.scheduledAt, initialPreviewDate);
@@ -199,6 +217,11 @@ export function SmsPreview({
           ) : null}
           <div className="sms-preview-media-row">
             <div className="sms-preview-bubble">
+              {shouldRenderTitle ? (
+                <div className="sms-preview-message-title">
+                  {renderSmsPreviewText(message.managementTitle.trim(), message.variables)}
+                </div>
+              ) : null}
               {body.trim() ? renderSmsPreviewText(body, message.variables) : <span className="sms-preview-placeholder">내용을 입력하면 표시됩니다</span>}
             </div>
           </div>

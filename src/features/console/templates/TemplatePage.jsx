@@ -5,8 +5,8 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { PageHeader } from '../../../components/layout/index.js';
 import {
   Button,
-  Pagination,
   SegmentedControl,
+  TablePagination,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import {
@@ -190,11 +190,9 @@ export function TemplatePage({ meta: metaProp }) {
         templates={visibleTemplates}
       />
       {!isTemplateListLoading ? (
-        <Pagination
-          className="template-list-pagination"
-          label="템플릿"
-          onPageChange={setPage}
+        <TablePagination
           onPageSizeChange={handlePageSizeChange}
+          itemLabel="템플릿"
           page={currentPage}
           pageSize={pageSize}
           pageSizeOptions={pageSizeOptions}

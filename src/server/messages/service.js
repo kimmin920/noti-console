@@ -58,6 +58,7 @@ const SMS_LONG_MAX_BYTES = 2000;
 const SEND_ROLES = new Set(['owner', 'sender']);
 const BRAND_FREESTYLE_MODE = 'freestyle';
 const BRAND_TEMPLATE_MODE = 'template';
+const BRAND_SUPPORTED_TARGETING = 'I';
 const BRAND_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const BRAND_IMAGE_TYPES = new Set([
   'IMAGE',
@@ -620,7 +621,7 @@ export function createMessageSendService({
           identity,
           fallbackResource,
           fallbackUnsubscribeNo: fallbackResource
-            ? requireCommonSmsUnsubscribeNo(commonSmsUnsubscribeNo)
+            ? sendPayload.fallback.resendUnsubscribeNo || requireCommonSmsUnsubscribeNo(commonSmsUnsubscribeNo)
             : null,
         });
         const idempotencyKey = buildBrandMessageIdempotencyKey({
@@ -1814,6 +1815,7 @@ function normalizeSmsPayload(payload, { maxRecipients = MAX_RECIPIENTS, requireC
     statsId: normalizeStatsId(input.statsId),
     attachFileIdList: normalizeOptionalIdList(input.attachFileIdList, 'attachFileIdList'),
     isAdvertisement: input.isAdvertisement === true,
+    unsubscribeNo: normalizeOptionalPhoneNumber(input.unsubscribeNo ?? input.unsubscribeNumber, 'unsubscribeNo'),
   };
 }
 
@@ -1822,7 +1824,7 @@ function prepareSmsAdvertisingPayload(sendPayload, configuredUnsubscribeNo) {
     return sendPayload;
   }
 
-  const unsubscribeNo = requireCommonSmsUnsubscribeNo(configuredUnsubscribeNo);
+  const unsubscribeNo = sendPayload.unsubscribeNo || requireCommonSmsUnsubscribeNo(configuredUnsubscribeNo);
   const body = buildSmsAdvertisingBody(sendPayload.body, unsubscribeNo);
   const bodyBytes = getSmsByteLength(body);
 
@@ -2215,7 +2217,7 @@ function normalizeBrandMessagePayload(payload, { now }) {
       ...optionalObjectProperty('templateParameter', input.templateParameter, 'templateParameter'),
       ...optionalObjectArrayProperty('imageParameters', input.imageParameters, 'imageParameters'),
       ...optionalObjectProperty('videoParameter', input.videoParameter, 'videoParameter'),
-      ...optionalStringProperty('targeting', input.targeting),
+      targeting: BRAND_SUPPORTED_TARGETING,
     };
     const recipients = normalizeRecipientList(
       input.recipients ?? input.recipientList,
@@ -2282,7 +2284,7 @@ function normalizeBrandMessagePayload(payload, { now }) {
     buttons,
     coupon,
     image: hasProviderImage ? image : null,
-    targeting: normalizeOptionalString(input.targeting),
+    targeting: BRAND_SUPPORTED_TARGETING,
     unsubscribeNo: normalizeOptionalPhoneNumber(input.unsubscribeNo, 'unsubscribeNo'),
     unsubscribeAuthNo: normalizeOptionalString(input.unsubscribeAuthNo),
   };
@@ -2354,7 +2356,6 @@ function normalizeBrandRecipient(recipient, index) {
 
   return {
     recipientNo,
-    ...optionalStringProperty('targeting', input.targeting),
     ...optionalStringProperty('content', input.content),
     ...optionalObjectProperty('templateParameter', input.templateParameter, `recipients[${index}].templateParameter`),
     ...optionalObjectArrayProperty('imageParameters', input.imageParameters, `recipients[${index}].imageParameters`),

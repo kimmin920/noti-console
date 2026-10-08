@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Ban, CheckCircle2, ChevronDown, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, Badge, ConfirmationDialog, DataTableV2, FilterSelect, IconButton, SearchField, useToast } from '../../../components/ui/index.js';
+import { Ban, CheckCircle2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, Badge, ConfirmationDialog, DataTableV2, FilterSelect, IconButton, SearchField, TablePagination, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { AutomationTableLoadError } from './AutomationTableLoadError.jsx';
 import { formatAutomationSendChannel } from './automationRuleDetailModel.js';
@@ -160,12 +160,14 @@ export function AutomationRulesTable({ table: tableConfig }) {
   return (
     <div className="automation-rules-list">
       <div className="automation-rules-list-toolbar">
-        <SearchField
-          aria-label="자동화 이름, 이벤트, 발신 수단, 템플릿 검색"
-          onChange={(event) => setSearchValue(event.target.value)}
-          placeholder="이름, 이벤트, 템플릿 검색"
-          value={searchValue}
-        />
+        <div className="automation-rules-list-toolbar-search">
+          <SearchField
+            aria-label="자동화 이름, 이벤트, 발신 수단, 템플릿 검색"
+            onChange={(event) => setSearchValue(event.target.value)}
+            placeholder="이름, 이벤트, 템플릿 검색"
+            value={searchValue}
+          />
+        </div>
         <FilterSelect
           className="automation-status-filter"
           label="상태"
@@ -202,7 +204,12 @@ export function AutomationRulesTable({ table: tableConfig }) {
         onRowClick={({ row }) => openAutomationDetail(row)}
         pagination
         renderPagination={({ table: dataTable }) => (
-          <AutomationTablePagination table={dataTable} total={filteredRows.length} />
+          <TablePagination
+            itemLabel="자동화"
+            pageSizeOptions={AUTOMATION_RULE_PAGE_SIZE_OPTIONS}
+            table={dataTable}
+            total={filteredRows.length}
+          />
         )}
         rowActions={({ row }) => (
           <AutomationRuleRowActions
@@ -384,33 +391,6 @@ function AutomationStatusChip({ status }) {
     <span className={`automation-status-chip is-${normalizedStatus}`}>
       {AUTOMATION_STATUS_LABELS[normalizedStatus]}
     </span>
-  );
-}
-
-function AutomationTablePagination({ table, total }) {
-  const { pageIndex, pageSize } = table.getState().pagination;
-  const pageCount = Math.max(table.getPageCount(), 1);
-  const pageNumber = Math.min(pageIndex + 1, pageCount);
-
-  function changePageSize(event) {
-    table.setPageSize(Number(event.target.value));
-    table.setPageIndex(0);
-  }
-
-  return (
-    <div className="automation-table-pagination">
-      <span>
-        페이지 {pageNumber} - {pageCount} / {total.toLocaleString('ko-KR')}개 자동화 -{' '}
-        <span className="automation-page-size-select">
-          <select aria-label="페이지당 자동화 수" onChange={changePageSize} value={pageSize}>
-            {AUTOMATION_RULE_PAGE_SIZE_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option}개</option>
-            ))}
-          </select>
-          <ChevronDown aria-hidden="true" size={14} />
-        </span>
-      </span>
-    </div>
   );
 }
 

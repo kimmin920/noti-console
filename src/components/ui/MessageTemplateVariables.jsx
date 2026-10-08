@@ -14,7 +14,7 @@ export const defaultMessageTemplateRecipientFields = [
   { group: '기본 정보', label: '수신자.이메일', path: 'recipient.email', sampleValue: 'customer@example.com' },
   { group: '고객 정보', label: '수신자.등급', path: 'recipient.grade', sampleValue: 'VIP' },
   { group: '고객 정보', label: '수신자.포인트', path: 'recipient.points', sampleValue: '12,400P' },
-  { group: '고객 정보', label: '수신자.가입일', path: 'recipient.joinedAt', sampleValue: '2025-03-14' },
+  { group: '고객 정보', label: '수신자.가입일', path: 'recipient.joinedAt', sampleValue: '2026-03-14' },
 ];
 
 export function getMessageTemplateVariableToken(key, syntax = 'kakao') {

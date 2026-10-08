@@ -162,7 +162,7 @@ export {
   getBrandTemplateDialogItems,
   getSmsTemplateDialogItems,
 } from './MessageTemplateDialogAdapters.jsx';
-export { Pagination } from './Pagination.jsx';
+export { TablePagination } from './TablePagination.jsx';
 export { AppPanel as Panel } from '../ui-extensions/AppPanel.jsx';
 export { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './Popover.jsx';
 export { SearchField } from '../../ui-kits/resend/primitives/search-field';

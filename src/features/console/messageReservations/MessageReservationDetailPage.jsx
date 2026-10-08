@@ -3,11 +3,11 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChevronLeft, Circle, Copy, RefreshCcw, Trash2 } from 'lucide-react';
-import { Button, ConfirmationDialog, useToast } from '../../../components/ui/index.js';
+import { Button, ConfirmationDialog, TablePagination, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { useMessageReservationCancelMutation } from './mutations.js';
-import { BatchTable, DetailPagination, RecipientTable } from './MessageReservationDetailTables.jsx';
+import { BatchTable, RecipientTable } from './MessageReservationDetailTables.jsx';
 import {
   useMessageReservationBatchRecipientsQuery,
   useMessageReservationGroupDetailQuery,
@@ -198,11 +198,14 @@ function BulkDetail({ batchPage, batchRecipientsQuery, batches, onPageChange, on
             recipients={recipientsData?.recipients ?? []}
           />
         )}
-        <DetailPagination
-          onPageChange={onPageChange}
+        <TablePagination
+          itemLabel="수신자"
+          onPageSizeChange={() => onPageChange(1)}
           page={batchPage}
           pageSize={BATCH_RECIPIENT_PAGE_SIZE}
+          pageSizeOptions={[BATCH_RECIPIENT_PAGE_SIZE]}
           total={recipientsData?.total ?? 0}
+          unit="명"
         />
       </section>
     </div>

@@ -2,14 +2,12 @@ export function SmsTemplateCardPreview({ className = '', template }) {
   const body = getSmsTemplateBody(template);
 
   return (
-    <span className={['template-card-sms-preview-shell', className].filter(Boolean).join(' ')}>
-      <span className="template-card-sms-phone" role="group" aria-label={`${template.name} SMS 미리보기`}>
-        <span className="template-card-sms-thread">
-          <span className="template-card-sms-message-row">
-            <span className="template-card-sms-bubble">
-              <span className="template-card-sms-text">
-                {body ? renderSmsTemplatePreviewText(body) : '본문이 없습니다.'}
-              </span>
+    <span className={['template-card-sms-preview-shell', className].filter(Boolean).join(' ')} role="group" aria-label={`${template.name} SMS 미리보기`}>
+      <span className="template-card-sms-thread">
+        <span className="template-card-sms-message-row">
+          <span className="template-card-sms-bubble">
+            <span className="template-card-sms-text">
+              {body ? renderSmsTemplatePreviewText(body) : '본문이 없습니다.'}
             </span>
           </span>
         </span>

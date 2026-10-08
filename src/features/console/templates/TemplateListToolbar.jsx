@@ -18,12 +18,14 @@ export function TemplateListToolbar({
 }) {
   return (
     <div className="template-list-toolbar">
-      <SearchField
-        aria-label="템플릿 이름 검색"
-        onChange={(event) => onSearchChange(event.target.value)}
-        placeholder="템플릿 이름 검색"
-        value={searchValue}
-      />
+      <div className="template-list-toolbar-search">
+        <SearchField
+          aria-label="템플릿 이름 검색"
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="템플릿 이름 검색"
+          value={searchValue}
+        />
+      </div>
       {showStatusFilter ? (
         <FilterSelect
           className="template-status-filter"

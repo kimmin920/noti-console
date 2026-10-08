@@ -30,6 +30,7 @@ const BRAND_COUPON_NUMERIC_ERROR_CODE = 'COUPON_VARIABLE_NUMERIC_REQUIRED';
 const BRAND_FREESTYLE_COUPON_PLACEHOLDER_UNSUPPORTED = 'BRAND_FREESTYLE_COUPON_PLACEHOLDER_UNSUPPORTED';
 const BRAND_HEADER_TYPES = new Set(['WIDE_ITEM_LIST', 'PREMIUM_VIDEO']);
 const BRAND_ADDITIONAL_CONTENT_TYPES = new Set(['COMMERCE']);
+const BRAND_SUPPORTED_TARGETING = 'I';
 const BRAND_TEMPLATE_NAME_MAX_LENGTH = 200;
 const BRAND_IMAGE_UPLOAD_TYPES = new Set([
   'IMAGE',
@@ -41,6 +42,14 @@ const BRAND_IMAGE_UPLOAD_TYPES = new Set([
 ]);
 const BRAND_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const BRAND_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png']);
+const RECIPIENT_TEMPLATE_FIELD_ALIASES = {
+  'recipient.email': ['recipient.email', 'email', 'recipientEmail', 'customerEmail', 'profile.email'],
+  'recipient.grade': ['recipient.grade', 'grade', 'customerGrade', 'memberGrade', 'profile.grade'],
+  'recipient.joinedAt': ['recipient.joinedAt', 'joinedAt', 'joinDate', 'joinedDate', 'createdAt', 'profile.joinedAt'],
+  'recipient.name': ['recipient.name', 'name', 'recipientName', 'customerName', 'nickname', 'label', 'profile.name', 'profile.nickname'],
+  'recipient.phone': ['recipient.phone', 'recipientNo', 'value', 'phone', 'phoneNumber', 'mobileNumber', 'recipientPhone', 'recipientNo'],
+  'recipient.points': ['recipient.points', 'points', 'point', 'customerPoints', 'memberPoints', 'profile.points'],
+};
 const BRAND_RELAY_OMITTED_KEYS = new Set([
   'buttonVariable',
   'carouselVariable',
@@ -89,14 +98,20 @@ export function buildSmsSendPayload(message, { templates = [] } = {}) {
   });
   validateSmsBodyByteLength(body);
   const selectedTemplate = getSelectedTemplate(message.templateId, templates);
-  const recipients = getManualRecipients(message.recipient).map((recipientNo) => ({
-    recipientNo,
-    ...getTemplateParameterProperty(message, selectedTemplate),
+  const recipients = getManualRecipientItems(message.recipient).map((recipient) => ({
+    recipientNo: recipient.recipientNo,
+    ...getTemplateParameterProperty(message, selectedTemplate, recipient),
   }));
   const attachFileIdList = getSmsAttachFileIdList(message);
   const channel = getSmsChannel({ attachFileIdList, body });
   const requestDate = formatRelayRequestDate(message.scheduledAt);
   const managementTitle = normalizeOptionalManagementTitle(message.managementTitle);
+  const unsubscribeNo = message.isAdvertisement
+    ? normalizeRequiredString(message.unsubscribeNumber ?? message.unsubscribeNo, {
+        message: '080 수신거부 번호를 입력해 주세요.',
+        title: '080 번호 필요',
+      })
+    : message.unsubscribeNumber ?? message.unsubscribeNo;
 
   return {
     attachFileIdList,
@@ -110,6 +125,7 @@ export function buildSmsSendPayload(message, { templates = [] } = {}) {
     ...(channel !== 'sms' ? { title: managementTitle ?? getSmsTitle(selectedTemplate) } : {}),
     ...(requestDate ? { requestDate } : {}),
     ...(selectedTemplate ? { templateCode: getTemplateCode(selectedTemplate) } : {}),
+    ...optionalRelayStringProperty('unsubscribeNo', unsubscribeNo),
   };
 }
 
@@ -136,12 +152,11 @@ export function buildAlimtalkSendPayload(message, { templates = [] } = {}) {
     );
   }
 
-  const templateParameter = getTemplateParameterProperty(message, selectedTemplate);
   const buttons = Array.isArray(selectedTemplate.buttons) ? selectedTemplate.buttons : [];
   const quickReplies = Array.isArray(selectedTemplate.quickReplies) ? selectedTemplate.quickReplies : [];
-  const recipients = getManualRecipients(message.recipient).map((recipientNo) => ({
-    recipientNo,
-    ...templateParameter,
+  const recipients = getManualRecipientItems(message.recipient).map((recipient) => ({
+    recipientNo: recipient.recipientNo,
+    ...getTemplateParameterProperty(message, selectedTemplate, recipient),
     ...(buttons.length ? { buttons } : {}),
     ...(quickReplies.length ? { quickReplies } : {}),
   }));
@@ -189,17 +204,18 @@ export function buildBrandMessageSendPayload(message, { templates = [] } = {}) {
       );
     }
 
-    const templateParameter = getTemplateParameterProperty(message, selectedTemplate);
     const templateRecipientDefaults = {
-      ...templateParameter,
       ...optionalRelayObjectArrayProperty('imageParameters', message.imageParameters),
       ...optionalRelayObjectProperty('videoParameter', message.videoParameter),
-      ...optionalRelayStringProperty('targeting', message.targeting),
+      targeting: BRAND_SUPPORTED_TARGETING,
       ...optionalRelayStringProperty('unsubscribeNo', message.unsubscribeNo),
       ...optionalRelayStringProperty('unsubscribeAuthNo', message.unsubscribeAuthNo),
     };
 
-    const brandRecipients = recipients.map((recipient) => buildBrandRecipientPayload(recipient, templateRecipientDefaults));
+    const brandRecipients = recipients.map((recipient) => buildBrandRecipientPayload(recipient, {
+      ...templateRecipientDefaults,
+      ...getTemplateParameterProperty(message, selectedTemplate, recipient),
+    }));
     validateBrandCouponTemplateParameters(brandRecipients);
 
     return {
@@ -218,7 +234,7 @@ export function buildBrandMessageSendPayload(message, { templates = [] } = {}) {
     ...freestyleFields,
     mode: 'freestyle',
     recipients: recipients.map((recipient) => buildBrandRecipientPayload(recipient)),
-    ...optionalRelayStringProperty('targeting', message.targeting),
+    targeting: BRAND_SUPPORTED_TARGETING,
   };
 }
 
@@ -637,15 +653,15 @@ function isPlausiblePhoneNumber(value) {
   return /^\+?[0-9\s-]{7,24}$/.test(String(value ?? '').trim());
 }
 
-function getTemplateParameterProperty(message, template) {
-  const templateParameter = getTemplateParameter(message, template);
+function getTemplateParameterProperty(message, template, recipient = null) {
+  const templateParameter = getTemplateParameter(message, template, recipient);
 
   return Object.keys(templateParameter).length > 0
     ? { templateParameter }
     : {};
 }
 
-function getTemplateParameter(message, template) {
+function getTemplateParameter(message, template, recipient = null) {
   const variableKeys = getTemplateVariableKeys(message, template);
   const variables = message.variables && typeof message.variables === 'object' ? message.variables : {};
   const templateParameter = message.templateParameter && typeof message.templateParameter === 'object'
@@ -659,7 +675,7 @@ function getTemplateParameter(message, template) {
   }
 
   return variableKeys.reduce((parameters, key) => {
-    const value = getTemplateVariableValue(variables[key] ?? templateParameter[key], key);
+    const value = getTemplateVariableValue(variables[key] ?? templateParameter[key], key, recipient);
 
     if (value !== '') {
       parameters[key] = value;
@@ -682,21 +698,84 @@ function toKeyArray(value) {
   return Array.isArray(value) ? value.map((item) => String(item ?? '').trim()).filter(Boolean) : [];
 }
 
-function getTemplateVariableValue(value, key) {
+function getTemplateVariableValue(value, key, recipient = null) {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const mode = value.mode === 'recipient' ? 'recipient' : 'manual';
 
     if (mode === 'recipient') {
-      throw new MessageSendValidationError(
-        `${key} 변수는 수신자 속성 치환을 아직 사용할 수 없습니다. 직접 값을 입력해 주세요.`,
-        { code: 'RECIPIENT_VARIABLE_UNSUPPORTED', title: '변수 직접 입력 필요' }
-      );
+      return getTemplateRecipientVariableValue(value, key, recipient);
     }
 
     return String(value.value ?? value.fallbackValue ?? '').trim();
   }
 
   return String(value ?? '').trim();
+}
+
+function getTemplateRecipientVariableValue(assignment, key, recipient) {
+  const path = String(assignment.path ?? assignment.recipientField ?? '').trim();
+  const fallbackValue = String(assignment.value ?? assignment.fallbackValue ?? '').trim();
+  const resolvedValue = normalizeTemplateVariableScalar(getRecipientVariablePathValue(recipient, path));
+
+  if (resolvedValue) {
+    return resolvedValue;
+  }
+
+  if (fallbackValue) {
+    return fallbackValue;
+  }
+
+  throw new MessageSendValidationError(
+    `${key} 변수에 사용할 ${path || '수신자 정보'} 값을 찾을 수 없습니다. 직접 값을 입력하거나 수신자 속성을 확인해 주세요.`,
+    { code: 'RECIPIENT_VARIABLE_VALUE_MISSING', title: '수신자 변수 값 필요' }
+  );
+}
+
+function getRecipientVariablePathValue(recipient, path) {
+  const source = {
+    ...(recipient?.source && typeof recipient.source === 'object' && !Array.isArray(recipient.source)
+      ? recipient.source
+      : {}),
+    recipientNo: recipient?.recipientNo,
+  };
+  const normalizedPath = String(path ?? '').trim();
+  const aliasPaths = RECIPIENT_TEMPLATE_FIELD_ALIASES[normalizedPath] ?? [normalizedPath];
+
+  for (const aliasPath of aliasPaths) {
+    const value = getObjectPathValue(source, aliasPath);
+
+    if (normalizeTemplateVariableScalar(value)) {
+      return value;
+    }
+  }
+
+  if (normalizedPath.startsWith('recipient.')) {
+    return getObjectPathValue(source, normalizedPath.slice('recipient.'.length));
+  }
+
+  return undefined;
+}
+
+function getObjectPathValue(source, path) {
+  if (!source || typeof source !== 'object' || Array.isArray(source) || !path) {
+    return undefined;
+  }
+
+  return String(path).split('.').reduce((value, key) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+
+    return value[key];
+  }, source);
+}
+
+function normalizeTemplateVariableScalar(value) {
+  if (value === undefined || value === null || typeof value === 'object') {
+    return '';
+  }
+
+  return String(value).trim();
 }
 
 function normalizeBrandChatBubbleType(value) {
@@ -1554,7 +1633,6 @@ function buildBrandRecipientPayload(recipient, defaults = {}) {
   return {
     recipientNo: recipient.recipientNo,
     ...defaults,
-    ...optionalRelayStringProperty('targeting', source.targeting),
     ...optionalRelayStringProperty('content', source.content),
     ...optionalRelayObjectProperty('templateParameter', source.templateParameter),
     ...optionalRelayObjectArrayProperty('imageParameters', source.imageParameters),
@@ -1683,8 +1761,21 @@ function buildBrandFallback(message) {
     message: 'SMS 대체 발송용 발신번호를 선택해 주세요.',
     title: 'SMS 대체 발신번호 필요',
   });
+  const resendUnsubscribeNo = message.fallbackAdvertisementEnabled
+    ? normalizeRequiredString(message.fallbackUnsubscribeNumber, {
+        message: 'SMS 대체발송 080 수신거부 번호를 입력해 주세요.',
+        title: '080 번호 필요',
+      })
+    : '';
+
   return {
     enabled: true,
+    ...(message.fallbackAdvertisementEnabled
+      ? {
+          advertising: true,
+          ...optionalRelayStringProperty('resendUnsubscribeNo', resendUnsubscribeNo),
+        }
+      : {}),
     resendType: 'SMS',
     smsSenderResourceId,
   };

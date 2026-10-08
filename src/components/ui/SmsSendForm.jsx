@@ -70,7 +70,10 @@ export const defaultSmsSendFormSenderNumbers = [
   { label: '운영팀 010-9876-5432', value: '010-9876-5432' },
 ];
 
-export const defaultSmsSendFormUnsubscribeNumbers = [];
+export const defaultSmsSendFormUnsubscribeNumbers = [
+  { label: '080-123-4567', value: '080-123-4567' },
+  { label: '080-987-6543', value: '080-987-6543' },
+];
 
 export const defaultSmsSendFormTemplates = [
   {
@@ -359,6 +362,7 @@ export function SmsSendForm({
   onChange,
   onRecipientCreate,
   onSenderNumberCreate,
+  onUnsubscribeNumberCreate,
   onTemplateSelect,
   recipientContacts,
   recipientCreateLabel,
@@ -368,6 +372,7 @@ export function SmsSendForm({
   senderNumberCreateLabel = '발신번호 추가하기',
   senderNumbers = defaultSmsSendFormSenderNumbers,
   templates = defaultSmsSendFormTemplates,
+  unsubscribeNumbers = defaultSmsSendFormUnsubscribeNumbers,
   value,
   variablePanelRoot,
   ...props
@@ -603,10 +608,20 @@ export function SmsSendForm({
               </EmailSendFormGhostButton>
             )}
           >
-            <EmailSendFormLabel description="광고성 문자에는 서버에 설정된 NOTI 공통 080 무료 수신거부 번호가 자동으로 적용됩니다.">
+            <EmailSendFormLabel description="광고성 문자 하단에 표시할 무료 수신거부 번호를 선택하세요.">
               080 번호
             </EmailSendFormLabel>
-            <span className="email-send-form-placeholder">NOTI 공통 080 자동 적용</span>
+            <EmailSendFormSelect
+              ariaLabel="080 수신거부 번호 선택"
+              emptyActionLabel="080번호 추가하기"
+              emptyDescription="등록된 080 수신거부 번호가 없습니다. 번호를 추가하면 광고성 문자에 사용할 수 있습니다."
+              onEmptyAction={onUnsubscribeNumberCreate}
+              onValueChange={(unsubscribeNumber) => updateMessage({ unsubscribeNumber })}
+              options={unsubscribeNumbers}
+              placeholder="080 번호 선택"
+              showMenuLabel={false}
+              value={message.unsubscribeNumber}
+            />
           </EmailSendFormRow>
         </EmailSendFormDisclosure>
 
@@ -653,7 +668,7 @@ export function SmsSendForm({
         <EmailSendFormDisclosure open={imageVisible}>
           <EmailSendFormRow className="sms-send-form-detail-start-row">
             <EmailSendFormLabel
-              description="JPG/JPEG/PNG 원본을 선택할 수 있습니다. PNG는 편집 후 투명 영역이 흰색으로 처리된 JPG로 변환됩니다. 최대 3개까지 첨부할 수 있으며, 변환 결과는 파일당 300KB 및 1000×1000px 이하여야 합니다."
+              description="JPG, JPEG, PNG 이미지를 최대 3개까지 첨부할 수 있습니다."
               htmlFor={imageInputId}
               warning={imageReviewMessage}
             >
@@ -734,7 +749,7 @@ export function SmsSendForm({
           className={imageVisible ? 'sms-send-form-detail-row' : 'sms-send-form-detail-start-row'}
         >
           <EmailSendFormLabel
-            description="SMS에서는 발송 내역을 구분하는 관리용 제목이며, LMS/MMS에서는 수신자에게 표시됩니다."
+            description="발송 내역을 구분하는 관리용 제목입니다. LMS/MMS 발송 시에는 수신자에게도 메시지 제목으로 표시됩니다."
             htmlFor={managementTitleInputId}
           >
             제목

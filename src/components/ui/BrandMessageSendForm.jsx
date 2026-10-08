@@ -283,11 +283,31 @@ export const brandChatBubbleTypeConfig = {
 };
 
 const hiddenBrandChatBubbleTypeOptions = new Set(['PREMIUM_VIDEO']);
+const brandChatBubbleTypePreviewSprite = {
+  frameCount: 8,
+  frameHeight: 719,
+  frameWidth: 431,
+  src: '/static/brand-message/brand-message-type-preview-sprite.png',
+};
+const brandChatBubbleTypePreviewFrames = {
+  TEXT: 0,
+  IMAGE: 1,
+  WIDE: 2,
+  WIDE_ITEM_LIST: 3,
+  CAROUSEL_FEED: 4,
+  PREMIUM_VIDEO: 5,
+  COMMERCE: 6,
+  CAROUSEL_COMMERCE: 7,
+};
 
 const brandChatBubbleTypeOptions = Object.entries(brandChatBubbleTypeConfig)
   .filter(([value]) => !hiddenBrandChatBubbleTypeOptions.has(value))
   .map(([value, config]) => ({
     label: config.label,
+    previewSprite: {
+      ...brandChatBubbleTypePreviewSprite,
+      frameIndex: brandChatBubbleTypePreviewFrames[value],
+    },
     value,
   }));
 
@@ -433,6 +453,11 @@ const brandMessageCouponFixedOptionOptions = [
     value: 'productNameUpCoupon',
     variableKey: '상품명',
   },
+];
+
+const defaultBrandFallbackUnsubscribeNumbers = [
+  { label: '080-123-4567', value: '080-123-4567' },
+  { label: '080-987-6543', value: '080-987-6543' },
 ];
 
 function createBrandCouponId() {
@@ -1983,7 +2008,183 @@ function normalizeBrandTemplateButtons(buttons, idPrefix) {
   }));
 }
 
-function normalizeBrandTemplateCarousel(carousel) {
+function getFirstBrandTemplateText(...values) {
+  const scalarValues = values.filter((value) => value === null || typeof value !== 'object');
+  const filledValue = scalarValues.find((value) => !isBlankText(value));
+
+  if (filledValue !== undefined) {
+    return normalizeText(filledValue);
+  }
+
+  return normalizeText(scalarValues.find((value) => value !== undefined && value !== null));
+}
+
+function getBrandTemplateScalarValue(value) {
+  return value === null || typeof value === 'object' ? undefined : value;
+}
+
+function normalizeBrandTemplateCarouselCommerceItem(sourceItem, normalizedItem, index) {
+  const source = normalizeBrandTemplatePlainObject(sourceItem);
+  const item = normalizeBrandTemplatePlainObject(normalizedItem);
+  const commerceSource = normalizeBrandTemplatePlainObject(source.commerce ?? item.commerce);
+  const sourcePrice = normalizeBrandTemplatePlainObject(source.price ?? item.price);
+  const commercePrice = normalizeBrandTemplatePlainObject(commerceSource.price);
+  const scalarPrice = getBrandTemplateScalarValue(source.price)
+    ?? getBrandTemplateScalarValue(item.price)
+    ?? getBrandTemplateScalarValue(commerceSource.price);
+  const {
+    commerce: _sourceCommerce,
+    imageName: _sourceImageName,
+    imageUrl: _sourceImageUrl,
+    price: _sourcePrice,
+    url: _sourceUrl,
+    ...base
+  } = {
+    ...item,
+    ...source,
+  };
+  const mergedImageSource = {
+    ...item,
+    ...source,
+    ...commerceSource,
+    ...sourcePrice,
+    ...commercePrice,
+  };
+  const image = normalizeBrandImage(mergedImageSource) ?? { imageUrl: '' };
+
+  return {
+    ...base,
+    additionalContent: getFirstBrandTemplateText(
+      source.additionalContent,
+      commerceSource.additionalContent,
+      sourcePrice.additionalContent,
+      commercePrice.additionalContent,
+      source.content,
+      source.description,
+      source.body
+    ),
+    buttons: normalizeBrandTemplateButtons(
+      source.buttons
+        ?? commerceSource.buttons
+        ?? sourcePrice.buttons
+        ?? commercePrice.buttons
+        ?? item.buttons,
+      `template-carousel-${index + 1}-button`
+    ),
+    coupon: normalizeBrandCoupon(
+      source.coupon
+        ?? commerceSource.coupon
+        ?? sourcePrice.coupon
+        ?? commercePrice.coupon
+        ?? item.coupon
+    ),
+    discountFixed: getFirstBrandTemplateText(
+      source.discountFixed,
+      commerceSource.discountFixed,
+      sourcePrice.discountFixed,
+      commercePrice.discountFixed
+    ),
+    discountPrice: getFirstBrandTemplateText(
+      source.discountPrice,
+      source.salePrice,
+      source.discountedPrice,
+      commerceSource.discountPrice,
+      commerceSource.salePrice,
+      commerceSource.discountedPrice,
+      sourcePrice.discountPrice,
+      sourcePrice.salePrice,
+      sourcePrice.discountedPrice,
+      commercePrice.discountPrice,
+      commercePrice.salePrice,
+      commercePrice.discountedPrice
+    ),
+    discountRate: getFirstBrandTemplateText(
+      source.discountRate,
+      commerceSource.discountRate,
+      sourcePrice.discountRate,
+      commercePrice.discountRate
+    ),
+    discountType: getBrandCommerceDiscountType(
+      source.discountType
+        ?? commerceSource.discountType
+        ?? sourcePrice.discountType
+        ?? commercePrice.discountType
+    ),
+    image,
+    imageRatio: getFirstBrandTemplateText(
+      source.imageRatio,
+      commerceSource.imageRatio,
+      sourcePrice.imageRatio,
+      commercePrice.imageRatio,
+      image.imageRatio
+    ),
+    regularPrice: getFirstBrandTemplateText(
+      source.regularPrice,
+      commerceSource.regularPrice,
+      sourcePrice.regularPrice,
+      commercePrice.regularPrice,
+      scalarPrice,
+      sourcePrice.price,
+      sourcePrice.originalPrice,
+      commercePrice.price,
+      commercePrice.originalPrice
+    ),
+    title: getFirstBrandTemplateText(
+      source.title,
+      source.header,
+      source.name,
+      commerceSource.title,
+      commerceSource.name,
+      sourcePrice.title,
+      sourcePrice.name,
+      commercePrice.title,
+      commercePrice.name,
+      `상품 ${index + 1}`
+    ),
+  };
+}
+
+function normalizeBrandTemplateCarouselFeedItem(sourceItem, normalizedItem, index) {
+  const source = normalizeBrandTemplatePlainObject(sourceItem);
+  const item = normalizeBrandTemplatePlainObject(normalizedItem);
+  const image = normalizeBrandImage({
+    ...item,
+    ...source,
+  });
+  const content = getFirstBrandTemplateText(
+    source.content,
+    source.message,
+    source.description,
+    source.body,
+    item.content,
+    item.message,
+    item.description,
+    item.body
+  );
+
+  return {
+    ...item,
+    ...source,
+    buttons: normalizeBrandTemplateButtons(
+      source.buttons ?? item.buttons,
+      `template-carousel-${index + 1}-button`
+    ),
+    content,
+    coupon: normalizeBrandCoupon(source.coupon ?? item.coupon),
+    ...(image ? { image } : {}),
+    title: getFirstBrandTemplateText(
+      source.title,
+      source.header,
+      source.name,
+      item.title,
+      item.header,
+      item.name,
+      `카드 ${index + 1}`
+    ),
+  };
+}
+
+function normalizeBrandTemplateCarousel(carousel, chatBubbleType) {
   const sourceCarousel = normalizeBrandTemplatePlainObject(carousel);
   const normalizedCarousel = normalizeBrandCarousel(sourceCarousel);
 
@@ -1992,16 +2193,15 @@ function normalizeBrandTemplateCarousel(carousel) {
   }
 
   const sourceList = getBrandListFromObject(sourceCarousel);
+  const normalizedList = getBrandCarouselList(normalizedCarousel);
 
   return {
     ...normalizedCarousel,
-    list: getBrandCarouselList(normalizedCarousel).map((item, index) => ({
-      ...item,
-      buttons: normalizeBrandTemplateButtons(
-        sourceList[index]?.buttons,
-        `template-carousel-${index + 1}-button`
-      ),
-    })),
+    list: normalizedList.map((item, index) => (
+      chatBubbleType === 'CAROUSEL_COMMERCE'
+        ? normalizeBrandTemplateCarouselCommerceItem(sourceList[index] ?? item, item, index)
+        : normalizeBrandTemplateCarouselFeedItem(sourceList[index] ?? item, item, index)
+    )),
   };
 }
 
@@ -2076,7 +2276,7 @@ function getBrandTemplateDraftBodyPatch(source, chatBubbleType) {
   if (chatBubbleType === 'CAROUSEL_FEED' || chatBubbleType === 'CAROUSEL_COMMERCE') {
     return {
       buttons: [],
-      carousel: normalizeBrandTemplateCarousel(getBrandTemplateCarouselSource(source)),
+      carousel: normalizeBrandTemplateCarousel(getBrandTemplateCarouselSource(source), chatBubbleType),
       coupon: null,
     };
   }
@@ -3364,15 +3564,11 @@ function BrandMessageTypeFields({
                 message={getBrandValidationTooltipMessage(introValidation.errors)}
               />
             ) : null}
-            <span
-              aria-hidden="true"
-              className="brand-message-type-row-static-handle"
-            >
-              <GripVertical size={16} />
-            </span>
-            <span aria-hidden="true" className="brand-message-type-row-index">인</span>
+            <span aria-hidden="true" className="brand-message-type-row-fixed-label">인트로</span>
             <div className="brand-message-type-row-copy">
-              <strong>{carouselHead.header || '커머스 인트로'}</strong>
+              <strong>
+                <span className="brand-message-type-row-title-text">{carouselHead.header || '커머스 인트로'}</span>
+              </strong>
               <span>{hasIntro ? getBrandCarouselIntroSummary(carouselHead) : '사용 안 함'}</span>
             </div>
             <button
@@ -3474,13 +3670,7 @@ function BrandMessageTypeFields({
                 message={carouselTailIssue?.message ?? getBrandValidationTooltipMessage(carouselTailValidation.errors)}
               />
             ) : null}
-            <span
-              aria-hidden="true"
-              className="brand-message-type-row-static-handle"
-            >
-              <GripVertical size={16} />
-            </span>
-            <span className="brand-message-type-row-index">더</span>
+            <span aria-hidden="true" className="brand-message-type-row-fixed-label">더보기</span>
             <div className="brand-message-type-row-copy">
               <strong>
                 <span className="brand-message-type-row-title-text">더보기</span>
@@ -3490,7 +3680,8 @@ function BrandMessageTypeFields({
             <button
               aria-label="더보기 링크 수정"
               className="brand-message-type-row-action"
-              onClick={onCarouselTailEdit}
+              disabled={!isMoreButtonEnabled}
+              onClick={isMoreButtonEnabled ? onCarouselTailEdit : undefined}
               type="button"
             >
               <Pencil aria-hidden="true" size={15} />
@@ -4745,10 +4936,12 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
   compositionPurpose = 'send',
   defaultValue,
   fallbackSenderNumbers = defaultSmsFallbackSenderNumbers,
+  fallbackUnsubscribeNumbers = defaultBrandFallbackUnsubscribeNumbers,
   onChange,
   onCarouselPreviewTargetChange,
   onFallbackSenderNumberCreate,
   onSenderProfileCreate,
+  onUnsubscribeNumberCreate,
   recipientContacts,
   recipientSelectProps,
   recipients = defaultEmailSendFormSegments,
@@ -5789,6 +5982,7 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
               <EmailSendFormLabel>메시지 타입</EmailSendFormLabel>
               <EmailSendFormSelect
                 ariaLabel="브랜드 메시지 타입 선택"
+                getOptionPreviewSprite={(option) => option.previewSprite}
                 onValueChange={handleChatBubbleTypeChange}
                 options={brandChatBubbleTypeOptions}
                 showMenuLabel={false}
@@ -5903,7 +6097,6 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
                     fallbackSenderNumber: event.target.checked
                       ? message.fallbackSenderNumber || fallbackSenderNumbers[0]?.value || ''
                       : message.fallbackSenderNumber,
-                    fallbackUnsubscribeNumber: '',
                   })}
                   type="checkbox"
                 />
@@ -5940,10 +6133,20 @@ export const BrandMessageSendForm = forwardRef(function BrandMessageSendForm({
             />
           </EmailSendFormRow>
           <EmailSendFormRow className="brand-message-send-form-fallback-ad-row">
-            <EmailSendFormLabel description="브랜드 메시지의 문자 대체발송에는 서버에 설정된 NOTI 공통 080 번호가 자동으로 적용됩니다.">
+            <EmailSendFormLabel description="SMS 대체발송에 사용할 무료 수신거부 번호를 선택하세요.">
               080 번호
             </EmailSendFormLabel>
-            <span className="email-send-form-placeholder">NOTI 공통 080 자동 적용</span>
+            <EmailSendFormSelect
+              ariaLabel="광고성 SMS 대체발송 080 수신거부 번호 선택"
+              emptyActionLabel="080번호 추가하기"
+              emptyDescription="등록된 080 수신거부 번호가 없습니다. 번호를 추가하면 SMS 대체발송에 사용할 수 있습니다."
+              onEmptyAction={onUnsubscribeNumberCreate}
+              onValueChange={(fallbackUnsubscribeNumber) => updateMessage({ fallbackUnsubscribeNumber })}
+              options={fallbackUnsubscribeNumbers}
+              placeholder="080 번호 선택"
+              showMenuLabel={false}
+              value={message.fallbackUnsubscribeNumber}
+            />
           </EmailSendFormRow>
         </EmailSendFormDisclosure>
       </EmailSendFormSelection>

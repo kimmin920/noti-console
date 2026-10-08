@@ -18,9 +18,7 @@
   padding: 24px;
 }
 
-.brand,
-.previewHeader,
-.previewRow {
+.brand {
   display: flex;
   align-items: center;
 }
@@ -69,106 +67,28 @@
 
 .previewColumn {
   display: grid;
+  overflow: hidden;
   place-items: center;
   border-left: 1px solid var(--line-soft);
-  background:
-    linear-gradient(90deg, var(--black-a2) 1px, transparent 1px),
-    linear-gradient(var(--black-a2) 1px, transparent 1px),
-    var(--canvas);
-  background-size: 28px 28px;
-  padding: 48px;
+  background: var(--canvas);
+  padding: 0;
 }
 
-.previewSurface {
-  display: grid;
-  width: min(100%, 520px);
-  gap: 24px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--card);
-  padding: 20px;
+.previewAnimation {
+  position: relative;
+  width: max(100%, 100dvh);
+  aspect-ratio: 1;
 }
 
-.previewHeader {
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.previewHeader > div {
-  display: grid;
-  gap: 2px;
-}
-
-.previewHeader span,
-.previewMetric span,
-.previewRow > span {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 14px;
-}
-
-.previewHeader strong {
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 20px;
-}
-
-.liveBadge {
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-md);
-  background: var(--control);
-  padding: 4px 8px;
-}
-
-.previewMetric {
-  display: grid;
-  gap: 3px;
-  border-top: 1px solid var(--line-soft);
-  border-bottom: 1px solid var(--line-soft);
-  padding: 28px 0;
-}
-
-.previewMetric strong {
-  font-family: var(--font-mono);
-  font-size: 40px;
-  font-weight: 650;
-  line-height: 48px;
-  font-variant-numeric: tabular-nums;
-}
-
-.previewMetric p {
-  color: var(--text-soft);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.previewRow {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
-  gap: 12px;
-  min-height: 64px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.previewRow:last-child {
-  border-bottom: 0;
-}
-
-.previewRow strong {
-  display: block;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 18px;
-}
-
-.previewRow p {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 17px;
+.previewFrame {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0;
+  animation: notiPreviewFrameLoop 1.1s steps(1, end) infinite;
+  animation-delay: calc(var(--frame-index) * 110ms);
 }
 
 .clerkRoot,
@@ -353,6 +273,18 @@
 
 .authPage :global(.cl-footerItem) {
   display: none !important;
+}
+
+@keyframes notiPreviewFrameLoop {
+  0%,
+  9.99% {
+    opacity: 1;
+  }
+
+  10%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @media (max-width: 900px) {

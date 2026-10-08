@@ -98,7 +98,7 @@ describe('message send payload builders', () => {
     })).toThrow(MessageSendValidationError);
   });
 
-  it('marks advertising SMS for server-owned advertisement delivery', () => {
+  it('passes the selected opt-out number for advertising SMS delivery', () => {
     const payload = buildSmsSendPayload({
       ...baseSmsMessage,
       isAdvertisement: true,
@@ -106,7 +106,7 @@ describe('message send payload builders', () => {
     });
 
     expect(payload.isAdvertisement).toBe(true);
-    expect(payload).not.toHaveProperty('unsubscribeNo');
+    expect(payload.unsubscribeNo).toBe('080-999-9999');
     expect(payload).not.toHaveProperty('unsubscribeNumber');
   });
 
@@ -139,7 +139,7 @@ describe('message send payload builders', () => {
       resellerCode: 'reseller-1',
       senderResourceId: 'kakao_resource_1',
       statsId: 'brand01',
-      targeting: 'M',
+      targeting: 'I',
       unsubscribeAuthNo: 'AUTH-1',
       unsubscribeNo: '080-123-4567',
     });
@@ -158,7 +158,7 @@ describe('message send payload builders', () => {
       resellerCode: 'reseller-1',
       scheduledAt: '2026-06-02 15:00',
       statsId: 'brand01',
-      targeting: 'M',
+      targeting: 'I',
       unsubscribeAuthNo: 'AUTH-1',
       unsubscribeNo: '080-123-4567',
     }, { templateName: '  6월 브랜드 템플릿  ' });
@@ -171,6 +171,26 @@ describe('message send payload builders', () => {
       templateName: '6월 브랜드 템플릿',
     });
     expectNoBrandTemplateRegistrationSendOnlyFields(payload);
+  });
+
+  it('passes the selected opt-out number for advertising Brand Message SMS fallback', () => {
+    const payload = stripRequestId(buildBrandMessageSendPayload({
+      ...baseBrandMessage,
+      chatBubbleType: 'TEXT',
+      content: '브랜드 안내',
+      fallbackAdvertisementEnabled: true,
+      fallbackEnabled: true,
+      fallbackSenderNumber: 'sms_resource_1',
+      fallbackUnsubscribeNumber: '080-999-0000',
+    }));
+
+    expect(payload.fallback).toEqual({
+      advertising: true,
+      enabled: true,
+      resendType: 'SMS',
+      resendUnsubscribeNo: '080-999-0000',
+      smsSenderResourceId: 'sms_resource_1',
+    });
   });
 
   it('requires uploaded image URLs for Brand Message template registration', () => {
@@ -825,7 +845,7 @@ describe('message send payload builders', () => {
         {
           imageParameters: [{ imageUrl: 'https://cdn.example.com/template.png', name: 'hero' }],
           recipientNo: '01012345678',
-          targeting: 'N',
+          targeting: 'I',
           templateParameter: { customerName: '민지' },
           unsubscribeAuthNo: 'RECIPIENT-AUTH',
           unsubscribeNo: '080-999-0000',
@@ -836,6 +856,61 @@ describe('message send payload builders', () => {
       templateCode: 'BRAND_TEMPLATE',
     });
     expectNoLegacyBrandFields(payload);
+  });
+
+  it('resolves brand template variables from each concrete recipient source', () => {
+    const payload = stripRequestId(buildBrandMessageSendPayload({
+      ...baseBrandMessage,
+      mode: 'template',
+      recipient: [
+        {
+          label: '민지',
+          type: 'publ-contact',
+          value: '010-1234-5678',
+        },
+        {
+          label: '서준',
+          type: 'publ-contact',
+          value: '010-9999-8888',
+        },
+      ],
+      templateCode: 'BRAND_TEMPLATE',
+      templateParameter: {
+        고객명: { mode: 'recipient', path: 'recipient.name' },
+        수신번호: { mode: 'recipient', path: 'recipient.phone' },
+      },
+    }));
+
+    expect(payload.recipients).toEqual([
+      {
+        recipientNo: '01012345678',
+        targeting: 'I',
+        templateParameter: {
+          고객명: '민지',
+          수신번호: '01012345678',
+        },
+      },
+      {
+        recipientNo: '01099998888',
+        targeting: 'I',
+        templateParameter: {
+          고객명: '서준',
+          수신번호: '01099998888',
+        },
+      },
+    ]);
+  });
+
+  it('rejects recipient template variables when the selected recipient field is missing', () => {
+    expect(() => buildBrandMessageSendPayload({
+      ...baseBrandMessage,
+      mode: 'template',
+      recipient: [{ type: 'manual', value: '010-1234-5678' }],
+      templateCode: 'BRAND_TEMPLATE',
+      templateParameter: {
+        고객명: { mode: 'recipient', path: 'recipient.name' },
+      },
+    })).toThrow(MessageSendValidationError);
   });
 
   it('sends a Brand Message started from a template through the freestyle payload branch', () => {

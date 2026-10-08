@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Circle, FileText, RefreshCcw } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
-import { Button, DataTableV2, DatePickerPresets, FilterSelect, useToast } from '../../../components/ui/index.js';
+import { Button, DataTableV2, DatePickerPresets, FilterSelect, TablePagination, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { useMessageLogsExportMutation } from './mutations.js';
 import { useMessageLogGroupsQuery } from './queries.js';
@@ -197,8 +197,8 @@ export function MessageLogsPage() {
           </span>
         )}
         renderPagination={() => (
-          <MessageLogsV2Pagination
-            onPageChange={(page) => replaceFilters({ page })}
+          <TablePagination
+            itemLabel="발송기록"
             onPageSizeChange={(pageSize) => replaceFilters({ page: 1, pageSize })}
             page={filters.page}
             pageSize={filters.pageSize}
@@ -235,47 +235,6 @@ function MessageLogV2Status({ label, status }) {
     <span className={`resend-email-status message-log-status-chip is-${getMessageLogV2StatusTone(status?.state)}`}>
       {label ?? status?.label ?? '상태 확인 불가'}
     </span>
-  );
-}
-
-function MessageLogsV2Pagination({
-  onPageChange,
-  onPageSizeChange,
-  page,
-  pageSize,
-  pageSizeOptions,
-  total,
-}) {
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(Math.max(page, 1), pageCount);
-  const from = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const to = Math.min(total, currentPage * pageSize);
-
-  return (
-    <div className="resend-email-pagination message-logs-v2-pagination">
-      <p>
-        <strong>{from}-{to}</strong>
-        <span> / {total}건</span>
-        <span> - </span>
-        <select
-          aria-label="페이지당 발송기록 수"
-          onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          value={pageSize}
-        >
-          {pageSizeOptions.map((option) => (
-            <option key={option} value={option}>{option}개</option>
-          ))}
-        </select>
-      </p>
-      <div>
-        <button disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)} type="button">
-          이전
-        </button>
-        <button disabled={currentPage >= pageCount} onClick={() => onPageChange(currentPage + 1)} type="button">
-          다음
-        </button>
-      </div>
-    </div>
   );
 }
 

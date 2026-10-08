@@ -418,8 +418,7 @@
 }
 
 .resend-email-actions > button,
-.resend-email-bulk-bar button,
-.resend-email-pagination button {
+.resend-email-bulk-bar button {
   align-items: center;
   border: 1px solid var(--line-soft);
   background: #ffffff;
@@ -435,8 +434,7 @@
 }
 
 .resend-email-actions > button:hover,
-.resend-email-bulk-bar button:hover,
-.resend-email-pagination button:not(:disabled):hover {
+.resend-email-bulk-bar button:hover {
   background: var(--control);
 }
 
@@ -541,47 +539,6 @@
   }
 }
 
-.resend-email-pagination {
-  align-items: center;
-  color: var(--muted);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 13px;
-  gap: 12px;
-  justify-content: space-between;
-  padding: 16px 0 0;
-}
-
-.resend-email-pagination p,
-.resend-email-pagination div {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  margin: 0;
-}
-
-.resend-email-pagination select {
-  background: #ffffff;
-  border: 1px solid var(--line-soft);
-  border-radius: 9px;
-  color: var(--text);
-  height: 30px;
-  padding: 0 28px 0 10px;
-}
-
-.resend-email-pagination button {
-  border-radius: 10px;
-  height: 32px;
-  min-width: 68px;
-  padding: 0 12px;
-}
-
-.resend-email-pagination button:disabled {
-  color: var(--placeholder);
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
 .automations-page .page-header {
   margin-bottom: 58px;
   min-height: auto;
@@ -607,21 +564,21 @@
 }
 
 .automations-toolbar {
-  display: grid;
-  gap: 8px 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(164px, 220px);
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
-.automations-toolbar .search-field {
-  flex: none;
-  min-width: 0;
-  width: 100%;
+.automations-toolbar .toolbar-search {
+  flex: 1 1 auto;
+  min-width: min(280px, 100%);
 }
 
 .automations-toolbar .dropdown-menu-root {
-  flex: none;
-  min-width: 0;
-  width: 100%;
+  flex: 0 0 auto;
 }
 
 .automations-toolbar .select-pill {
@@ -653,16 +610,21 @@
 
 .automation-rules-list-toolbar {
   align-items: center;
-  display: grid;
-  gap: 8px 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
   min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
-.automation-rules-list-toolbar .search-field,
+.automation-rules-list-toolbar-search {
+  flex: 1 1 auto;
+  min-width: min(280px, 100%);
+}
+
 .automation-rules-list-toolbar .dropdown-menu-root {
-  min-width: 0;
-  width: 100%;
+  flex: 0 0 auto;
 }
 
 .automation-rules-list-toolbar .select-pill {
@@ -1054,6 +1016,43 @@
   min-width: 0;
 }
 
+.automation-table-pagination-separator {
+  margin: 0 6px;
+}
+
+.automation-table-pagination-actions {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.automation-table-pagination-actions button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-soft);
+  cursor: pointer;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  padding: 0;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+  width: 24px;
+}
+
+.automation-table-pagination-actions button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.automation-table-pagination-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .automation-page-size-select {
   align-items: center;
   display: inline-flex;
@@ -1191,10 +1190,6 @@
   align-items: center;
 }
 
-.automation-unsent-table-pagination {
-  padding-top: 12px;
-}
-
 .publ-event-data-table-shell {
   align-self: start;
   min-width: 0;
@@ -1329,10 +1324,6 @@
   color: var(--text-soft);
   font-size: 12px;
   line-height: 18px;
-}
-
-.publ-event-table-pagination {
-  padding-top: 12px;
 }
 
 .publ-event-variable-cell {
@@ -1518,7 +1509,15 @@
   }
 
   .automations-toolbar {
-    grid-template-columns: 1fr;
+    align-items: stretch;
+    flex-direction: column;
+    overflow-x: visible;
+  }
+
+  .automations-toolbar > *,
+  .automations-toolbar .toolbar-search,
+  .automations-toolbar .dropdown-menu-root {
+    width: 100%;
   }
 
   .publ-event-load-error {

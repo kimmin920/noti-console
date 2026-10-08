@@ -10,6 +10,7 @@ import {
   Badge,
   Button,
   DataTableV2,
+  TablePagination,
 } from '../../../components/ui/index.js';
 import {
   formatMessageLogDate,
@@ -110,7 +111,6 @@ export function MessageLogResultSection({
   selectedFailure,
   selectedRecipientSeq,
 }) {
-  const pageCount = Math.max(1, Math.ceil(failuresTotal / MESSAGE_LOG_DETAIL_FAILURE_PAGE_SIZE));
   const requestFailureCount = Number(activeRequest?.failedCount ?? 0);
   const emptyCopy = getFailureEmptyCopy({ activeRequest, requestFailureCount });
 
@@ -222,19 +222,15 @@ export function MessageLogResultSection({
       />
 
       {failuresTotal > MESSAGE_LOG_DETAIL_FAILURE_PAGE_SIZE ? (
-        <div className="message-log-detail-pagination">
-          <span>
-            {failurePage.toLocaleString('ko-KR')} / {pageCount.toLocaleString('ko-KR')}
-          </span>
-          <div>
-            <button disabled={failurePage <= 1} onClick={() => onFailurePageChange(failurePage - 1)} type="button">
-              이전
-            </button>
-            <button disabled={failurePage >= pageCount} onClick={() => onFailurePageChange(failurePage + 1)} type="button">
-              다음
-            </button>
-          </div>
-        </div>
+        <TablePagination
+          itemLabel="실패"
+          onPageSizeChange={() => onFailurePageChange(1)}
+          page={failurePage}
+          pageSize={MESSAGE_LOG_DETAIL_FAILURE_PAGE_SIZE}
+          pageSizeOptions={[MESSAGE_LOG_DETAIL_FAILURE_PAGE_SIZE]}
+          total={failuresTotal}
+          unit="건"
+        />
       ) : null}
 
       <MessageLogSelectedRecipientPanel

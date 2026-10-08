@@ -197,11 +197,13 @@ export function AdminSenderResourceApplicationsPage() {
       {activeAdminTab === ADMIN_REQUEST_TAB_VALUES.SENDER_APPLICATIONS ? (
         <div className="admin-request-tab-panel" role="tabpanel">
           <div className="admin-sender-toolbar">
-            <SearchField
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="번호, 이메일, 이름 검색"
-              value={searchTerm}
-            />
+            <div className="admin-sender-toolbar-search">
+              <SearchField
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="번호, 이메일, 이름 검색"
+                value={searchTerm}
+              />
+            </div>
             <FilterSelect
               label="상태"
               onValueChange={setStatusFilter}

@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Button, DataTableV2 } from '../../../components/ui/index.js';
+import { Button, DataTableV2, TablePagination } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { useAutomationRulesQuery } from './queries.js';
 import { usePublEventsQuery } from '../publEvents/queries.js';
@@ -96,7 +95,12 @@ export function PublEventsTable({ table: tableConfig }) {
       loadingRows={8}
       pagination
       renderPagination={({ table: dataTable }) => (
-        <PublEventTablePagination table={dataTable} total={rows.length} />
+        <TablePagination
+          itemLabel="이벤트"
+          pageSizeOptions={PUBL_EVENT_TABLE_PAGE_SIZE_OPTIONS}
+          table={dataTable}
+          total={rows.length}
+        />
       )}
       rowActions={({ row }) => (
         <Button
@@ -478,33 +482,6 @@ function normalizePublEventVariableText(value) {
 
 function buildPublEventDetailHref(eventKey) {
   return `/automations/publ-events/${encodeURIComponent(String(eventKey ?? ''))}`;
-}
-
-function PublEventTablePagination({ table, total }) {
-  const { pageIndex, pageSize } = table.getState().pagination;
-  const pageCount = Math.max(table.getPageCount(), 1);
-  const pageNumber = Math.min(pageIndex + 1, pageCount);
-
-  function changePageSize(event) {
-    table.setPageSize(Number(event.target.value));
-    table.setPageIndex(0);
-  }
-
-  return (
-    <div className="automation-table-pagination publ-event-table-pagination">
-      <span>
-        페이지 {pageNumber} - {pageCount} / {formatPublEventNumber(total)}개 이벤트 -{' '}
-        <span className="automation-page-size-select">
-          <select aria-label="페이지당 이벤트 수" onChange={changePageSize} value={pageSize}>
-            {PUBL_EVENT_TABLE_PAGE_SIZE_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option}개</option>
-            ))}
-          </select>
-          <ChevronDown aria-hidden="true" size={14} />
-        </span>
-      </span>
-    </div>
-  );
 }
 
 function formatPublEventNumber(value) {

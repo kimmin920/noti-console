@@ -12,6 +12,14 @@
   scrollbar-gutter: stable;
 }
 
+.console-audience-page .resend-ui-audience-contact-list__pagination {
+  display: none;
+}
+
+.console-audience-pagination {
+  padding-top: 14px;
+}
+
 .console-audience-page.is-publ .resend-ui-audience-contact-list__export {
   display: none;
 }

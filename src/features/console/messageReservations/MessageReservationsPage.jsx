@@ -22,6 +22,7 @@ import {
   DrawerHeader,
   DrawerTitle,
   SegmentedControl,
+  TablePagination,
   useToast,
 } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
@@ -242,8 +243,8 @@ export function MessageReservationsPage() {
           </span>
         )}
         renderPagination={() => (
-          <MessageReservationsV2Pagination
-            onPageChange={(page) => replaceFilters({ page })}
+          <TablePagination
+            itemLabel="예약"
             onPageSizeChange={(pageSize) => replaceFilters({ page: 1, pageSize })}
             page={filters.page}
             pageSize={filters.pageSize}
@@ -358,47 +359,6 @@ function MessageReservationV2Status({ status }) {
     <span className={`resend-email-status message-reservation-status-chip is-${getReservationV2StatusTone(status?.state)}`}>
       {status?.label ?? '상태 확인 불가'}
     </span>
-  );
-}
-
-function MessageReservationsV2Pagination({
-  onPageChange,
-  onPageSizeChange,
-  page,
-  pageSize,
-  pageSizeOptions,
-  total,
-}) {
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(Math.max(page, 1), pageCount);
-  const from = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const to = Math.min(total, currentPage * pageSize);
-
-  return (
-    <div className="resend-email-pagination message-reservations-v2-pagination">
-      <p>
-        <strong>{from}-{to}</strong>
-        <span> / {total}건</span>
-        <span> - </span>
-        <select
-          aria-label="페이지당 예약 수"
-          onChange={(event) => onPageSizeChange(Number(event.target.value))}
-          value={pageSize}
-        >
-          {pageSizeOptions.map((option) => (
-            <option key={option} value={option}>{option}개</option>
-          ))}
-        </select>
-      </p>
-      <div>
-        <button disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)} type="button">
-          이전
-        </button>
-        <button disabled={currentPage >= pageCount} onClick={() => onPageChange(currentPage + 1)} type="button">
-          다음
-        </button>
-      </div>
-    </div>
   );
 }
 

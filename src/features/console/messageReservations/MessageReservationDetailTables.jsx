@@ -88,20 +88,3 @@ export function RecipientTable({ isPending = false, loadingSlot = null, recipien
     />
   );
 }
-
-export function DetailPagination({ onPageChange, page, pageSize, total }) {
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(Math.max(page, 1), pageCount);
-  const from = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const to = Math.min(total, currentPage * pageSize);
-
-  return (
-    <div className="message-reservation-detail-pagination">
-      <span>{from}-{to} / {total}명</span>
-      <div>
-        <button disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)} type="button">이전</button>
-        <button disabled={currentPage >= pageCount} onClick={() => onPageChange(currentPage + 1)} type="button">다음</button>
-      </div>
-    </div>
-  );
-}

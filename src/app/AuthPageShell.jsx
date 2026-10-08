@@ -1,22 +1,19 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { MessageSquareText, Workflow } from 'lucide-react';
 
 import styles from './auth.module.css';
 
-const previewRows = [
-  {
-    icon: MessageSquareText,
-    label: 'SMS / 알림톡',
-    detail: '주문 완료, 예약 확정, 배송 시작에 맞춰 자동 발송',
-    status: 'ready',
-  },
-  {
-    icon: Workflow,
-    label: 'NOTI 이벤트',
-    detail: '수신자 파일을 내보내지 않고 이벤트 조건 그대로 사용',
-    status: 'live',
-  },
+const previewFrames = [
+  '/static/auth/001_NOTI.png',
+  '/static/auth/002_NOTI.png',
+  '/static/auth/003_NOTI.png',
+  '/static/auth/004_NOTI.png',
+  '/static/auth/005_NOTI.png',
+  '/static/auth/006_NOTI.png',
+  '/static/auth/007_NOTI.png',
+  '/static/auth/008_NOTI.png',
+  '/static/auth/009_NOTI.png',
+  '/static/auth/010_NOTI.png',
 ];
 
 export const clerkAuthAppearance = {
@@ -68,37 +65,17 @@ export function AuthPageShell({ children }) {
         </div>
 
         <aside className={styles.previewColumn} aria-label="메시징 자동화 미리보기">
-          <div className={styles.previewSurface}>
-            <div className={styles.previewHeader}>
-              <div>
-                <span>workspace</span>
-                <strong>current</strong>
-              </div>
-              <span className={styles.liveBadge}>live</span>
-            </div>
-
-            <div className={styles.previewMetric}>
-              <span>today</span>
-              <strong>1,284</strong>
-              <p>sent messages</p>
-            </div>
-
-            <div className={styles.previewRows}>
-              {previewRows.map((row) => {
-                const Icon = row.icon;
-
-                return (
-                  <article className={styles.previewRow} key={row.label}>
-                    <Icon size={16} />
-                    <div>
-                      <strong>{row.label}</strong>
-                      <p>{row.detail}</p>
-                    </div>
-                    <span>{row.status}</span>
-                  </article>
-                );
-              })}
-            </div>
+          <div className={styles.previewAnimation} aria-hidden="true">
+            {previewFrames.map((src, index) => (
+              <span
+                className={styles.previewFrame}
+                key={src}
+                style={{
+                  '--frame-index': index,
+                  backgroundImage: `url('${src}')`,
+                }}
+              />
+            ))}
           </div>
         </aside>
       </section>

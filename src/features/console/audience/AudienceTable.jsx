@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { DropdownMenu as RadixDropdownMenu } from 'radix-ui';
 import { Ban, Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '../../../components/layout/index.js';
-import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, ConfirmationDialog, DataTableV2, IconButton, SegmentedControl, useToast } from '../../../components/ui/index.js';
+import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuSeparator, ActionMenuTrigger, ConfirmationDialog, DataTableV2, IconButton, SegmentedControl, TablePagination, useToast } from '../../../components/ui/index.js';
 import {
   AudienceContactList,
   AudienceManagementList,
@@ -18,14 +18,16 @@ import { AudienceImportCsvModal } from '../../../ui-kits/resend/domain/audience-
 import { usePublMessageRecipients } from '../../publClient/usePublMessageRecipients.js';
 import { useStandaloneConsole } from '../StandaloneConsoleContext.jsx';
 
-const SELECTABLE_TABLE_PAGE_SIZE_OPTIONS = [40, 80, 120];
-const AUDIENCE_CONTACT_PAGE_SIZE = 40;
+const SELECTABLE_TABLE_PAGE_SIZE_OPTIONS = [20, 40, 80, 120];
+const AUDIENCE_CONTACT_PAGE_SIZE = 20;
 const STATIC_AUDIENCE_DATE = '2026-07-14T00:00:00.000Z';
 
 export function AudiencePage({ meta: metaProp }) {
   const standaloneConsole = useStandaloneConsole();
   const meta = metaProp ?? standaloneConsole?.meta;
   const [activeTab, setActiveTab] = useState('contacts');
+  const [contactPage, setContactPage] = useState(1);
+  const [contactPageSize, setContactPageSize] = useState(AUDIENCE_CONTACT_PAGE_SIZE);
   const [selectedContactIds, setSelectedContactIds] = useState([]);
   const [selectedSegmentIds, setSelectedSegmentIds] = useState([]);
   const { showToast } = useToast();
@@ -40,7 +42,12 @@ export function AudiencePage({ meta: metaProp }) {
   );
   const isPublEmbed = publRecipients.isPublEmbed;
   const contacts = isPublEmbed ? publContacts : configuredAudience.contacts;
-  const visibleContacts = contacts.slice(0, AUDIENCE_CONTACT_PAGE_SIZE);
+  const contactPageCount = Math.max(1, Math.ceil(contacts.length / contactPageSize));
+  const resolvedContactPage = Math.min(contactPage, contactPageCount);
+  const visibleContacts = contacts.slice(
+    (resolvedContactPage - 1) * contactPageSize,
+    resolvedContactPage * contactPageSize
+  );
   const segments = isPublEmbed ? [] : configuredAudience.segments;
   const managementSegments = isPublEmbed ? [] : configuredAudience.managementSegments;
   const publContactNotice = isPublEmbed
@@ -62,8 +69,14 @@ export function AudiencePage({ meta: metaProp }) {
 
   function handleActiveTabChange(nextTab) {
     setActiveTab(nextTab);
+    setContactPage(1);
     setSelectedContactIds([]);
     setSelectedSegmentIds([]);
+  }
+
+  function handleContactPageSizeChange(nextPageSize) {
+    setContactPageSize(nextPageSize);
+    setContactPage(1);
   }
 
   function handleDomainLinkClick(event) {
@@ -95,22 +108,37 @@ export function AudiencePage({ meta: metaProp }) {
         publContactNotice ? (
           <AudienceSourceNotice {...publContactNotice} />
         ) : (
-          <AudienceContactList
-            className="console-audience-domain"
-            contactColumnLabel="수신자"
-            contacts={visibleContacts}
-            isUserAdmin={!isPublEmbed}
-            onClickCapture={handleDomainLinkClick}
-            onExport={() => notifyUnavailable('수신자 내보내기')}
-            onSelectedContactIdsChange={setSelectedContactIds}
-            segments={segments}
-            segmentsColumnLabel="세그먼트"
-            selectedContactIds={selectedContactIds}
-            state={contactState}
-            statusColumnLabel="수신동의"
-            subscribedLabel="동의"
-            unsubscribedLabel="미동의"
-          />
+          <>
+            <AudienceContactList
+              className="console-audience-domain"
+              contactColumnLabel="수신자"
+              contacts={visibleContacts}
+              isUserAdmin={!isPublEmbed}
+              onClickCapture={handleDomainLinkClick}
+              onExport={() => notifyUnavailable('수신자 내보내기')}
+              onSelectedContactIdsChange={setSelectedContactIds}
+              segments={segments}
+              segmentsColumnLabel="세그먼트"
+              selectedContactIds={selectedContactIds}
+              state={contactState}
+              statusColumnLabel="수신동의"
+              subscribedLabel="동의"
+              unsubscribedLabel="미동의"
+            />
+            {contacts.length > 0 ? (
+              <TablePagination
+                className="console-audience-pagination"
+                itemLabel="수신자"
+                onPageChange={setContactPage}
+                onPageSizeChange={handleContactPageSizeChange}
+                page={resolvedContactPage}
+                pageSize={contactPageSize}
+                pageSizeOptions={SELECTABLE_TABLE_PAGE_SIZE_OPTIONS}
+                total={contacts.length}
+                unit="명"
+              />
+            ) : null}
+          </>
         )
       ) : isPublEmbed ? (
         <AudienceSourceNotice
@@ -409,8 +437,9 @@ export function SelectableDataTable({ table }) {
       initialPageSize={SELECTABLE_TABLE_PAGE_SIZE_OPTIONS[0]}
       pagination={isRecipientTable}
       renderPagination={isRecipientTable ? ({ table: dataTable }) => (
-        <SelectableDataTablePagination
+        <TablePagination
           itemLabel="수신자"
+          pageSizeOptions={SELECTABLE_TABLE_PAGE_SIZE_OPTIONS}
           table={dataTable}
           total={rows.length}
           unit="명"
@@ -432,52 +461,6 @@ export function SelectableDataTable({ table }) {
       shellClassName="console-data-table-shell"
       tableClassName="console-data-table-v2"
     />
-  );
-}
-
-function SelectableDataTablePagination({
-  itemLabel,
-  pageSizeOptions = SELECTABLE_TABLE_PAGE_SIZE_OPTIONS,
-  table,
-  total,
-  unit = '개',
-}) {
-  const { pageIndex, pageSize } = table.getState().pagination;
-  const pageCount = Math.max(table.getPageCount(), 1);
-  const currentPage = Math.min(pageIndex + 1, pageCount);
-  const from = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const to = Math.min(total, currentPage * pageSize);
-
-  function changePageSize(event) {
-    table.setPageSize(Number(event.target.value));
-    table.setPageIndex(0);
-  }
-
-  return (
-    <div className="resend-email-pagination console-data-table-pagination">
-      <p>
-        <strong>{from}-{to}</strong>
-        <span> / {total.toLocaleString('ko-KR')}{unit}</span>
-        <span> - </span>
-        <select
-          aria-label={`페이지당 ${itemLabel} 수`}
-          onChange={changePageSize}
-          value={pageSize}
-        >
-          {pageSizeOptions.map((option) => (
-            <option key={option} value={option}>{option}개</option>
-          ))}
-        </select>
-      </p>
-      <div>
-        <button disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()} type="button">
-          이전
-        </button>
-        <button disabled={!table.getCanNextPage()} onClick={() => table.nextPage()} type="button">
-          다음
-        </button>
-      </div>
-    </div>
   );
 }
 

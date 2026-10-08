@@ -18,11 +18,13 @@ import { getReservationsHrefForChannel, shouldShowSmsReservationAcceptedToast } 
 import { getSmsBulkSendRunToastView } from './smsBulkSendRunToast.js';
 import { messageLogQueryKeys } from '../messageLogs/queryKeys.js';
 import { buildTabQueryHref, getMessageSendTabFromQuery, getMessageSendTabQueryValue } from '../tabQuery.js';
+import { useSmsTemplateAttachmentUploadMutation } from '../templates/queries.js';
 import { ConsoleLink, useConsoleNavigation } from '../ConsoleNavigationContext.jsx';
 import { useStandaloneConsole } from '../StandaloneConsoleContext.jsx';
 import { usePublMessageRecipients } from '../../publClient/usePublMessageRecipients.js';
 
 const BRAND_TEMPLATE_REGISTRATION_NAME_MAX_LENGTH = 200;
+const unsubscribeNumberOptions = [];
 
 export function SmsBulkSendRunWatcher() {
   const navigation = useConsoleNavigation();
@@ -87,6 +89,7 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
   const brandImageUploadMutation = useBrandImageUploadMutation();
   const brandMessageSendMutation = useBrandMessageSendMutation();
   const brandTemplateCreateMutation = useBrandTemplateCreateMutation();
+  const smsAttachmentUploadMutation = useSmsTemplateAttachmentUploadMutation();
   const smsBulkSendRunMutation = useSmsBulkSendRunMutation();
   const smsSendMutation = useSmsSendMutation();
   const senderResourcesQuery = useSenderResourcesQuery();
@@ -309,6 +312,10 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
     navigation.push('/settings?tab=sender-resources');
   }
 
+  function openUnsubscribeNumberPage() {
+    navigation.push('/settings?tab=unsubscribe');
+  }
+
   function beginStatusPollingRun(channelLabel) {
     statusPollingRunRef.current += 1;
     showMessageStatusSubmitToast(showToast, channelLabel);
@@ -340,8 +347,12 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
       try {
         const payloadMessage = smsBulkSimulationConfig
           ? getSmsBulkSimulationPayloadMessage(smsFormValue)
-          : smsFormValue;
+          : await uploadSmsAttachmentsIfNeeded(smsFormValue);
         const payload = buildSmsSendPayload(payloadMessage, { templates: smsTemplates });
+
+        if (!smsBulkSimulationConfig && payloadMessage !== smsFormValue) {
+          setSmsMessage(payloadMessage);
+        }
 
         if (smsBulkSimulationConfig) {
           statusPollingRunId = beginStatusPollingRun('SMS');
@@ -508,11 +519,48 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
     return nextMessage;
   }
 
+  async function uploadSmsAttachmentsIfNeeded(message) {
+    const attachments = Array.isArray(message.imageAttachments) ? message.imageAttachments : [];
+    const uploadableAttachments = attachments.filter((attachment) => (
+      attachment?.file && !(attachment.attachFileId || attachment.fileId)
+    ));
+
+    if (!uploadableAttachments.length) {
+      return message;
+    }
+
+    const uploadedByAttachmentId = new Map();
+
+    for (const attachment of uploadableAttachments) {
+      const uploadResult = await smsAttachmentUploadMutation.mutateAsync({
+        file: attachment.file,
+        senderResourceId: message.senderNumber,
+      });
+      const fileId = uploadResult?.fileId ?? uploadResult?.attachment?.fileId ?? uploadResult?.data?.fileId;
+
+      uploadedByAttachmentId.set(attachment.id, {
+        ...attachment,
+        attachFileId: fileId,
+        fileId,
+      });
+    }
+
+    const nextAttachments = attachments.map((attachment) => (
+      uploadedByAttachmentId.get(attachment.id) ?? attachment
+    ));
+
+    return {
+      ...message,
+      imageAttachments: nextAttachments,
+    };
+  }
+
   const activeSendPending = isActiveSendPending(activeTab, {
     alimtalkSendMutation,
     brandImageUploadMutation,
     brandMessageSendMutation,
     brandTemplateCreateMutation,
+    smsAttachmentUploadMutation,
     smsBulkSendRunMutation,
     smsSendMutation,
   }) || isActiveSmsBulkSendRun(activeSmsBulkRun);
@@ -663,6 +711,7 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
               onChange={setSmsMessage}
               onRecipientCreate={publRecipients.isPublEmbed ? undefined : openAudiencePage}
               onSenderNumberCreate={() => openSenderResourcePage('sms')}
+              onUnsubscribeNumberCreate={openUnsubscribeNumberPage}
               recipientContacts={publRecipients.contacts}
               recipientCreateLabel={publRecipients.isPublEmbed ? undefined : '수신자 추가하기'}
               recipientSelectProps={publRecipients.selectProps}
@@ -670,6 +719,7 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
               senderNumberCreateLabel="발신번호 추가하기"
               senderNumbers={smsSenderOptionsForForm}
               templates={smsTemplates}
+              unsubscribeNumbers={unsubscribeNumberOptions}
               value={smsFormValue}
               variablePanelRoot={variablePanelRoot}
             />
@@ -714,6 +764,7 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
                 onCarouselPreviewTargetChange={setBrandCarouselPreviewTarget}
                 onFallbackSenderNumberCreate={() => openSenderResourcePage('sms')}
                 onSenderProfileCreate={() => openSenderResourcePage('kakao')}
+                onUnsubscribeNumberCreate={openUnsubscribeNumberPage}
                 ref={brandFormRef}
                 recipientContacts={publRecipients.contacts}
                 recipientSelectProps={publRecipients.selectProps}
@@ -721,6 +772,7 @@ export function MessageSendPage({ meta: metaProp, onDocs: onDocsProp }) {
                 senderProfileCreateLabel="발신채널 추가하기"
                 senderProfiles={alimtalkSenderProfiles}
                 templates={brandTemplates}
+                fallbackUnsubscribeNumbers={unsubscribeNumberOptions}
                 value={brandFormValue}
                 variablePanelRoot={variablePanelRoot}
               />
@@ -783,10 +835,14 @@ function isActiveSendPending(activeTab, {
   brandImageUploadMutation,
   brandMessageSendMutation,
   brandTemplateCreateMutation,
+  smsAttachmentUploadMutation,
   smsBulkSendRunMutation,
   smsSendMutation,
 }) {
-  return (activeTab === 'SMS' && (smsSendMutation.isPending || smsBulkSendRunMutation.isPending))
+  return (
+    activeTab === 'SMS'
+    && (smsAttachmentUploadMutation.isPending || smsSendMutation.isPending || smsBulkSendRunMutation.isPending)
+  )
     || (activeTab === '알림톡' && alimtalkSendMutation.isPending)
     || (
       activeTab === '브랜드 메시지'

@@ -13,6 +13,7 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -116,6 +117,23 @@ function getMessageValue(value) {
 
 function getOption(options, value) {
   return options.find((option) => option.value === value) ?? null;
+}
+
+function getPreviewSpriteStyle(sprite) {
+  const frameCount = Math.max(sprite.frameCount ?? 1, 1);
+  const frameIndex = Math.min(Math.max(sprite.frameIndex ?? 0, 0), frameCount - 1);
+  const frameWidth = sprite.frameWidth ?? 1;
+  const frameHeight = sprite.frameHeight ?? 1;
+  const backgroundPositionX = frameCount > 1
+    ? `${(frameIndex / (frameCount - 1)) * 100}%`
+    : '0%';
+
+  return {
+    '--email-send-form-preview-aspect-ratio': `${frameWidth} / ${frameHeight}`,
+    backgroundImage: `url("${sprite.src}")`,
+    backgroundPosition: `${backgroundPositionX} 0`,
+    backgroundSize: `${frameCount * 100}% 100%`,
+  };
 }
 
 function getTemplateString(...values) {
@@ -1318,11 +1336,23 @@ export function EmailSendFormTemplateDialog({
         </DialogTrigger>
       ) : null}
       <DialogContent className="email-send-form-template-dialog" size="large">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="email-send-form-template-dialog-description">
-            {description}
-          </DialogDescription>
+        <DialogHeader className="email-send-form-template-dialog-header">
+          <div className="email-send-form-template-dialog-title-copy">
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription className="email-send-form-template-dialog-description">
+              {description}
+            </DialogDescription>
+          </div>
+          <label className="email-send-form-template-search email-send-form-template-dialog-search">
+            <Search aria-hidden="true" size={16} />
+            <input
+              aria-label={searchLabel ?? '템플릿 검색'}
+              onChange={(event) => handleTemplateQueryChange(event.target.value)}
+              placeholder={searchPlaceholder ?? '템플릿 검색...'}
+              type="search"
+              value={templateQuery}
+            />
+          </label>
         </DialogHeader>
         <DialogBody className="email-send-form-template-dialog-body">
           {beforePicker}
@@ -1332,17 +1362,26 @@ export function EmailSendFormTemplateDialog({
             emptyCopy={emptyCopy}
             emptyTitle={emptyTitle}
             onTemplateSelect={selectTemplate}
-            onQueryChange={isDeferredSelection ? handleTemplateQueryChange : undefined}
-            query={isDeferredSelection ? templateQuery : undefined}
+            query={templateQuery}
             renderTemplateCard={renderTemplateCard}
             searchLabel={searchLabel}
             searchPlaceholder={searchPlaceholder}
             selectedTemplateId={isDeferredSelection ? selectedTemplateId : ''}
+            showToolbar={false}
             templates={templateItems}
-            toolbarAction={toolbarAction}
-            visibleTemplates={isDeferredSelection ? visibleTemplates : undefined}
+            visibleTemplates={visibleTemplates}
           />
         </DialogBody>
+        <DialogFooter className="email-send-form-template-dialog-footer">
+          <EmailSendFormGhostButton onClick={() => setOpen(false)}>
+            취소
+          </EmailSendFormGhostButton>
+          {toolbarAction ? (
+            <div className="email-send-form-template-footer-action">
+              {toolbarAction}
+            </div>
+          ) : null}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -1361,6 +1400,7 @@ export function EmailSendFormTemplatePicker({
   searchLabel = '템플릿 검색',
   searchPlaceholder = '템플릿 검색...',
   selectedTemplateId = '',
+  showToolbar = true,
   templates = defaultEmailSendFormTemplates,
   toolbarAction,
   visibleTemplates: controlledVisibleTemplates,
@@ -1386,23 +1426,25 @@ export function EmailSendFormTemplatePicker({
 
   return (
     <div className={['email-send-form-template-picker', className].filter(Boolean).join(' ')}>
-      <div className={['email-send-form-template-toolbar', toolbarAction ? 'has-action' : ''].filter(Boolean).join(' ')}>
-        <label className="email-send-form-template-search">
-          <Search aria-hidden="true" size={16} />
-          <input
-            aria-label={searchLabel}
-            onChange={handleQueryChange}
-            placeholder={searchPlaceholder}
-            type="search"
-            value={queryValue}
-          />
-        </label>
-        {toolbarAction ? (
-          <div className="email-send-form-template-toolbar-action">
-            {toolbarAction}
-          </div>
-        ) : null}
-      </div>
+      {showToolbar ? (
+        <div className={['email-send-form-template-toolbar', toolbarAction ? 'has-action' : ''].filter(Boolean).join(' ')}>
+          <label className="email-send-form-template-search">
+            <Search aria-hidden="true" size={16} />
+            <input
+              aria-label={searchLabel}
+              onChange={handleQueryChange}
+              placeholder={searchPlaceholder}
+              type="search"
+              value={queryValue}
+            />
+          </label>
+          {toolbarAction ? (
+            <div className="email-send-form-template-toolbar-action">
+              {toolbarAction}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {visibleTemplates.length > 0 ? (
         <div className={['email-send-form-template-grid', renderTemplateCard ? 'email-send-form-template-grid--custom' : ''].filter(Boolean).join(' ')}>
@@ -1510,6 +1552,8 @@ export function EmailSendFormSelect({
   className = '',
   emptyActionLabel,
   emptyDescription,
+  getOptionPreviewSprite,
+  getOptionPreviewSrc,
   onEmptyAction,
   onValueChange,
   options = [],
@@ -1519,9 +1563,29 @@ export function EmailSendFormSelect({
 }) {
   const selected = useMemo(() => getOption(options, value), [options, value]);
   const hasEmptyAction = options.length === 0 && Boolean(emptyActionLabel);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const hasOptionPreview = (
+    typeof getOptionPreviewSrc === 'function'
+    || typeof getOptionPreviewSprite === 'function'
+  ) && !hasEmptyAction && options.length > 0;
+  const resolvedSelectedIndex = Math.min(Math.max(selectedIndex, 0), Math.max(options.length - 1, 0));
+  const selectedPreviewOption = hasOptionPreview ? options[resolvedSelectedIndex] : null;
+  const previewSrc = selectedPreviewOption && typeof getOptionPreviewSrc === 'function'
+    ? getOptionPreviewSrc(selectedPreviewOption)
+    : undefined;
+  const previewSprite = selectedPreviewOption && typeof getOptionPreviewSprite === 'function'
+    ? getOptionPreviewSprite(selectedPreviewOption)
+    : undefined;
+  const hasPreview = selectedPreviewOption !== undefined && (previewSrc !== undefined || previewSprite !== undefined);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => {
+      if (open) {
+        setSelectedIndex(Math.max(options.findIndex((option) => option.value === value), 0));
+      } else {
+        setSelectedIndex(0);
+      }
+    }}>
       <DropdownMenuTrigger asChild>
         <button
           aria-label={ariaLabel}
@@ -1539,16 +1603,70 @@ export function EmailSendFormSelect({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
-        className={['email-send-form-select-menu', hasEmptyAction ? 'sms-fallback-menu' : ''].filter(Boolean).join(' ')}
+        className={[
+          'email-send-form-select-menu',
+          hasEmptyAction ? 'sms-fallback-menu' : '',
+          hasOptionPreview ? 'has-option-preview' : '',
+        ].filter(Boolean).join(' ')}
       >
-        {showMenuLabel ? (
+        {hasOptionPreview ? (
+          <div className="email-send-form-select-preview-layout">
+            <div className="email-send-form-select-preview-list">
+              {showMenuLabel ? (
+                <>
+                  <DropdownMenuLabel>{ariaLabel}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              {options.map((option) => (
+                <DropdownMenuItem
+                  className="email-send-form-select-item"
+                  data-selected-preview={option === selectedPreviewOption ? '' : undefined}
+                  key={option.value}
+                  onFocus={() => setSelectedIndex(options.indexOf(option))}
+                  onMouseEnter={() => setSelectedIndex(options.indexOf(option))}
+                  onSelect={() => onValueChange?.(option.value)}
+                >
+                  <span>
+                    <span>{option.label}</span>
+                    {option.count !== undefined ? (
+                      <small>{option.count.toLocaleString()}</small>
+                    ) : null}
+                  </span>
+                  {option.value === value ? <Check aria-hidden="true" size={14} /> : null}
+                </DropdownMenuItem>
+              ))}
+            </div>
+            {hasPreview ? (
+              <div className="email-send-form-select-preview" data-email-send-form-select-preview>
+                {previewSprite !== undefined ? (
+                  <div
+                    aria-label={`${selectedPreviewOption.label} preview`}
+                    className="email-send-form-select-preview-sprite"
+                    role="img"
+                    style={getPreviewSpriteStyle(previewSprite)}
+                  />
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Preview source may be a data URI or caller-owned URL. */}
+                    <img
+                      alt={`${selectedPreviewOption.label} preview`}
+                      className="email-send-form-select-preview-image"
+                      src={previewSrc}
+                    />
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : hasEmptyAction ? (
           <>
-            <DropdownMenuLabel>{ariaLabel}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-          </>
-        ) : null}
-        {hasEmptyAction ? (
-          <>
+            {showMenuLabel ? (
+              <>
+                <DropdownMenuLabel>{ariaLabel}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
             {emptyDescription ? <p className="sms-fallback-help">{emptyDescription}</p> : null}
             <DropdownMenuItem
               className="sms-fallback-create"
@@ -1564,21 +1682,29 @@ export function EmailSendFormSelect({
             </DropdownMenuItem>
           </>
         ) : (
-          options.map((option) => (
-            <DropdownMenuItem
-              className="email-send-form-select-item"
-              key={option.value}
-              onSelect={() => onValueChange?.(option.value)}
-            >
-              <span>
-                <span>{option.label}</span>
-                {option.count !== undefined ? (
-                  <small>{option.count.toLocaleString()}</small>
-                ) : null}
-              </span>
-              {option.value === value ? <Check aria-hidden="true" size={14} /> : null}
-            </DropdownMenuItem>
-          ))
+          <>
+            {showMenuLabel ? (
+              <>
+                <DropdownMenuLabel>{ariaLabel}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
+            {options.map((option) => (
+              <DropdownMenuItem
+                className="email-send-form-select-item"
+                key={option.value}
+                onSelect={() => onValueChange?.(option.value)}
+              >
+                <span>
+                  <span>{option.label}</span>
+                  {option.count !== undefined ? (
+                    <small>{option.count.toLocaleString()}</small>
+                  ) : null}
+                </span>
+                {option.value === value ? <Check aria-hidden="true" size={14} /> : null}
+              </DropdownMenuItem>
+            ))}
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

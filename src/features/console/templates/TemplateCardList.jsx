@@ -47,7 +47,7 @@ export function TemplateCardList({
   templates,
 }) {
   if (isLoading) {
-    return <TemplateCardSkeletonGrid />;
+    return <TemplateCardSkeletonGrid activeTab={activeTab} />;
   }
 
   if (templates.length === 0) {
@@ -75,7 +75,9 @@ export function TemplateCardList({
   );
 }
 
-function TemplateCardSkeletonGrid() {
+function TemplateCardSkeletonGrid({ activeTab }) {
+  const isSmsPreview = isSmsTemplatePreview(activeTab, {});
+
   return (
     <div
       aria-busy="true"
@@ -84,16 +86,16 @@ function TemplateCardSkeletonGrid() {
       role="status"
     >
       {skeletonCards.map((item) => (
-        <TemplateCardSkeleton key={item} />
+        <TemplateCardSkeleton isSmsPreview={isSmsPreview} key={item} />
       ))}
     </div>
   );
 }
 
-function TemplateCardSkeleton() {
+function TemplateCardSkeleton({ isSmsPreview }) {
   return (
     <article aria-hidden="true" className="template-card template-card-skeleton">
-      <div className="template-card-preview-frame template-card-skeleton-preview">
+      <div className={['template-card-preview-frame', isSmsPreview && 'template-card-preview-frame--sms', 'template-card-skeleton-preview'].filter(Boolean).join(' ')}>
         <span className="template-skeleton-block template-skeleton-preview-window" />
       </div>
       <div className="template-card-content">
@@ -121,7 +123,7 @@ function TemplateCard({ activeTab, eager, senderResourceId, template }) {
 
   return (
     <article className="template-card">
-      <div className="template-card-preview-frame">
+      <div className={['template-card-preview-frame', isSmsPreview && 'template-card-preview-frame--sms'].filter(Boolean).join(' ')}>
         <TemplateCardMenu detailHref={detailHref} template={template} />
         {isBrandPreview ? (
           <div className="template-card-preview-surface">

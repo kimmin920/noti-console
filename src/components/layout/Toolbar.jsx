@@ -215,7 +215,9 @@ export function Toolbar({ className = '', filters = [], showCode = false, showEx
 
   return (
     <div className={['toolbar', className].filter(Boolean).join(' ')}>
-      <SearchField />
+      <div className="toolbar-search">
+        <SearchField />
+      </div>
       {normalizedFilters.map((filter) => (
         <ToolbarFilter filter={filter} key={filter.id} />
       ))}

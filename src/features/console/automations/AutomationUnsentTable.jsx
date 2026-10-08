@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, MoreHorizontal, RefreshCcw, X } from 'lucide-react';
-import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuTrigger, Badge, DataTableV2, IconButton, useToast } from '../../../components/ui/index.js';
+import { MoreHorizontal, RefreshCcw, X } from 'lucide-react';
+import { ActionMenu, ActionMenuContent, ActionMenuItem, ActionMenuTrigger, Badge, DataTableV2, IconButton, TablePagination, useToast } from '../../../components/ui/index.js';
 import { getRelayErrorMessage } from '../messageSend/api.js';
 import { AutomationTableLoadError } from './AutomationTableLoadError.jsx';
 import { useAutomationUnsentDeliveriesQuery, useAutomationUnsentDismissMutation, useAutomationUnsentResendMutation } from './queries.js';
@@ -260,7 +260,12 @@ export function AutomationUnsentTable({ table: tableConfig }) {
       loadingSlot={<span className="automation-unsent-loading" role="status">미발송 항목을 불러오는 중입니다.</span>}
       pagination
       renderPagination={({ table: dataTable }) => (
-        <AutomationUnsentTablePagination table={dataTable} total={rows.length} />
+        <TablePagination
+          itemLabel="미발송"
+          pageSizeOptions={AUTOMATION_UNSENT_PAGE_SIZE_OPTIONS}
+          table={dataTable}
+          total={rows.length}
+        />
       )}
       rowActions={({ row }) => (
         <AutomationUnsentRowActions
@@ -373,33 +378,6 @@ function AutomationUnsentRowActions({
           </ActionMenuItem>
         </ActionMenuContent>
       </ActionMenu>
-    </div>
-  );
-}
-
-function AutomationUnsentTablePagination({ table, total }) {
-  const { pageIndex, pageSize } = table.getState().pagination;
-  const pageCount = Math.max(table.getPageCount(), 1);
-  const pageNumber = Math.min(pageIndex + 1, pageCount);
-
-  function changePageSize(event) {
-    table.setPageSize(Number(event.target.value));
-    table.setPageIndex(0);
-  }
-
-  return (
-    <div className="automation-table-pagination automation-unsent-table-pagination">
-      <span>
-        페이지 {pageNumber} - {pageCount} / {formatPublEventNumber(total)}개 미발송 -{' '}
-        <span className="automation-page-size-select">
-          <select aria-label="페이지당 미발송 항목 수" onChange={changePageSize} value={pageSize}>
-            {AUTOMATION_UNSENT_PAGE_SIZE_OPTIONS.map((option) => (
-              <option key={option} value={option}>{option}개</option>
-            ))}
-          </select>
-          <ChevronDown aria-hidden="true" size={14} />
-        </span>
-      </span>
     </div>
   );
 }

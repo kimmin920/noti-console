@@ -103,12 +103,14 @@ export function PublEventVariablesSection({
         ) : null}
       </div>
       <div className="automation-rules-list-toolbar publ-event-variables-toolbar">
-        <SearchField
-          aria-label="변수 검색"
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="라벨, alias 검색"
-          value={searchValue}
-        />
+        <div className="automation-rules-list-toolbar-search">
+          <SearchField
+            aria-label="변수 검색"
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="라벨, alias 검색"
+            value={searchValue}
+          />
+        </div>
         <FilterSelect
           className="publ-event-variable-filter"
           label="변수"

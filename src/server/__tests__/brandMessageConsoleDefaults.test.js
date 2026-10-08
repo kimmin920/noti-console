@@ -568,9 +568,24 @@ describe('Brand Message console defaults', () => {
         },
       },
       {
-        assert: (draft) => expect(draft.carousel.list[0].content).toBe('피드 고객'),
+        assert: (draft) => {
+          expect(draft.carousel.list[0]).toMatchObject({
+            content: '피드 고객',
+            image: { imageUrl: 'https://cdn.example.com/feed.png' },
+            title: '피드 제목 고객',
+          });
+          expect(draft.carousel.list[0].buttons[0]).toMatchObject({
+            name: '채널 추가',
+            type: 'AC',
+          });
+        },
         template: {
-          carouselItems: [{ buttons: [{ name: '보기', type: 'WL' }], content: '피드 #{고객명}', title: '피드' }],
+          carouselItems: [{
+            buttons: [{ name: '채널 추가', type: 'AC' }],
+            header: '피드 제목 #{고객명}',
+            imageUrl: 'https://cdn.example.com/feed.png',
+            message: '피드 #{고객명}',
+          }],
           chatBubbleType: 'CAROUSEL_FEED',
         },
       },
@@ -678,7 +693,7 @@ describe('Brand Message console defaults', () => {
     }));
 
     expect(markup).toContain('template-card-sms-preview-shell');
-    expect(markup).toContain('template-card-sms-phone');
+    expect(markup).toContain('template-card-preview-frame--sms');
     expect(markup).toContain('template-card-sms-bubble');
     expect(markup).toContain('template-card-sms-token');
     expect(markup).toContain('픽업 준비가 완료되었습니다.');
