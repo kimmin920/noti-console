@@ -41,8 +41,9 @@
     "test:publ-client-e2e": "playwright test",
     "audit:console-navigation-literals": "node scripts/audit_console_navigation_literals.mjs",
     "test:console-embed-navigation-contract": "vitest run --config vitest.config.mjs src/server/__tests__/consoleNavigation.test.js src/server/__tests__/publClientRouting.test.js src/server/__tests__/publClientActorUi.test.js src/server/__tests__/consoleNavigationAudit.test.js && npm run audit:console-navigation-literals",
-    "build": "next build",
-    "build:cloudflare": "npx @opennextjs/cloudflare build",
+    "build:next": "next build",
+    "build": "opennextjs-cloudflare build",
+    "build:cloudflare": "opennextjs-cloudflare build",
     "db:migration:generate": "drizzle-kit generate --config=drizzle.config.js",
     "db:migration:check": "drizzle-kit check --config=drizzle.config.js",
     "db:migration:apply": "node -e \"if (!process.env.DATABASE_MIGRATION_URL && !process.env.DATABASE_URL) throw new Error('DATABASE_MIGRATION_URL or DATABASE_URL is required.')\" && drizzle-kit migrate --config=drizzle.config.js",
@@ -85,6 +86,7 @@
     "postcss": "^8.5.10"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.9",
     "@playwright/test": "1.61.1",
     "@types/node": "^26.0.0",
     "@types/react": "^19.2.17",
@@ -93,6 +95,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "wrangler": "^4.148.0"
   }
 }
