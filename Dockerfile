@@ -23,7 +23,8 @@ ENV NEXT_PUBLIC_CLERK_SIGN_IN_URL=$NEXT_PUBLIC_CLERK_SIGN_IN_URL
 ENV NEXT_PUBLIC_CLERK_SIGN_UP_URL=$NEXT_PUBLIC_CLERK_SIGN_UP_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+# Docker/Dokploy uses Next.js Node server build, not OpenNext Cloudflare
+RUN npm run build:next
 RUN npm prune --omit=dev
 
 FROM node:22-alpine AS migrate-runner
